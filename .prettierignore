@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Production
+build/
+dist/
+public/build
+
+# Minified files
+*.min.js
+*.min.css
+
+# Misc
+.git/
+.gitignore
+.editorconfig
+.env
+.env.*
+*.log
+
+# Laravel
+bootstrap/cache
+storage/
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.sublime-workspace
+
+# System
+.DS_Store
+Thumbs.db
+
+# Framework
+artisan
+composer.lock
+package-lock.json
