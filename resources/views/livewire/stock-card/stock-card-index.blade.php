@@ -8,314 +8,646 @@
     ];
   @endphp
 
+  <!-- Flash Messages -->
+  @if (session()->has('message'))
+    <div class="alert alert-success alert-dismissible fade show">
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+      <i class="icon fas fa-check"></i>
+      {{ session('message') }}
+    </div>
+  @endif
+
+  @if (session()->has('error'))
+    <div class="alert alert-danger alert-dismissible fade show">
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+      <i class="icon fas fa-exclamation-triangle"></i>
+      {{ session('error') }}
+    </div>
+  @endif
+
   <!-- Content Header -->
-  <div class="content-header">
-    <div class="container-fluid">
-      <div class="row mb-2">
-        <div class="col-sm-6">
-          <h1 class="m-0">Manajemen Kartu Stok</h1>
+  <div class="row mb-3">
+    <div class="col-md-12">
+      <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <div>
+          <h2 class="mb-0">
+            <i class="fas fa-clipboard-list mr-2 text-primary"></i>
+            Kartu Stok
+          </h2>
+          <small class="text-muted">Kelola dan pantau pergerakan stok produk</small>
         </div>
-        <div class="col-sm-6">
-          <ol class="breadcrumb float-sm-right">
-            <li class="breadcrumb-item"><a href="#">Home</a></li>
-            <li class="breadcrumb-item active">Kartu Stok</li>
-          </ol>
+        <ol class="breadcrumb m-0 bg-transparent p-0">
+          <li class="breadcrumb-item"><a href="{{ route('admin.dashboard') }}">Home</a></li>
+          <li class="breadcrumb-item active">Kartu Stok</li>
+        </ol>
+      </div>
+      <hr />
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="row mb-3">
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-2">
+      <a href="{{ route('stock-batches.index') }}" class="text-decoration-none">
+        <div class="info-box bg-primary mb-0">
+          <span class="info-box-icon"><i class="fas fa-cubes"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Stok Batch</span>
+            <span class="info-box-number">Lihat Batch Stok</span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-2">
+      <a href="{{ route('admin.stock-reports') }}" class="text-decoration-none">
+        <div class="info-box bg-info mb-0">
+          <span class="info-box-icon"><i class="fas fa-chart-bar"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Laporan</span>
+            <span class="info-box-number">Laporan Stok</span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-2">
+      <a href="{{ route('admin.purchases') }}" class="text-decoration-none">
+        <div class="info-box bg-success mb-0">
+          <span class="info-box-icon"><i class="fas fa-shopping-cart"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Pembelian</span>
+            <span class="info-box-number">Transaksi Masuk</span>
+          </div>
+        </div>
+      </a>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-2">
+      <a href="{{ route('admin.sales') }}" class="text-decoration-none">
+        <div class="info-box bg-danger mb-0">
+          <span class="info-box-icon"><i class="fas fa-dollar-sign"></i></span>
+          <div class="info-box-content">
+            <span class="info-box-text">Penjualan</span>
+            <span class="info-box-number">Transaksi Keluar</span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row mb-3">
+    <div class="col-lg-4 col-md-4 col-sm-12 mb-2">
+      <div class="info-box shadow-sm">
+        <span class="info-box-icon bg-success elevation-1">
+          <i class="fas fa-arrow-down"></i>
+        </span>
+        <div class="info-box-content">
+          <span class="info-box-text">Total Stok Masuk</span>
+          <span class="info-box-number">
+            {{ number_format($totalIn, 2, ',', '.') }}
+            <small>{{ $commonUnit }}</small>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4 col-md-4 col-sm-12 mb-2">
+      <div class="info-box shadow-sm">
+        <span class="info-box-icon bg-danger elevation-1">
+          <i class="fas fa-arrow-up"></i>
+        </span>
+        <div class="info-box-content">
+          <span class="info-box-text">Total Stok Keluar</span>
+          <span class="info-box-number">
+            {{ number_format($totalOut, 2, ',', '.') }}
+            <small>{{ $commonUnit }}</small>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4 col-md-4 col-sm-12 mb-2">
+      <div class="info-box shadow-sm">
+        <span class="info-box-icon {{ $net >= 0 ? 'bg-primary' : 'bg-warning' }} elevation-1">
+          <i class="fas fa-balance-scale"></i>
+        </span>
+        <div class="info-box-content">
+          <span class="info-box-text">Saldo Bersih</span>
+          <span class="info-box-number {{ $net >= 0 ? 'text-primary' : 'text-warning' }}">
+            {{ $net >= 0 ? '+' : '' }}{{ number_format($net, 2, ',', '.') }}
+            <small>{{ $commonUnit }}</small>
+          </span>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Content -->
-  <section class="content">
-    <div class="container-fluid">
-      <!-- Quick Links -->
+  <!-- Main Card -->
+  <div class="card card-outline card-primary elevation-2">
+    <div class="card-header">
+      <h3 class="card-title">
+        <i class="fas fa-list mr-1"></i>
+        Daftar Kartu Stok
+      </h3>
+      <div class="card-tools">
+        <button
+          type="button"
+          class="btn btn-success btn-sm mr-1"
+          wire:click="exportToExcel"
+          wire:loading.attr="disabled"
+        >
+          <i class="fas fa-file-excel"></i>
+          <span wire:loading.remove wire:target="exportToExcel">Export Excel</span>
+          <span wire:loading wire:target="exportToExcel">Mengunduh...</span>
+        </button>
+        <a href="{{ route('stock-card.create') }}" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus"></i>
+          Tambah Kartu Stok
+        </a>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <!-- Filters -->
       <div class="row mb-3">
-        <div class="col-lg-3 col-md-6">
-          <div class="info-box bg-light-primary">
-            <span class="info-box-icon bg-primary"><i class="fas fa-cube"></i></span>
-            <div class="info-box-content">
-              <a
-                href="{{ route('stock-batches.index') }}"
-                class="info-box-text text-decoration-none"
-              >
-                Stok Tumpukan
-              </a>
-              <span class="info-box-number text-sm">Lihat Batch Stok</span>
+        <div class="col-md-5 col-sm-12 mb-2">
+          <div class="input-group">
+            <div class="input-group-prepend">
+              <span class="input-group-text">
+                <i class="fas fa-search"></i>
+              </span>
             </div>
-          </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-          <div class="info-box bg-light-info">
-            <span class="info-box-icon bg-info"><i class="fas fa-chart-bar"></i></span>
-            <div class="info-box-content">
-              <a
-                href="{{ route('admin.stock-reports') }}"
-                class="info-box-text text-decoration-none"
-              >
-                Laporan Stok
-              </a>
-              <span class="info-box-number text-sm">Lihat Laporan</span>
-            </div>
-          </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-          <div class="info-box bg-light-success">
-            <span class="info-box-icon bg-success"><i class="fas fa-shopping-cart"></i></span>
-            <div class="info-box-content">
-              <a href="{{ route('admin.purchases') }}" class="info-box-text text-decoration-none">
-                Pembelian
-              </a>
-              <span class="info-box-number text-sm">Transaksi Masuk</span>
-            </div>
-          </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-          <div class="info-box bg-light-danger">
-            <span class="info-box-icon bg-danger"><i class="fas fa-dollar-sign"></i></span>
-            <div class="info-box-content">
-              <a href="{{ route('admin.sales') }}" class="info-box-text text-decoration-none">
-                Penjualan
-              </a>
-              <span class="info-box-number text-sm">Transaksi Keluar</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Summary Cards -->
-      <div class="row mb-4">
-        <div class="col-lg-4">
-          <div class="card card-success card-outline">
-            <div class="card-body">
-              <div class="row align-items-center">
-                <div class="col-3 text-center">
-                  <i class="fas fa-arrow-down fa-3x text-success"></i>
-                </div>
-                <div class="col-9">
-                  <div class="text-right">
-                    <h4 class="m-0 font-weight-bold">Total Stok Masuk</h4>
-                    <p class="text-muted m-0">
-                      {{ number_format($totalIn, 2, ',', '.') }} {{ $commonUnit }}
-                    </p>
-                  </div>
-                </div>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Cari produk atau catatan..."
+              wire:model.live.debounce.300ms="search"
+            />
+            @if ($search)
+              <div class="input-group-append">
+                <button
+                  class="btn btn-outline-secondary"
+                  type="button"
+                  wire:click="$set('search', '')"
+                >
+                  <i class="fas fa-times"></i>
+                </button>
               </div>
-            </div>
+            @endif
           </div>
         </div>
-        <div class="col-lg-4">
-          <div class="card card-danger card-outline">
-            <div class="card-body">
-              <div class="row align-items-center">
-                <div class="col-3 text-center">
-                  <i class="fas fa-arrow-up fa-3x text-danger"></i>
-                </div>
-                <div class="col-9">
-                  <div class="text-right">
-                    <h4 class="m-0 font-weight-bold">Total Stok Keluar</h4>
-                    <p class="text-muted m-0">
-                      {{ number_format($totalOut, 2, ',', '.') }} {{ $commonUnit }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="col-md-3 col-sm-6 mb-2">
+          <select class="form-control" wire:model.live="filter_type">
+            <option value="">-- Semua Tipe --</option>
+            <option value="in">🟢 Masuk</option>
+            <option value="out">🔴 Keluar</option>
+            <option value="adjustment">🟡 Penyesuaian</option>
+            <option value="return">🔵 Retur</option>
+          </select>
         </div>
-        <div class="col-lg-4">
-          <div class="card {{ $net >= 0 ? 'card-primary' : 'card-warning' }} card-outline">
-            <div class="card-body">
-              <div class="row align-items-center">
-                <div class="col-3 text-center">
-                  <i
-                    class="fas fa-exchange-alt fa-3x {{ $net >= 0 ? 'text-primary' : 'text-warning' }}"
-                  ></i>
-                </div>
-                <div class="col-9">
-                  <div class="text-right">
-                    <h4 class="m-0 font-weight-bold">Saldo Bersih</h4>
-                    <p class="text-muted m-0">
-                      {{ number_format($net, 2, ',', '.') }} {{ $commonUnit }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="col-md-2 col-sm-6 mb-2">
+          <select class="form-control" wire:model.live="per_page">
+            <option value="10">10 / halaman</option>
+            <option value="15">15 / halaman</option>
+            <option value="25">25 / halaman</option>
+            <option value="50">50 / halaman</option>
+          </select>
         </div>
-      </div>
-
-      <!-- Filters and Actions -->
-      <div class="card card-primary card-outline mb-4">
-        <div class="card-header">
-          <h3 class="card-title">Filter & Pencarian</h3>
-          <div class="card-tools">
-            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-              <i class="fas fa-minus"></i>
+        <div class="col-md-2 col-sm-12 mb-2">
+          <div class="btn-group btn-group-sm w-100" role="group">
+            <button
+              type="button"
+              class="btn {{ $groupByProduct ? 'btn-primary' : 'btn-outline-secondary' }}"
+              wire:click="$set('groupByProduct', true)"
+              title="Kelompokkan berdasarkan produk"
+            >
+              <i class="fas fa-layer-group"></i>
+            </button>
+            <button
+              type="button"
+              class="btn {{ ! $groupByProduct ? 'btn-primary' : 'btn-outline-secondary' }}"
+              wire:click="$set('groupByProduct', false)"
+              title="Tampilkan semua"
+            >
+              <i class="fas fa-list"></i>
             </button>
           </div>
         </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-4">
-              <div class="form-group">
-                <label>Pencarian</label>
-                <input
-                  type="text"
-                  class="form-control form-control-sm"
-                  placeholder="Cari produk atau catatan..."
-                  wire:model.debounce.500ms="search"
-                />
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>Tipe Transaksi</label>
-                <select class="form-control form-control-sm" wire:model="filter_type">
-                  <option value="">Semua Tipe</option>
-                  <option value="in">Masuk</option>
-                  <option value="out">Keluar</option>
-                  <option value="adjustment">Penyesuaian</option>
-                  <option value="return">Retur</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-3">
-              <div class="form-group">
-                <label>Data per Halaman</label>
-                <select class="form-control form-control-sm" wire:model="per_page">
-                  <option value="10">10</option>
-                  <option value="15">15</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                </select>
-              </div>
-            </div>
-            <div class="col-md-2">
-              <div class="form-group">
-                <label>&nbsp;</label>
-                <div class="btn-group btn-block" role="group">
-                  <a href="{{ route('stock-card.create') }}" class="btn btn-sm btn-success">
-                    <i class="fas fa-plus"></i>
-                    Tambah
-                  </a>
-                </div>
-              </div>
-            </div>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div wire:loading.delay class="text-center text-muted py-2 mb-2">
+        <i class="fas fa-spinner fa-spin"></i>
+        Memuat...
+      </div>
+
+      <!-- Bulk Actions -->
+      @if (count($selectedCards) > 0)
+        <div class="alert alert-info d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <i class="fas fa-check-circle mr-2"></i>
+            <strong>{{ count($selectedCards) }}</strong>
+            item dipilih
+          </div>
+          <div>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary mr-2"
+              wire:click="$set('selectedCards', [])"
+            >
+              <i class="fas fa-times"></i>
+              Batal
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-danger"
+              wire:click="bulkDelete"
+              wire:confirm="Yakin ingin menghapus {{ count($selectedCards) }} kartu stok?"
+            >
+              <i class="fas fa-trash"></i>
+              Hapus Pilihan
+            </button>
           </div>
         </div>
-      </div>
+      @endif
 
       <!-- Table -->
-      <div class="card card-primary">
-        <div class="card-header">
-          <h3 class="card-title">Daftar Kartu Stok</h3>
-          <div class="card-tools">
-            <button type="button" class="btn btn-tool" data-card-widget="collapse">
-              <i class="fas fa-minus"></i>
+      @if ($stockCards->count() > 0)
+        @if ($groupByProduct)
+          {{-- GROUPED VIEW --}}
+          <div class="mb-2">
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-primary mr-1"
+              wire:click="expandAllGroups"
+            >
+              <i class="fas fa-expand-alt"></i>
+              Buka Semua
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              wire:click="collapseAllGroups"
+            >
+              <i class="fas fa-compress-alt"></i>
+              Tutup Semua
             </button>
           </div>
-        </div>
-        <div class="card-body p-0">
-          @if ($stockCards->count() > 0)
-            <div class="table-responsive">
-              <table class="table table-striped table-hover m-0">
-                <thead class="bg-light">
+
+          @php
+            $grouped = $stockCards->groupBy('product_id');
+          @endphp
+
+          @foreach ($grouped as $productId => $cards)
+            @php
+              $product = $cards->first()->product;
+              $totalIn = $cards->where('type', 'in')->sum('qty');
+              $totalOut = $cards->where('type', 'out')->sum('qty');
+              $balance = $totalIn - $totalOut;
+              $isExpanded = in_array($productId, $expandedGroups);
+            @endphp
+
+            <div
+              class="card card-outline {{ $balance >= 0 ? 'card-success' : 'card-danger' }} mb-2"
+            >
+              <div
+                class="card-header py-2"
+                style="cursor: pointer"
+                wire:click="toggleGroup({{ $productId }})"
+              >
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="d-flex align-items-center">
+                    <i
+                      class="fas {{ $isExpanded ? 'fa-chevron-down' : 'fa-chevron-right' }} mr-2 text-muted"
+                    ></i>
+                    <div>
+                      <strong>{{ $product->nama_produk ?? 'Produk Tidak Ditemukan' }}</strong>
+                      <small class="text-muted ml-2">
+                        <code>{{ $product->kode_produk ?? '-' }}</code>
+                      </small>
+                    </div>
+                  </div>
+                  <div class="d-flex align-items-center">
+                    <span class="badge badge-pill badge-secondary mr-2">
+                      {{ $cards->count() }} transaksi
+                    </span>
+                    <span class="badge badge-pill badge-success mr-1" title="Total Masuk">
+                      <i class="fas fa-arrow-down"></i>
+                      {{ number_format($totalIn, 2, ',', '.') }}
+                    </span>
+                    <span class="badge badge-pill badge-danger mr-1" title="Total Keluar">
+                      <i class="fas fa-arrow-up"></i>
+                      {{ number_format($totalOut, 2, ',', '.') }}
+                    </span>
+                    <span
+                      class="badge badge-pill {{ $balance >= 0 ? 'badge-primary' : 'badge-warning' }}"
+                      title="Saldo"
+                    >
+                      <i class="fas fa-balance-scale"></i>
+                      {{ $balance >= 0 ? '+' : '' }}{{ number_format($balance, 2, ',', '.') }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              @if ($isExpanded)
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover m-0">
+                      <thead class="thead-light">
+                        <tr>
+                          <th class="text-center" style="width: 40px">
+                            <input type="checkbox" disabled title="Pilih grup" />
+                          </th>
+                          <th class="text-center" style="width: 100px">Tipe</th>
+                          <th class="text-right" style="width: 100px">Kuantitas</th>
+                          <th style="width: 130px">Batch</th>
+                          <th class="text-center" style="width: 140px">Waktu</th>
+                          <th>Catatan</th>
+                          <th class="text-center" style="width: 120px">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach ($cards as $card)
+                          <tr>
+                            <td class="text-center align-middle">
+                              <input
+                                type="checkbox"
+                                value="{{ $card->id }}"
+                                wire:model.live="selectedCards"
+                                wire:change="toggleCardSelection({{ $card->id }})"
+                              />
+                            </td>
+                            <td class="text-center align-middle">
+                              <span
+                                class="badge badge-{{ $transactionColors[$card->type] ?? 'secondary' }} px-2 py-1"
+                              >
+                                @switch($card->type)
+                                  @case('in')
+                                    <i class="fas fa-arrow-down mr-1"></i>
+
+                                    @break
+                                  @case('out')
+                                    <i class="fas fa-arrow-up mr-1"></i>
+
+                                    @break
+                                  @case('adjustment')
+                                    <i class="fas fa-sliders-h mr-1"></i>
+
+                                    @break
+                                  @case('return')
+                                    <i class="fas fa-undo mr-1"></i>
+
+                                    @break
+                                @endswitch
+                                {{ $transactionTypes[$card->type] ?? $card->type }}
+                              </span>
+                            </td>
+                            <td class="text-right align-middle">
+                              <strong class="text-{{ $transactionColors[$card->type] ?? 'dark' }}">
+                                {{ $card->type === 'out' ? '-' : '' }}{{ number_format($card->qty, 2, ',', '.') }}
+                              </strong>
+                            </td>
+                            <td class="align-middle">
+                              @if ($card->batch)
+                                <span class="badge badge-info">
+                                  <i class="fas fa-cube mr-1"></i>
+                                  {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
+                                </span>
+                              @else
+                                <span class="text-muted">-</span>
+                              @endif
+                            </td>
+                            <td class="text-center align-middle">
+                              <div>
+                                <i class="far fa-calendar-alt text-muted mr-1"></i>
+                                {{ $card->created_at->format('d/m/Y') }}
+                              </div>
+                              <small class="text-muted">
+                                <i class="far fa-clock mr-1"></i>
+                                {{ $card->created_at->format('H:i') }}
+                              </small>
+                            </td>
+                            <td class="align-middle">
+                              @if ($card->note)
+                                <span title="{{ $card->note }}" data-toggle="tooltip">
+                                  {{ Str::limit($card->note, 30) }}
+                                </span>
+                              @else
+                                <span class="text-muted font-italic">-</span>
+                              @endif
+                            </td>
+                            <td class="text-center align-middle">
+                              <div class="btn-group btn-group-sm">
+                                <a
+                                  href="{{ route('stock-card.show', $card->id) }}"
+                                  class="btn btn-info btn-xs"
+                                  title="Lihat"
+                                >
+                                  <i class="fas fa-eye"></i>
+                                </a>
+                                <a
+                                  href="{{ route('stock-card.edit', $card->id) }}"
+                                  class="btn btn-warning btn-xs"
+                                  title="Edit"
+                                >
+                                  <i class="fas fa-edit"></i>
+                                </a>
+                                <button
+                                  type="button"
+                                  class="btn btn-danger btn-xs"
+                                  wire:click="deleteStockCard({{ $card->id }})"
+                                  wire:confirm="Yakin ingin menghapus?"
+                                  title="Hapus"
+                                >
+                                  <i class="fas fa-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        @endforeach
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              @endif
+            </div>
+          @endforeach
+        @else
+          {{-- UNGROUPED VIEW (Original Table) --}}
+          <div class="table-responsive">
+            <table class="table table-striped table-hover table-bordered">
+              <thead class="thead-light">
+                <tr>
+                  <th class="text-center" style="width: 40px">
+                    <input
+                      type="checkbox"
+                      wire:model.live="selectAll"
+                      wire:change="toggleSelectAll"
+                      title="Pilih semua"
+                    />
+                  </th>
+                  <th class="text-center" style="width: 50px">#</th>
+                  <th>Produk</th>
+                  <th class="text-center" style="width: 110px">Tipe</th>
+                  <th class="text-right" style="width: 100px">Kuantitas</th>
+                  <th style="width: 130px">Batch</th>
+                  <th class="text-center" style="width: 140px">Waktu</th>
+                  <th>Catatan</th>
+                  <th class="text-center" style="width: 120px">Aksi</th>
+                </tr>
+              </thead>
+              <tbody wire:loading.class="opacity-50">
+                @foreach ($stockCards as $index => $card)
                   <tr>
-                    <th style="width: 5%">#</th>
-                    <th>Produk</th>
-                    <th style="width: 12%">Tipe</th>
-                    <th style="width: 10%" class="text-right">Kuantitas</th>
-                    <th>Batch</th>
-                    <th style="width: 14%">Tanggal</th>
-                    <th style="width: 10%">Jam</th>
-                    <th>Catatan</th>
-                    <th style="width: 12%">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @foreach ($stockCards as $index => $card)
-                    <tr>
-                      <td>{{ $stockCards->firstItem() + $index }}</td>
-                      <td>
-                        <strong>{{ $card->product->nama_produk }}</strong>
-                        <br />
-                        <small class="text-muted">{{ $card->product->kode_produk }}</small>
-                      </td>
-                      <td>
-                        <span
-                          class="badge badge-{{ $transactionColors[$card->type] ?? 'secondary' }}"
-                        >
-                          {{ $transactionTypes[$card->type] ?? $card->type }}
+                    <td class="text-center align-middle">
+                      <input
+                        type="checkbox"
+                        value="{{ $card->id }}"
+                        wire:model.live="selectedCards"
+                        wire:change="toggleCardSelection({{ $card->id }})"
+                      />
+                    </td>
+                    <td class="text-center align-middle">
+                      {{ $stockCards->firstItem() + $index }}
+                    </td>
+                    <td class="align-middle">
+                      <div>
+                        <strong>{{ $card->product->nama_produk ?? '-' }}</strong>
+                      </div>
+                      <small class="text-muted">
+                        <code>{{ $card->product->kode_produk ?? '-' }}</code>
+                      </small>
+                    </td>
+                    <td class="text-center align-middle">
+                      <span
+                        class="badge badge-{{ $transactionColors[$card->type] ?? 'secondary' }} px-2 py-1"
+                      >
+                        @switch($card->type)
+                          @case('in')
+                            <i class="fas fa-arrow-down mr-1"></i>
+
+                            @break
+                          @case('out')
+                            <i class="fas fa-arrow-up mr-1"></i>
+
+                            @break
+                          @case('adjustment')
+                            <i class="fas fa-sliders-h mr-1"></i>
+
+                            @break
+                          @case('return')
+                            <i class="fas fa-undo mr-1"></i>
+
+                            @break
+                        @endswitch
+                        {{ $transactionTypes[$card->type] ?? $card->type }}
+                      </span>
+                    </td>
+                    <td class="text-right align-middle">
+                      <strong class="text-{{ $transactionColors[$card->type] ?? 'dark' }}">
+                        {{ $card->type === 'out' ? '-' : '' }}{{ number_format($card->qty, 2, ',', '.') }}
+                      </strong>
+                    </td>
+                    <td class="align-middle">
+                      @if ($card->batch)
+                        <span class="badge badge-info">
+                          <i class="fas fa-cube mr-1"></i>
+                          {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
                         </span>
-                      </td>
-                      <td class="text-right">
-                        <strong>{{ number_format($card->qty, 2, ',', '.') }}</strong>
-                      </td>
-                      <td>
-                        @if ($card->batch)
-                          <span class="badge badge-info">
-                            {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
-                          </span>
-                        @else
-                          <span class="text-muted">-</span>
-                        @endif
-                      </td>
-                      <td>
-                        <small>{{ $card->created_at->format('d/m/Y') }}</small>
-                      </td>
-                      <td>
-                        <small>{{ $card->created_at->format('H:i') }}</small>
-                      </td>
-                      <td>
-                        <small class="text-muted" title="{{ $card->note }}">
-                          {{ Str::limit($card->note ?? '', 25) }}
-                        </small>
-                      </td>
-                      <td>
+                      @else
+                        <span class="text-muted">-</span>
+                      @endif
+                    </td>
+                    <td class="text-center align-middle">
+                      <div>
+                        <i class="far fa-calendar-alt text-muted mr-1"></i>
+                        {{ $card->created_at->format('d/m/Y') }}
+                      </div>
+                      <small class="text-muted">
+                        <i class="far fa-clock mr-1"></i>
+                        {{ $card->created_at->format('H:i') }}
+                      </small>
+                    </td>
+                    <td class="align-middle">
+                      @if ($card->note)
+                        <span title="{{ $card->note }}" data-toggle="tooltip">
+                          {{ Str::limit($card->note, 30) }}
+                        </span>
+                      @else
+                        <span class="text-muted font-italic">Tidak ada catatan</span>
+                      @endif
+                    </td>
+                    <td class="text-center align-middle">
+                      <div class="btn-group btn-group-sm">
                         <a
                           href="{{ route('stock-card.show', $card->id) }}"
-                          class="btn btn-xs btn-info"
-                          title="Lihat"
+                          class="btn btn-info"
+                          title="Lihat Detail"
+                          data-toggle="tooltip"
                         >
                           <i class="fas fa-eye"></i>
                         </a>
                         <a
                           href="{{ route('stock-card.edit', $card->id) }}"
-                          class="btn btn-xs btn-warning"
+                          class="btn btn-warning"
                           title="Edit"
+                          data-toggle="tooltip"
                         >
                           <i class="fas fa-edit"></i>
                         </a>
                         <button
                           type="button"
-                          class="btn btn-xs btn-danger"
+                          class="btn btn-danger"
                           wire:click="deleteStockCard({{ $card->id }})"
-                          wire:confirm="Yakin ingin menghapus?"
+                          wire:confirm="Yakin ingin menghapus kartu stok ini?"
                           title="Hapus"
+                          data-toggle="tooltip"
                         >
                           <i class="fas fa-trash"></i>
                         </button>
-                      </td>
-                    </tr>
-                  @endforeach
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </td>
+                  </tr>
+                @endforeach
+              </tbody>
+            </table>
+          </div>
+        @endif
 
-            <!-- Pagination -->
-            <div class="card-footer">
-              {{ $stockCards->links() }}
-            </div>
-          @else
-            <div class="alert alert-info m-3">
-              <i class="fas fa-info-circle"></i>
-              Tidak ada data kartu stok.
-              <a href="{{ route('stock-card.create') }}" class="alert-link">Tambah sekarang</a>
-            </div>
-          @endif
+        <!-- Pagination -->
+        <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
+          <div class="text-muted mb-2">
+            Menampilkan {{ $stockCards->firstItem() }} - {{ $stockCards->lastItem() }} dari
+            {{ $stockCards->total() }} data
+          </div>
+          <div>
+            {{ $stockCards->onEachSide(1)->links('pagination::bootstrap-4') }}
+          </div>
         </div>
-      </div>
+      @else
+        <div class="text-center py-5">
+          <div class="mb-3">
+            <i class="fas fa-inbox fa-4x text-muted"></i>
+          </div>
+          <h5 class="text-muted">Tidak ada data kartu stok</h5>
+          <p class="text-muted">
+            @if ($search || $filter_type)
+              Tidak ditemukan kartu stok dengan filter yang dipilih.
+              <br />
+              <button
+                class="btn btn-outline-secondary btn-sm mt-2"
+                wire:click="$set('search', ''); $set('filter_type', '')"
+              >
+                <i class="fas fa-times"></i>
+                Reset Filter
+              </button>
+            @else
+                Mulai dengan menambahkan kartu stok pertama.
+            @endif
+          </p>
+          <a href="{{ route('stock-card.create') }}" class="btn btn-primary">
+            <i class="fas fa-plus mr-1"></i>
+            Tambah Kartu Stok
+          </a>
+        </div>
+      @endif
     </div>
-  </section>
+  </div>
 </div>

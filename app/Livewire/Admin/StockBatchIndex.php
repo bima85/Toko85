@@ -13,6 +13,7 @@ use App\Services\StockBatchService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -34,6 +35,7 @@ class StockBatchIndex extends Component
 
     // Inline create form properties
     public bool $showCreateForm = false;
+    public bool $isCreatingBatch = false; // Flag untuk prevent double submission
     public ?int $createProductId = null;
     public string $createProductSearch = '';
     public ?int $createCategoryId = null;
@@ -95,11 +97,20 @@ class StockBatchIndex extends Component
 
     public function updatedCreateProductSearch($value)
     {
-        if (!empty($value)) {
-            // Extract product code from format "[CODE] Name"
-            preg_match('/\[([^\]]+)\]/', $value, $matches);
-            if (!empty($matches[1])) {
-                $product = Product::where('kode_produk', $matches[1])->first();
+        try {
+            // Only search if createProductId is not already set (i.e., user is typing manually)
+            if (!empty($value) && !$this->createProductId) {
+                // Extract product code from format [CODE] Name if present
+                if (preg_match('/^\[([^\]]+)\]/', $value, $matches)) {
+                    $productCode = $matches[1];
+                    $product = Product::where('kode_produk', $productCode)->first();
+                } else {
+                    // Search by name or code directly
+                    $product = Product::where('nama_produk', 'LIKE', '%' . $value . '%')
+                        ->orWhere('kode_produk', 'LIKE', '%' . $value . '%')
+                        ->first();
+                }
+
                 if ($product) {
                     $this->createProductId = $product->id;
                     $this->createCategoryId = $product->category_id;
@@ -107,13 +118,29 @@ class StockBatchIndex extends Component
                     $this->createSatuan = $product->satuan ?? '';
                 }
             }
+        } catch (\Exception $e) {
+            Log::error('Error in updatedCreateProductSearch: ' . $e->getMessage());
         }
     }
 
     public function selectProduct($value)
     {
-        $this->updatedCreateProductSearch($value);
+        try {
+            // Cari produk berdasarkan nama
+            $product = Product::where('nama_produk', $value)->first();
+
+            if ($product) {
+                $this->createProductId = $product->id;
+                $this->createProductSearch = $value;
+                $this->createCategoryId = $product->category_id;
+                $this->createSubcategoryId = $product->subcategory_id;
+                $this->createSatuan = $product->satuan ?? '';
+            }
+        } catch (\Exception $e) {
+            Log::error('Error in selectProduct: ' . $e->getMessage());
+        }
     }
+
 
     public function updatedCreateCategoryId()
     {
@@ -158,6 +185,31 @@ class StockBatchIndex extends Component
     }
 
     #[Computed]
+    public function filteredSubcategories()
+    {
+        if (!$this->createCategoryId) {
+            return Subcategory::all();
+        }
+        return Subcategory::where('category_id', $this->createCategoryId)->get();
+    }
+
+    #[Computed]
+    public function filteredProducts()
+    {
+        $query = Product::query();
+
+        if ($this->createCategoryId) {
+            $query->where('category_id', $this->createCategoryId);
+        }
+
+        if ($this->createSubcategoryId) {
+            $query->where('subcategory_id', $this->createSubcategoryId);
+        }
+
+        return $query->get();
+    }
+
+    #[Computed]
     public function tumpukanSummary()
     {
         $locType = $this->location ?: null;
@@ -195,6 +247,7 @@ class StockBatchIndex extends Component
             ->map(function ($batches) {
                 $product = $batches->first()->product;
                 $totalQty = $batches->sum('qty');
+                $latestBatch = $batches->sortByDesc('created_at')->first();
 
                 return (object) [
                     'product_id' => $product->id,
@@ -203,6 +256,7 @@ class StockBatchIndex extends Component
                     'satuan' => $product->satuan ?? 'N/A',
                     'category' => $product->category?->nama_kategori ?? '-',
                     'subcategory' => $product->subcategory?->nama_subkategori ?? '-',
+                    'latest_date' => $latestBatch->created_at,
                 ];
             })
             ->sortBy(fn($item) => $item->product->nama_produk)
@@ -241,7 +295,7 @@ class StockBatchIndex extends Component
 
     public function render()
     {
-        $query = StockBatch::active()->latestFirst();
+        $query = StockBatch::active()->latestFirst()->with('product');
 
         // Filter berdasarkan search (nama produk)
         if ($this->search) {
@@ -264,7 +318,22 @@ class StockBatchIndex extends Component
         }
 
         $batches = $query->paginate($this->per_page);
-        $products = Product::all();
+        $products = Product::select('id', 'kode_produk', 'nama_produk', 'satuan', 'category_id', 'subcategory_id')
+            ->orderBy('nama_produk')
+            ->get();
+
+        // Prepare products JSON for JavaScript (safe mapping)
+        $productsJson = $products->map(function ($product) {
+            return [
+                'id' => (int)$product->id,
+                'kode_produk' => $product->kode_produk ?? '',
+                'nama_produk' => $product->nama_produk ?? '',
+                'satuan' => $product->satuan ?? '',
+                'category_id' => $product->category_id ? (int)$product->category_id : null,
+                'subcategory_id' => $product->subcategory_id ? (int)$product->subcategory_id : null,
+            ];
+        });
+
         $locations = ['store' => 'Toko', 'warehouse' => 'Gudang'];
 
         // Get all units from Unit model
@@ -281,6 +350,7 @@ class StockBatchIndex extends Component
         return view('livewire.admin.stock-batch-index', [
             'batches' => $batches,
             'products' => $products,
+            'productsJson' => $productsJson,
             'locations' => $locations,
             'units' => $units,
             'categories' => $categories,
@@ -299,6 +369,7 @@ class StockBatchIndex extends Component
         $this->dispatch('$refresh');
     }
 
+    #[On('delete-batch')]
     public function deleteBatch($batchId)
     {
         try {
@@ -306,13 +377,16 @@ class StockBatchIndex extends Component
             $batch->delete();
 
             $this->dispatch('notify', message: 'Batch berhasil dihapus!', type: 'success');
+            $this->dispatch('batch-created'); // Trigger table reload
         } catch (\Exception $e) {
             $this->dispatch('notify', message: $e->getMessage(), type: 'error');
         }
     }
 
-    public function editBatch($batchId)
+    #[On('edit-batch')]
+    public function editBatch($id)
     {
+        $batchId = is_array($id) ? ($id['id'] ?? $id[0] ?? $id) : $id;
         $batch = StockBatch::findOrFail($batchId);
 
         $this->editBatchId = $batch->id;
@@ -398,28 +472,42 @@ class StockBatchIndex extends Component
 
     public function createStockBatch()
     {
-        $this->validate([
-            'createProductId' => 'required|numeric|min:1|exists:products,id',
-            'createLocationType' => 'required|in:store,warehouse',
-            'createLocationId' => 'required|numeric|min:1',
-            'createNamaTumpukan' => 'required|string|max:255',
-            'createQty' => 'required|numeric|min:0.01',
-            'createSatuan' => 'nullable|string|max:50',
-        ], [
-            'createProductId.required' => 'Produk harus dipilih',
-            'createProductId.exists' => 'Produk tidak ditemukan',
-            'createLocationType.required' => 'Lokasi harus dipilih',
-            'createLocationType.in' => 'Lokasi tidak valid',
-            'createLocationId.required' => 'Toko/Gudang harus dipilih',
-            'createLocationId.numeric' => 'Toko/Gudang tidak valid',
-            'createNamaTumpukan.required' => 'Nama tumpukan tidak boleh kosong',
-            'createNamaTumpukan.max' => 'Nama tumpukan maksimal 255 karakter',
-            'createQty.required' => 'Kuantitas harus diisi',
-            'createQty.min' => 'Kuantitas minimal 0.01',
-            'createSatuan.max' => 'Satuan maksimal 50 karakter',
-        ]);
+        // Prevent double submission
+        if ($this->isCreatingBatch) {
+            return;
+        }
+        $this->isCreatingBatch = true;
 
         try {
+            Log::info('Creating stock batch with data', [
+                'createQty' => $this->createQty,
+                'createProductId' => $this->createProductId,
+                'createNamaTumpukan' => $this->createNamaTumpukan,
+            ]);
+
+            $this->validate([
+                'createProductId' => 'required|numeric|min:1|exists:products,id',
+                'createLocationType' => 'required|in:store,warehouse',
+                'createLocationId' => 'required|numeric|min:1',
+                'createNamaTumpukan' => 'required|string|max:255',
+                'createQty' => 'required|numeric|min:0.01',
+                'createSatuan' => 'nullable|string|max:50',
+                'createDate' => 'nullable|date',
+            ], [
+                'createProductId.required' => 'Produk harus dipilih',
+                'createProductId.exists' => 'Produk tidak ditemukan',
+                'createLocationType.required' => 'Lokasi harus dipilih',
+                'createLocationType.in' => 'Lokasi tidak valid',
+                'createLocationId.required' => 'Toko/Gudang harus dipilih',
+                'createLocationId.numeric' => 'Toko/Gudang tidak valid',
+                'createNamaTumpukan.required' => 'Nama tumpukan tidak boleh kosong',
+                'createNamaTumpukan.max' => 'Nama tumpukan maksimal 255 karakter',
+                'createQty.required' => 'Kuantitas harus diisi',
+                'createQty.min' => 'Kuantitas minimal 0.01',
+                'createSatuan.max' => 'Satuan maksimal 50 karakter',
+                'createDate.date' => 'Tanggal harus format yang valid',
+            ]);
+
             // Update satuan product jika diisi
             if ($this->createSatuan) {
                 $product = Product::find($this->createProductId);
@@ -429,38 +517,76 @@ class StockBatchIndex extends Component
             }
 
             // Buat batch baru dengan locationId menggunakan service
-            app(StockBatchService::class)->addStock(
+            // Parse createDate: jika kosong gunakan now(), jika ada parse menjadi Carbon
+            $batchDate = null;
+            if (!empty($this->createDate)) {
+                try {
+                    $batchDate = \Carbon\Carbon::parse($this->createDate);
+                } catch (\Exception $e) {
+                    $batchDate = null;
+                }
+            }
+
+            $batch = app(StockBatchService::class)->addStock(
                 $this->createProductId,
                 $this->createLocationType,
                 $this->createNamaTumpukan,
                 $this->createQty,
                 $this->createLocationId,
-                $this->createNote ?: null
+                $this->createNote ?: null,
+                $batchDate
             );
+
+            Log::info('Stock batch created successfully', [
+                'batch_id' => $batch->id,
+                'product_id' => $this->createProductId,
+                'qty' => $this->createQty,
+            ]);
+
             session()->flash('message', 'Stok tumpukan berhasil dibuat!');
 
             // Reset form fields only, keep form open
             $this->resetCreateForm();
-            $this->refreshData();
+
+            // Reset page to first page to show new data
+            $this->resetPage();
+
+            // Dispatch event ke frontend untuk clear form inputs
+            $this->dispatch('batch-created');
+
+            // Dispatch browser event untuk reload DataTable Total Stok Per Produk di frontend
+            $this->dispatch('reloadTotalStokTable');
         } catch (\Exception $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());
+        } finally {
+            // Always reset flag
+            $this->isCreatingBatch = false;
         }
     }
 
     private function resetCreateForm()
     {
-        $this->createProductId = null;
-        $this->createProductSearch = '';
-        $this->createCategoryId = null;
-        $this->createSubcategoryId = null;
-        $this->createLocationType = 'store';
-        $this->createLocationId = null;
-        $this->createNamaTumpukan = '';
-        $this->createQty = 0;
-        $this->createNote = '';
-        $this->createSatuan = '';
-        $this->createDate = '';
+        // Reset semua properties
+        $this->reset([
+            'createProductId',
+            'createProductSearch',
+            'createCategoryId',
+            'createSubcategoryId',
+            'createLocationType',
+            'createLocationId',
+            'createNamaTumpukan',
+            'createQty',
+            'createNote',
+            'createSatuan',
+            'createDate',
+        ]);
+
+        // Reset validasi
         $this->clearValidation();
+
+        // Re-initialize default values
+        $this->createLocationType = 'store';
+        $this->createQty = 0;
     }
 
     // Selection methods
@@ -564,16 +690,6 @@ class StockBatchIndex extends Component
     }
 
     #[Computed]
-    public function filteredSubcategories()
-    {
-        if (!$this->createCategoryId) {
-            return collect([]);
-        }
-
-        return Subcategory::where('category_id', $this->createCategoryId)->get();
-    }
-
-    #[Computed]
     public function batches()
     {
         $query = StockBatch::with('product')
@@ -667,5 +783,23 @@ class StockBatchIndex extends Component
             return collect([]);
         }
         return Subcategory::where('category_id', $this->quickProductCategoryId)->get();
+    }
+
+    #[Computed]
+    public function productsForJson()
+    {
+        return Product::select('id', 'kode_produk', 'nama_produk', 'satuan', 'category_id', 'subcategory_id')
+            ->orderBy('nama_produk')
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => (int)$product->id,
+                    'kode_produk' => e($product->kode_produk ?? ''),
+                    'nama_produk' => e($product->nama_produk ?? ''),
+                    'satuan' => e($product->satuan ?? ''),
+                    'category_id' => $product->category_id ? (int)$product->category_id : null,
+                    'subcategory_id' => $product->subcategory_id ? (int)$product->subcategory_id : null,
+                ];
+            });
     }
 }

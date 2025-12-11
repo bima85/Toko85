@@ -71,23 +71,14 @@ class StockBatchForm extends Component
       ]);
 
       try {
-         // Cek apakah sudah ada batch dengan nama sama di lokasi yang sama
-         $existingBatch = StockBatch::where('product_id', $this->productId)
-            ->where('location_type', $this->locationType)
-            ->where('nama_tumpukan', $this->namaTumpukan)
-            ->first();
-
-         if ($existingBatch) {
-            $existingBatch->update(['qty' => $existingBatch->qty + $this->qty]);
-         } else {
-            $this->stockBatchService->addStock(
-               $this->productId,
-               $this->locationType,
-               $this->namaTumpukan,
-               $this->qty,
-               note: $this->note ?: null
-            );
-         }
+         // Selalu buat batch baru - tidak menggabungkan dengan batch yang sudah ada
+         $this->stockBatchService->addStock(
+            $this->productId,
+            $this->locationType,
+            $this->namaTumpukan,
+            $this->qty,
+            note: $this->note ?: null
+         );
 
          session()->flash('success', 'Stok berhasil ditambahkan!');
          $this->resetForm();

@@ -522,8 +522,7 @@
                           <div class="btn-group btn-group-sm" role="group">
                             <button
                               type="button"
-                              wire:click="$dispatch('edit-batch', { id: {{ $batch->id }} })"
-                              onclick="@this.editBatch({{ $batch->id }})"
+                              wire:click="editBatch({{ $batch->id }})"
                               class="btn btn-primary"
                               title="Edit"
                             >
@@ -531,7 +530,8 @@
                             </button>
                             <button
                               type="button"
-                              onclick="if(confirm('Apakah Anda yakin ingin menghapus?')) @this.deleteBatch({{ $batch->id }})"
+                              wire:click="deleteBatch({{ $batch->id }})"
+                              onclick="return confirm('Apakah Anda yakin ingin menghapus?')"
                               class="btn btn-danger"
                               title="Hapus"
                             >
@@ -662,12 +662,13 @@
                 <thead class="bg-info text-white">
                   <tr>
                     <th style="width: 5%">#</th>
-                    <th style="width: 20%">Kode Produk</th>
-                    <th style="width: 30%">Nama Produk</th>
-                    <th style="width: 15%">Kategori</th>
-                    <th style="width: 15%">Sub Kategori</th>
+                    <th style="width: 15%">Kode Produk</th>
+                    <th style="width: 25%">Nama Produk</th>
+                    <th style="width: 12%">Kategori</th>
+                    <th style="width: 12%">Sub Kategori</th>
                     <th style="width: 10%">Total Stok</th>
                     <th style="width: 5%">Satuan</th>
+                    <th style="width: 16%">Tanggal Terakhir</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -693,6 +694,11 @@
                         {{ rtrim(rtrim(number_format($item->total_qty, 2), '0'), '.') }}
                       </td>
                       <td class="text-center">{{ $item->satuan }}</td>
+                      <td class="text-center">
+                        <small style="font-size: 15px">
+                          {{ $item->latest_date ? $item->latest_date->format('d/m/Y H:i') : '-' }}
+                        </small>
+                      </td>
                     </tr>
                     @php
                       $no++;
@@ -1048,46 +1054,34 @@
         });
     }
 
-    // Show success message with SweetAlert2 on page load
-    window.addEventListener('load', function() {
-        @if(session()->has('message'))
+    // Listen for batch-created event to show success message
+    document.addEventListener('livewire:init', function() {
+        Livewire.on('batch-created', function() {
             Swal.fire({
                 icon: 'success',
                 title: 'Berhasil!',
-                text: '{{ session('message') }}',
-                timer: 3000,
+                text: 'Stok tumpukan berhasil dibuat!',
+                timer: 2000,
                 timerProgressBar: true,
-                confirmButtonText: 'OK'
+                showConfirmButton: false
             });
-        @endif
+        });
 
-        @if(session()->has('error'))
+        Livewire.on('notify', function(data) {
+            const params = data[0] || data;
             Swal.fire({
-                icon: 'error',
-                title: 'Kesalahan!',
-                text: '{{ session('error') }}',
-                confirmButtonText: 'OK'
-            });
-        @endif
-    });
-
-    // Listen to Livewire success message
-    document.addEventListener('livewire:navigated', function() {
-        // Check if there's a success alert message
-        @if(session()->has('message'))
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
-                text: '{{ session('message') }}',
+                icon: params.type || 'info',
+                title: params.type === 'success' ? 'Berhasil!' : 'Pemberitahuan',
+                text: params.message,
                 timer: 3000,
                 timerProgressBar: true
             });
-        @endif
+        });
     });
 
     // Alpine.js product dropdown handler
     function productDropdown() {
-        let allProducts = @json($products);
+        const allProducts = @json($productsJson);
 
         return {
             search: '',
@@ -1113,13 +1107,13 @@
                 } else {
                     this.filtered = allProducts.filter(p =>
                         p.nama_produk.toLowerCase().includes(query) ||
-                        p.kode_produk.toLowerCase().includes(query)
+                        (p.kode_produk && p.kode_produk.toLowerCase().includes(query))
                     );
                 }
             },
 
             selectProduct(product) {
-                const value = `[${product.kode_produk}] ${product.nama_produk}`;
+                const value = product.nama_produk;
                 document.getElementById('productSearch').value = value;
                 this.$wire.call('selectProduct', value);
             },

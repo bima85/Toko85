@@ -1,4 +1,20 @@
 <div>
+  @if (session()->has('message'))
+    <div class="alert alert-success alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+      <i class="icon fas fa-check"></i>
+      {{ session('message') }}
+    </div>
+  @endif
+
+  @if (session()->has('error'))
+    <div class="alert alert-danger alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+      <i class="icon fas fa-ban"></i>
+      {{ session('error') }}
+    </div>
+  @endif
+
   <!-- Content Header -->
   <div class="row mb-3">
     <div class="col-md-12">
@@ -87,6 +103,28 @@
             Daftar Transaksi
           </h3>
           <div class="d-flex align-items-center gap-2">
+            <button
+              type="button"
+              id="deleteSelectedBtn"
+              class="btn btn-danger btn-sm"
+              style="display: none"
+              onclick="deleteSelectedTransactions()"
+            >
+              <i class="fas fa-trash mr-1"></i>
+              Hapus
+              <span id="selectedCount">0</span>
+            </button>
+            <button
+              type="button"
+              id="clearSelectBtn"
+              class="btn btn-secondary btn-sm"
+              style="display: none"
+              onclick="clearAllSelections()"
+            >
+              <i class="fas fa-times mr-1"></i>
+              Batal
+            </button>
+
             <label class="mb-0 mr-1">Tampilkan:</label>
             <select id="pageLength" class="form-control form-control-sm" style="width: 80px">
               <option value="10">10</option>
@@ -101,6 +139,14 @@
           <table class="table table-sm mb-0" id="transactionsTable" style="width: 100%">
             <thead class="bg-primary text-white">
               <tr>
+                <th style="width: 4%">
+                  <input
+                    type="checkbox"
+                    wire:click="$toggle('selectAll')"
+                    wire:model="selectAll"
+                    title="Select all"
+                  />
+                </th>
                 <th style="width: 12%">
                   <i class="fas fa-barcode mr-1"></i>
                   Kode
@@ -213,8 +259,25 @@
             d.filterDateFrom = $('#filterDateFrom').val();
             d.filterDateTo = $('#filterDateTo').val();
           },
+          error: function (xhr, error, thrown) {
+            console.error('DataTable ajax error:', error, xhr.responseText);
+          },
         },
         columns: [
+          {
+            data: 'id',
+            render: function (data) {
+              return (
+                '<input type="checkbox" class="transaction-checkbox" value="' +
+                data +
+                '" onchange="toggleTransaction(' +
+                data +
+                ')" />'
+              );
+            },
+            orderable: false,
+            searchable: false,
+          },
           {
             data: 'transaction_code',
             render: function (data) {
@@ -308,6 +371,129 @@
 
       table.on('draw', updateStats);
       updateStats();
+
+      // Initialize selectedTransactionIds globally
+      window.selectedTransactionIds = [];
+
+      // Livewire event listener untuk reload table setelah bulk delete
+      Livewire.on('reloadTransactionsTable', function () {
+        console.log('reloadTransactionsTable event received, reloading...');
+        table.ajax.reload();
+      });
+
+      // Handle select all checkbox
+      const selectAllCheckbox = document.querySelector('[wire\\:model="selectAll"]');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (this.checked) {
+            // Collect all transaction IDs from current filtered data
+            console.log('Select all clicked, collecting IDs...');
+
+            // Fetch all matching IDs from server based on current filters
+            $.ajax({
+              url: '{{ route('admin.transactions.data') }}',
+              type: 'GET',
+              data: {
+                draw: 1,
+                start: 0,
+                length: -1, // Get all records
+                filterType: $('#filterType').val(),
+                filterStatus: $('#filterStatus').val(),
+                filterDateFrom: $('#filterDateFrom').val(),
+                filterDateTo: $('#filterDateTo').val(),
+                search: { value: $('#searchInput').val() }
+              },
+              dataType: 'json',
+              success: function (response) {
+                const ids = response.data.map((item) => parseInt(item.id));
+                console.log('Fetched ' + ids.length + ' IDs from server:', ids);
+
+                // Store IDs in global variable
+                window.selectedTransactionIds = ids;
+
+                // Check all visible checkboxes
+                $('#transactionsTable tbody .transaction-checkbox').each(function () {
+                  $(this).prop('checked', true);
+                });
+
+                // Update button visibility
+                updateDeleteButtons();
+              },
+              error: function (xhr) {
+                console.error('Failed to fetch transaction IDs', xhr);
+                selectAllCheckbox.checked = false;
+              }
+            });
+          } else {
+            // Uncheck all
+            window.selectedTransactionIds = [];
+            $('#transactionsTable tbody .transaction-checkbox').prop('checked', false);
+            selectAllCheckbox.prop('checked', false);
+            updateDeleteButtons();
+          }
+        });
+      }
+
+      // Update selected transaction count and button visibility
+      function updateDeleteButtons() {
+        const selectedCount = window.selectedTransactionIds.length;
+        $('#selectedCount').text(selectedCount);
+
+        if (selectedCount > 0) {
+          $('#deleteSelectedBtn, #clearSelectBtn').show();
+        } else {
+          $('#deleteSelectedBtn, #clearSelectBtn').hide();
+        }
+      }
+
+      // Handle individual checkbox clicks
+      $(document).on('change', '.transaction-checkbox', function () {
+        const id = parseInt($(this).val());
+
+        if ($(this).is(':checked')) {
+          if (!window.selectedTransactionIds.includes(id)) {
+            window.selectedTransactionIds.push(id);
+          }
+        } else {
+          window.selectedTransactionIds = window.selectedTransactionIds.filter(x => x !== id);
+          // Uncheck select all if any item is unchecked
+          if (selectAllCheckbox) {
+            selectAllCheckbox.prop('checked', false);
+          }
+        }
+
+        updateDeleteButtons();
+      });
+
+      // Delete selected transactions
+      window.deleteSelectedTransactions = function () {
+        if (!window.selectedTransactionIds || window.selectedTransactionIds.length === 0) {
+          alert('Pilih transaksi untuk dihapus');
+          return;
+        }
+
+        const count = window.selectedTransactionIds.length;
+        if (!confirm('Hapus ' + count + ' transaksi? Tindakan ini tidak dapat dibatalkan.')) {
+          return;
+        }
+
+        // Call Livewire deleteSelected method with collected IDs
+        @this.call('deleteSelected', window.selectedTransactionIds);
+      };
+
+      // Clear all selections
+      window.clearAllSelections = function () {
+        window.selectedTransactionIds = [];
+        $('#transactionsTable tbody .transaction-checkbox').prop('checked', false);
+        if (selectAllCheckbox) {
+          selectAllCheckbox.prop('checked', false);
+        }
+        updateDeleteButtons();
+      };
+
     }
 
     function updateStats() {

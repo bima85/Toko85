@@ -20,6 +20,8 @@ class StockBatch extends Model
         'locationable_type',
         'nama_tumpukan',
         'qty',
+        'created_at',
+        'updated_at',
     ];
 
     protected $casts = [

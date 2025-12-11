@@ -43,12 +43,22 @@
             </p>
           </a>
           <ul class="nav nav-treeview">
+            <!-- Products Section -->
+            <li class="nav-item">
+              <a
+                href="{{ route('admin.products') }}"
+                class="nav-link @if(request()->routeIs('admin.products')) active @endif"
+              >
+                <i class="nav-icon fas fa-box"></i>
+                <p>Produk</p>
+              </a>
+            </li>
             <li class="nav-item">
               <a
                 href="{{ route('admin.users') }}"
                 class="nav-link @if(request()->routeIs('admin.users')) active @endif"
               >
-                <i class="far fa-circle nav-icon"></i>
+                <i class="far fa-user nav-icon"></i>
                 <p>Users</p>
               </a>
             </li>
@@ -57,7 +67,7 @@
                 href="{{ route('admin.categories') }}"
                 class="nav-link @if(request()->routeIs('admin.categories')) active @endif"
               >
-                <i class="far fa-circle nav-icon"></i>
+                <i class="far fa-folder nav-icon"></i>
                 <p>Kategori</p>
               </a>
             </li>
@@ -66,7 +76,7 @@
                 href="{{ route('admin.subcategories') }}"
                 class="nav-link @if(request()->routeIs('admin.subcategories')) active @endif"
               >
-                <i class="far fa-circle nav-icon"></i>
+                <i class="far fa-folder nav-icon"></i>
                 <p>Subkategori</p>
               </a>
             </li>
@@ -118,17 +128,6 @@
           </ul>
         </li>
 
-        <!-- Products Section -->
-        <li class="nav-item">
-          <a
-            href="{{ route('admin.products') }}"
-            class="nav-link @if(request()->routeIs('admin.products')) active @endif"
-          >
-            <i class="nav-icon fas fa-box"></i>
-            <p>Produk</p>
-          </a>
-        </li>
-
         <!-- Pembelian Section -->
         <li class="nav-item @if(request()->routeIs('admin.purchases')) menu-open @endif">
           <a href="#" class="nav-link @if(request()->routeIs('admin.purchases')) active @endif">
@@ -146,12 +145,6 @@
               >
                 <i class="far fa-circle nav-icon"></i>
                 <p>Daftar Pembelian</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a href="{{ route('admin.purchases') }}#transaksi" class="nav-link">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Transaksi Pembelian</p>
               </a>
             </li>
           </ul>
@@ -238,6 +231,12 @@
             </p>
           </a>
           <ul class="nav nav-treeview">
+            <li class="nav-item">
+              <a href="{{ route('admin.purchases') }}#transaksi" class="nav-link">
+                <i class="far fa-circle nav-icon"></i>
+                <p>Transaksi Pembelian</p>
+              </a>
+            </li>
             <li class="nav-item">
               <a
                 href="{{ route('admin.transactions') }}"

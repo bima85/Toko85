@@ -28,9 +28,15 @@
     />
     <link
       rel="stylesheet"
+      href="https://cdn.datatables.net/rowgroup/1.3.0/css/rowGroup.bootstrap4.min.css"
+    />
+    <link
+      rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
     />
     <link rel="stylesheet" href="/css/adminlte.min.css" />
+
+    <script src="/js/jquery.min.js"></script>
 
     @stack('styles')
     @livewireStyles
@@ -65,97 +71,11 @@
       </footer>
     </div>
 
-    <script src="/js/jquery.min.js"></script>
     <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
-    <script>
-      // If OverlayScrollbars failed to load (network/CSP), provide a minimal no-op so AdminLTE
-      // calls don't throw and the asset-check can detect the plugin.
-      (function () {
-        try {
-          if (
-            window.jQuery &&
-            !(window.jQuery.fn && typeof window.jQuery.fn.overlayScrollbars === 'function')
-          ) {
-            window.jQuery.fn.overlayScrollbars = function () {
-              return this;
-            };
-          }
-        } catch (e) {
-          /* ignore */
-        }
-      })();
-    </script>
     <script src="/js/adminlte.min.js"></script>
-    <script>
-      // Runtime CDN fallbacks: if a library is missing or its plugin isn't registered,
-      // load it from a CDN so the UI continues to work.
-      (function () {
-        function loadScript(src, onload) {
-          var s = document.createElement('script');
-          s.src = src;
-          s.async = false;
-          s.onload = onload || function () {};
-          document.head.appendChild(s);
-        }
 
-        // jQuery fallback
-        if (!window.jQuery) {
-          loadScript('https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js');
-        }
-
-        // Bootstrap fallback (checks for tooltip plugin)
-        (function checkBootstrap() {
-          if (
-            !(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.tooltip === 'function')
-          ) {
-            loadScript(
-              'https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.2/js/bootstrap.bundle.min.js'
-            );
-          }
-        })();
-
-        // OverlayScrollbars fallback
-        (function checkOverlay() {
-          if (
-            !(
-              window.jQuery &&
-              window.jQuery.fn &&
-              typeof window.jQuery.fn.overlayScrollbars === 'function'
-            )
-          ) {
-            loadScript(
-              'https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js'
-            );
-          }
-        })();
-
-        // AdminLTE fallback
-        (function checkAdminLTE() {
-          var adminlteAvailable =
-            !!(
-              window.jQuery &&
-              window.jQuery.fn &&
-              (typeof window.jQuery.fn.pushMenu === 'function' ||
-                typeof window.jQuery.fn.PushMenu === 'function')
-            ) || !!window.adminlte;
-          if (!adminlteAvailable) {
-            loadScript('https://cdnjs.cloudflare.com/ajax/libs/admin-lte/3.2.0/js/adminlte.min.js');
-          }
-        })();
-
-        // DataTables fallback
-        (function checkDataTables() {
-          if (
-            !(window.jQuery && window.jQuery.fn && typeof window.jQuery.fn.dataTable === 'function')
-          ) {
-            loadScript('https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js');
-            loadScript('https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js');
-          }
-        })();
-      })();
-    </script>
     @stack('scripts')
     @livewireScripts
   </body>

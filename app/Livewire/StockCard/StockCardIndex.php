@@ -2,11 +2,13 @@
 
 namespace App\Livewire\StockCard;
 
+use App\Exports\StockCardExport;
 use App\Models\StockCard;
 use App\Repositories\StockCardRepository;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithoutUrlPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 class StockCardIndex extends Component
 {
@@ -16,7 +18,11 @@ class StockCardIndex extends Component
     public $filter_type = '';
     public $filter_product = '';
     public $per_page = 15;
-    protected $queryString = ['search', 'filter_type', 'filter_product'];
+    public $selectAll = false;
+    public $selectedCards = [];
+    public $groupByProduct = true;
+    public $expandedGroups = [];
+    protected $queryString = ['search', 'filter_type', 'filter_product', 'groupByProduct'];
 
     protected $listeners = ['refreshStockCard' => '$refresh'];
 
@@ -56,7 +62,40 @@ class StockCardIndex extends Component
             $query->where('product_id', $this->filter_product);
         }
 
+        if ($this->groupByProduct) {
+            // When grouping, order by product first, then by date
+            $query->orderBy('product_id')->orderBy('created_at', 'desc');
+        }
+
         return $query->paginate($this->per_page);
+    }
+
+    public function getGroupedStockCardsProperty()
+    {
+        if (!$this->groupByProduct) {
+            return null;
+        }
+
+        return $this->stockCards->groupBy('product_id');
+    }
+
+    public function toggleGroup($productId)
+    {
+        if (in_array($productId, $this->expandedGroups)) {
+            $this->expandedGroups = array_values(array_diff($this->expandedGroups, [$productId]));
+        } else {
+            $this->expandedGroups[] = $productId;
+        }
+    }
+
+    public function expandAllGroups()
+    {
+        $this->expandedGroups = $this->stockCards->pluck('product_id')->unique()->toArray();
+    }
+
+    public function collapseAllGroups()
+    {
+        $this->expandedGroups = [];
     }
 
     public function getTransactionTypesProperty()
@@ -114,6 +153,46 @@ class StockCardIndex extends Component
         }
     }
 
+    public function toggleSelectAll()
+    {
+        if ($this->selectAll) {
+            $this->selectedCards = $this->stockCards->pluck('id')->toArray();
+        } else {
+            $this->selectedCards = [];
+        }
+    }
+
+    public function toggleCardSelection($id)
+    {
+        if (in_array($id, $this->selectedCards)) {
+            $this->selectedCards = array_diff($this->selectedCards, [$id]);
+        } else {
+            $this->selectedCards[] = $id;
+        }
+        $this->selectAll = false;
+    }
+
+    public function bulkDelete()
+    {
+        if (empty($this->selectedCards)) {
+            $this->dispatch('toast', [
+                'message' => 'Pilih minimal satu kartu stok untuk dihapus',
+                'type' => 'warning'
+            ]);
+            return;
+        }
+
+        $count = count($this->selectedCards);
+        StockCard::whereIn('id', $this->selectedCards)->delete();
+        $this->selectedCards = [];
+        $this->selectAll = false;
+        $this->resetPage();
+        $this->dispatch('toast', [
+            'message' => $count . ' kartu stok berhasil dihapus',
+            'type' => 'success'
+        ]);
+    }
+
     public function exportToPdf()
     {
         // Akan diimplementasikan dengan library PDF seperti TCPDF atau mPDF
@@ -121,6 +200,16 @@ class StockCardIndex extends Component
             'message' => 'Fitur export PDF sedang dalam pengembangan',
             'type' => 'info'
         ]);
+    }
+
+    public function exportToExcel()
+    {
+        $filename = 'kartu-stok-' . now()->format('Y-m-d-His') . '.xlsx';
+
+        return Excel::download(
+            new StockCardExport($this->search, $this->filter_type, $this->groupByProduct),
+            $filename
+        );
     }
 
     public function render()

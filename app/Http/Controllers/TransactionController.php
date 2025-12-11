@@ -20,86 +20,89 @@ class TransactionController extends Controller
 
     public function data(Request $request)
     {
-        $query = TransactionHistory::with('user');
+        try {
+            // Debug logging
+            \Log::info('TransactionController.data called', [
+                'filters' => $request->only(['filterType', 'filterStatus', 'filterDateFrom', 'filterDateTo']),
+                'draw' => $request->draw,
+                'start' => $request->start,
+                'length' => $request->length,
+            ]);
 
-        // Apply filters
-        if ($request->has('filterType') && $request->filterType) {
-            $query->where('transaction_type', $request->filterType);
+            // Explicitly select needed columns including id
+            $query = TransactionHistory::select(
+                'id',
+                'transaction_code',
+                'transaction_type',
+                'description',
+                'transaction_date',
+                'amount',
+                'status',
+                'user_id'
+            )->with('user');
+
+            // Check if there's any data at all
+            $totalBefore = $query->count();
+            \Log::info('Total transactions before filters: ' . $totalBefore);
+
+            // Apply filters
+            if ($request->has('filterType') && $request->filterType) {
+                $query->where('transaction_type', $request->filterType);
+            }
+
+            if ($request->has('filterStatus') && $request->filterStatus) {
+                $query->where('status', $request->filterStatus);
+            }
+
+            if ($request->has('filterDateFrom') && $request->filterDateFrom) {
+                $query->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00');
+            }
+
+            if ($request->has('filterDateTo') && $request->filterDateTo) {
+                $query->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59');
+            }
+
+            $result = DataTables::of($query)
+                ->setRowId('id')
+                ->addIndexColumn()
+                ->addColumn('transaction_code', function ($transaction) {
+                    return $transaction->transaction_code;
+                })
+                ->addColumn('transaction_type', function ($transaction) {
+                    return $transaction->transaction_type;
+                })
+                ->addColumn('description', function ($transaction) {
+                    return $transaction->description;
+                })
+                ->addColumn('transaction_date', function ($transaction) {
+                    return $transaction->transaction_date->format('Y-m-d H:i');
+                })
+                ->addColumn('amount', function ($transaction) {
+                    return 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+                })
+                ->addColumn('user_name', function ($transaction) {
+                    return $transaction->user->name ?? '-';
+                })
+                ->addColumn('status', function ($transaction) {
+                    return $transaction->status;
+                })
+                ->addColumn('action', function ($transaction) {
+                    return '<button class="btn btn-xs btn-info" title="Detail"><i class="fas fa-eye"></i></button>';
+                })
+                ->rawColumns(['action'])
+                ->make(true);
+
+            \Log::info('DataTables result created successfully');
+            return $result;
+        } catch (\Exception $e) {
+            \Log::error('Error in TransactionController.data: ' . $e->getMessage(), [
+                'exception' => $e,
+            ]);
+            return response()->json([
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ], 500);
         }
-
-        if ($request->has('filterStatus') && $request->filterStatus) {
-            $query->where('status', $request->filterStatus);
-        }
-
-        if ($request->has('filterDateFrom') && $request->filterDateFrom) {
-            $query->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00');
-        }
-
-        if ($request->has('filterDateTo') && $request->filterDateTo) {
-            $query->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59');
-        }
-
-        return DataTables::of($query)
-            ->editColumn('transaction_code', function ($transaction) {
-                return '<span class="badge badge-info">' . $transaction->transaction_code . '</span>';
-            })
-            ->editColumn('transaction_type', function ($transaction) {
-                $types = [
-                    'penjualan' => 'Penjualan',
-                    'pembelian' => 'Pembelian',
-                    'adjustment' => 'Adjustment Stok',
-                    'return' => 'Return',
-                    'other' => 'Lainnya',
-                ];
-                $label = $types[$transaction->transaction_type] ?? $transaction->transaction_type;
-                return '<span class="badge badge-primary">' . $label . '</span>';
-            })
-            ->editColumn('description', function ($transaction) {
-                return \Illuminate\Support\Str::limit($transaction->description, 40);
-            })
-            ->editColumn('transaction_date', function ($transaction) {
-                return $transaction->formatted_date;
-            })
-            ->editColumn('amount', function ($transaction) {
-                return '<span class="badge badge-success">' . $transaction->formatted_amount . '</span>';
-            })
-            ->addColumn('user_name', function ($transaction) {
-                return $transaction->user->name ?? '-';
-            })
-            ->editColumn('status', function ($transaction) {
-                $statusClass = match ($transaction->status) {
-                    'completed' => 'success',
-                    'pending' => 'warning',
-                    'failed' => 'danger',
-                    'cancelled' => 'secondary',
-                    default => 'info',
-                };
-                $label = match ($transaction->status) {
-                    'completed' => 'Completed',
-                    'pending' => 'Pending',
-                    'failed' => 'Failed',
-                    'cancelled' => 'Cancelled',
-                    default => $transaction->status,
-                };
-                return '<span class="badge badge-' . $statusClass . '">' . $label . '</span>';
-            })
-            ->addColumn('action', function ($transaction) {
-                return '<button class="btn btn-xs btn-info" title="Detail">
-                    <i class="fas fa-eye"></i>
-                </button>';
-            })
-            ->filter(function ($query) {
-                // Handle DataTables search
-                if (request()->has('search') && request('search')['value']) {
-                    $search = request('search')['value'];
-                    $query->where(function ($q) use ($search) {
-                        $q->where('transaction_code', 'like', '%' . $search . '%')
-                            ->orWhere('description', 'like', '%' . $search . '%')
-                            ->orWhereHas('user', fn($u) => $u->where('name', 'like', '%' . $search . '%'));
-                    });
-                }
-            })
-            ->rawColumns(['transaction_code', 'transaction_type', 'amount', 'status', 'action'])
-            ->make(true);
     }
 }

@@ -20,15 +20,23 @@ class StockBatchService
         string $namaTumpukan,
         float $qty,
         ?int $locationId = null,
-        ?string $note = null
+        ?string $note = null,
+        ?\Carbon\Carbon $createdDate = null
     ): StockBatch {
-        $batch = StockBatch::create([
+        // Jika tidak ada createdDate, gunakan now()
+        $batchDateTime = $createdDate ?? \Carbon\Carbon::now();
+
+        $batchData = [
             'product_id' => $productId,
             'location_type' => $locationType,
             'location_id' => $locationId,
             'nama_tumpukan' => $namaTumpukan,
             'qty' => $qty,
-        ]);
+            'created_at' => $batchDateTime,
+            'updated_at' => $batchDateTime,
+        ];
+
+        $batch = StockBatch::create($batchData);
 
         // Catat di stock_adjustments untuk riwayat penyesuaian stok
         $storeId = null;
@@ -49,7 +57,7 @@ class StockBatchService
             'stok_masuk' => $qty,
             'unit_id' => Product::find($productId)?->unit_id,
             'reason' => $note ?? 'Penambahan stok dari tumpukan',
-            'adjustment_date' => now()->toDateString(),
+            'adjustment_date' => $batchDateTime->toDateString(),
             'user_id' => Auth::id(),
         ]);
 
@@ -64,6 +72,8 @@ class StockBatchService
             'reference_type' => 'stock_batch',
             'reference_id' => $batch->id,
             'note' => $note ?? "Penambahan stok: {$namaTumpukan}",
+            'created_at' => $batchDateTime,
+            'updated_at' => $batchDateTime,
         ]);
 
         return $batch;

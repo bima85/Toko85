@@ -66,20 +66,24 @@ class StockAdjustment extends Model
     {
         parent::boot();
 
+        // DISABLED: Logika update batch sudah ditangani di StockBatchService
+        // Observer ini menyebabkan bug dimana batch qty ter-update tidak sesuai
+        // karena menghitung ulang dari semua adjustment tanpa memperhatikan nama_tumpukan
+
         // Ketika adjustment dibuat, update batch qty
-        static::created(function ($adjustment) {
-            $adjustment->updateStockBatch();
-        });
+        // static::created(function ($adjustment) {
+        //     $adjustment->updateStockBatch();
+        // });
 
         // Ketika adjustment diupdate, update batch qty
-        static::updated(function ($adjustment) {
-            $adjustment->updateStockBatch();
-        });
+        // static::updated(function ($adjustment) {
+        //     $adjustment->updateStockBatch();
+        // });
 
         // Ketika adjustment dihapus, update batch qty
-        static::deleted(function ($adjustment) {
-            $adjustment->updateStockBatchOnDelete();
-        });
+        // static::deleted(function ($adjustment) {
+        //     $adjustment->updateStockBatchOnDelete();
+        // });
     }
 
     /**

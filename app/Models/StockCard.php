@@ -21,6 +21,8 @@ class StockCard extends Model
       'reference_type',
       'reference_id',
       'note',
+      'created_at',
+      'updated_at',
    ];
 
    protected $casts = [
