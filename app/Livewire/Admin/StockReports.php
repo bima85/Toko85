@@ -139,11 +139,6 @@ class StockReports extends Component
         $this->dispatch('adjustmentsPageChanged');
     }
 
-    public function goToPage($page)
-    {
-        $this->currentPage = max(1, (int) $page);
-    }
-
     public function nextPage()
     {
         $this->currentPage++;

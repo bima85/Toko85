@@ -1,4 +1,79 @@
 <div>
+    <style>
+        /* Table Styling */
+        .stock-table thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.75rem 0.5rem;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+        /* Normal header state */
+        .stock-table thead.header-normal th {
+            background-color: #007bff;
+            color: #fff;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+        /* Scrolled header state - darker with accent */
+        .stock-table thead.header-scrolled th {
+            background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
+            color: #fff;
+            border-bottom: 3px solid #ffc107;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+        }
+        /* Green header states for Warehouse */
+        .stock-table thead.header-normal-green th {
+            background-color: #28a745;
+            color: #fff;
+            border-bottom: 2px solid rgba(0,0,0,0.1);
+        }
+        .stock-table thead.header-scrolled-green th {
+            background: linear-gradient(135deg, #1e7e34 0%, #155d27 100%);
+            color: #fff;
+            border-bottom: 3px solid #ffc107;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+        }
+        .stock-table tbody td {
+            font-size: 0.85rem;
+            padding: 0.5rem;
+            vertical-align: middle;
+        }
+        .stock-table tbody tr:hover {
+            background-color: rgba(0,123,255,0.08) !important;
+        }
+        .stock-table .badge {
+            font-size: 0.75rem;
+            padding: 0.35em 0.65em;
+        }
+        /* Card improvements */
+        .card-tools .form-control-sm {
+            height: 31px;
+        }
+        .nav-pills .nav-link {
+            border-radius: 0;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #007bff;
+        }
+        /* Info box improvements */
+        .info-box-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        /* Responsive table scroll */
+        .table-scroll-wrapper {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+    </style>
+
     @if (session()->has('message'))
         <div class="alert alert-success alert-dismissible">
             <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -122,65 +197,67 @@
                         <!-- Store Stocks Tab -->
                         <div class="{{ $activeTab === 'store' ? '' : 'd-none' }}">
                             @if($stocks->count() > 0)
-                                <div class="table-responsive" style="overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;">
-                                    <table class="table table-hover table-striped table-sm mb-0 ">
-                                        <thead class="bg-primary text-white">
+                                <div class="table-responsive table-scroll-wrapper"
+                                     x-data="{ isScrolled: false }"
+                                     x-on:scroll="isScrolled = $el.scrollTop > 10">
+                                    <table class="table table-hover table-striped table-sm table-bordered mb-0 stock-table">
+                                        <thead :class="isScrolled ? 'header-scrolled' : 'header-normal'">
                                             <tr>
-                                                <th class="text-center" width="5%">No</th>
-                                                <th width="12%">Kode Produk</th>
-                                                <th width="18%">Nama Produk</th>
-                                                <th width="12%">Kategori</th>
-                                                <th width="8%">Satuan</th>
-                                                <th class="text-center" width="7%">Stok Awal</th>
-                                                <th class="text-center" width="7%">Stok Masuk</th>
-                                                <th class="text-center" width="7%">Stok Keluar</th>
-                                                <th class="text-center" width="7%">Stok Akhir</th>
-                                                <th class="text-center" width="7%">Total Stok</th>
-                                                <th width="10%">Toko</th>
+                                                <th class="text-center" style="width: 50px;">No</th>
+                                                <th style="min-width: 100px;">Kode</th>
+                                                <th style="min-width: 180px;">Nama Produk</th>
+                                                <th style="min-width: 100px;">Kategori</th>
+                                                <th class="text-center" style="width: 70px;">Satuan</th>
+                                                <th class="text-center" style="width: 80px;">Awal</th>
+                                                <th class="text-center" style="width: 80px;">Masuk</th>
+                                                <th class="text-center" style="width: 80px;">Keluar</th>
+                                                <th class="text-center" style="width: 80px;">Akhir</th>
+                                                <th class="text-center" style="width: 90px;">Total</th>
+                                                <th style="min-width: 100px;">Lokasi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @forelse($stocks as $index => $stock)
                                                 <tr>
-                                                    <td class="text-center align-middle">
-                                                        <span class="badge badge-secondary">{{ $stocks->firstItem() + $index }}</span>
+                                                    <td class="text-center">
+                                                        <span class="badge badge-light text-dark border">{{ $stocks->firstItem() + $index }}</span>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <strong>{{ $stock->product->kode_produk }}</strong>
+                                                    <td>
+                                                        <code class="text-primary">{{ $stock->product->kode_produk }}</code>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        {{ $stock->product->nama_produk }}
+                                                    <td>
+                                                        <strong>{{ $stock->product->nama_produk }}</strong>
                                                         @if($stock->product->subcategory)
-                                                            <br><small class="text-muted">{{ $stock->product->subcategory->nama_subkategori }}</small>
+                                                            <br><small class="text-muted"><i class="fas fa-tag fa-xs"></i> {{ $stock->product->subcategory->nama_subkategori }}</small>
                                                         @endif
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <small>{{ $stock->product->category->nama_kategori ?? '-' }}</small>
+                                                    <td>
+                                                        <span class="badge badge-secondary">{{ $stock->product->category->nama_kategori ?? '-' }}</span>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <small>{{ $stock->unit ?? '-' }}</small>
+                                                    <td class="text-center">
+                                                        <small class="text-muted">{{ $stock->unit ?? '-' }}</small>
                                                     </td>
-                                                    <td class="text-center align-middle">
-                                                        {{ number_format($stock->stok_awal, 0) }}
+                                                    <td class="text-center">
+                                                        <span class="text-muted">{{ number_format($stock->stok_awal, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle text-success">
-                                                        <strong>{{ number_format($stock->stok_masuk, 0) }}</strong>
+                                                    <td class="text-center">
+                                                        <span class="text-success font-weight-bold"><i class="fas fa-arrow-up fa-xs"></i> {{ number_format($stock->stok_masuk, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle text-danger">
-                                                        <strong>{{ number_format($stock->stok_keluar, 0) }}</strong>
+                                                    <td class="text-center">
+                                                        <span class="text-danger font-weight-bold"><i class="fas fa-arrow-down fa-xs"></i> {{ number_format($stock->stok_keluar, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle">
+                                                    <td class="text-center">
                                                         <span class="badge badge-info">{{ number_format($stock->stok_akhir, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle">
+                                                    <td class="text-center">
                                                         @php
                                                             $batchTotal = $batchTotals[$stock->product_id] ?? null;
                                                             $displayTotal = $batchTotal ? number_format($batchTotal->total_qty, 0) : number_format($stock->total_stok ?? 0, 0);
                                                         @endphp
-                                                        <span class="badge badge-success">{{ $displayTotal }}</span>
+                                                        <span class="badge badge-success px-3">{{ $displayTotal }}</span>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <small class="badge badge-primary">{{ $stock->store->nama_toko ?? '-' }}</small>
+                                                    <td>
+                                                        <span class="badge badge-primary"><i class="fas fa-store fa-xs mr-1"></i>{{ $stock->store->nama_toko ?? '-' }}</span>
                                                     </td>
                                                 </tr>
                                             @empty
@@ -211,65 +288,67 @@
                         <!-- Warehouse Stocks Tab -->
                         <div class="{{ $activeTab === 'warehouse' ? '' : 'd-none' }}">
                             @if($stocks->count() > 0)
-                                <div class="table-responsive" style="overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;">
-                                    <table class="table table-hover table-striped table-sm mb-0">
-                                        <thead class="bg-success text-white">
+                                <div class="table-responsive table-scroll-wrapper"
+                                     x-data="{ isScrolled: false }"
+                                     x-on:scroll="isScrolled = $el.scrollTop > 10">
+                                    <table class="table table-hover table-striped table-sm table-bordered mb-0 stock-table warehouse-table">
+                                        <thead :class="isScrolled ? 'header-scrolled-green' : 'header-normal-green'">
                                             <tr>
-                                                <th class="text-center" width="5%">No</th>
-                                                <th width="12%">Kode Produk</th>
-                                                <th width="18%">Nama Produk</th>
-                                                <th width="12%">Kategori</th>
-                                                <th width="8%">Satuan</th>
-                                                <th class="text-center" width="7%">Stok Awal</th>
-                                                <th class="text-center" width="7%">Stok Masuk</th>
-                                                <th class="text-center" width="7%">Stok Keluar</th>
-                                                <th class="text-center" width="7%">Stok Akhir</th>
-                                                <th class="text-center" width="7%">Total Stok</th>
-                                                <th width="10%">Gudang</th>
+                                                <th class="text-center" style="width: 50px;">No</th>
+                                                <th style="min-width: 100px;">Kode</th>
+                                                <th style="min-width: 180px;">Nama Produk</th>
+                                                <th style="min-width: 100px;">Kategori</th>
+                                                <th class="text-center" style="width: 70px;">Satuan</th>
+                                                <th class="text-center" style="width: 80px;">Awal</th>
+                                                <th class="text-center" style="width: 80px;">Masuk</th>
+                                                <th class="text-center" style="width: 80px;">Keluar</th>
+                                                <th class="text-center" style="width: 80px;">Akhir</th>
+                                                <th class="text-center" style="width: 90px;">Total</th>
+                                                <th style="min-width: 100px;">Lokasi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             @forelse($stocks as $index => $stock)
                                                 <tr>
-                                                    <td class="text-center align-middle">
-                                                        <span class="badge badge-secondary">{{ $stocks->firstItem() + $index }}</span>
+                                                    <td class="text-center">
+                                                        <span class="badge badge-light text-dark border">{{ $stocks->firstItem() + $index }}</span>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <strong>{{ $stock->product->kode_produk }}</strong>
+                                                    <td>
+                                                        <code class="text-success">{{ $stock->product->kode_produk }}</code>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        {{ $stock->product->nama_produk }}
+                                                    <td>
+                                                        <strong>{{ $stock->product->nama_produk }}</strong>
                                                         @if($stock->product->subcategory)
-                                                            <br><small class="text-muted">{{ $stock->product->subcategory->nama_subkategori }}</small>
+                                                            <br><small class="text-muted"><i class="fas fa-tag fa-xs"></i> {{ $stock->product->subcategory->nama_subkategori }}</small>
                                                         @endif
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <small>{{ $stock->product->category->nama_kategori ?? '-' }}</small>
+                                                    <td>
+                                                        <span class="badge badge-secondary">{{ $stock->product->category->nama_kategori ?? '-' }}</span>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <small>{{ $stock->unit ?? '-' }}</small>
+                                                    <td class="text-center">
+                                                        <small class="text-muted">{{ $stock->unit ?? '-' }}</small>
                                                     </td>
-                                                    <td class="text-center align-middle">
-                                                        {{ number_format($stock->stok_awal, 0) }}
+                                                    <td class="text-center">
+                                                        <span class="text-muted">{{ number_format($stock->stok_awal, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle text-success">
-                                                        <strong>{{ number_format($stock->stok_masuk, 0) }}</strong>
+                                                    <td class="text-center">
+                                                        <span class="text-success font-weight-bold"><i class="fas fa-arrow-up fa-xs"></i> {{ number_format($stock->stok_masuk, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle text-danger">
-                                                        <strong>{{ number_format($stock->stok_keluar, 0) }}</strong>
+                                                    <td class="text-center">
+                                                        <span class="text-danger font-weight-bold"><i class="fas fa-arrow-down fa-xs"></i> {{ number_format($stock->stok_keluar, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle">
+                                                    <td class="text-center">
                                                         <span class="badge badge-info">{{ number_format($stock->stok_akhir, 0) }}</span>
                                                     </td>
-                                                    <td class="text-center align-middle">
+                                                    <td class="text-center">
                                                         @php
                                                             $batchTotal = $batchTotals[$stock->product_id] ?? null;
                                                             $displayTotal = $batchTotal ? number_format($batchTotal->total_qty, 0) : number_format($stock->total_stok ?? 0, 0);
                                                         @endphp
-                                                        <span class="badge badge-warning text-dark">{{ $displayTotal }}</span>
+                                                        <span class="badge badge-warning text-dark px-3">{{ $displayTotal }}</span>
                                                     </td>
-                                                    <td class="align-middle">
-                                                        <small class="badge badge-success">{{ $stock->warehouse->nama_gudang ?? '-' }}</small>
+                                                    <td>
+                                                        <span class="badge badge-success"><i class="fas fa-warehouse fa-xs mr-1"></i>{{ $stock->warehouse->nama_gudang ?? '-' }}</span>
                                                     </td>
                                                 </tr>
                                             @empty
@@ -332,76 +411,74 @@
 
                 <div class="card-body p-0">
                     @if($adjustments->count() > 0)
-                        <div class="table-responsive" style="overflow-x: auto !important; -webkit-overflow-scrolling: touch !important;">
-                            <table class="table table-hover table-striped table-sm mb-0">
+                        <div class="table-responsive table-scroll-wrapper">
+                            <table class="table table-hover table-striped table-sm table-bordered mb-0 stock-table">
                                 <thead class="bg-warning text-dark">
                                     <tr>
-                                        <th style="width: 40px;">
+                                        <th class="text-center" style="width: 40px;">
                                             <input type="checkbox" wire:click="$toggle('selectAllAdjustments')" wire:model="selectAllAdjustments" title="Select all">
                                         </th>
-                                        <th class="text-center" width="5%">No</th>
-                                        <th width="20%">Produk</th>
-                                        <th width="12%">Lokasi</th>
-                                        <th width="8%">Tipe</th>
-                                        <th class="text-center" width="10%">Qty</th>
-                                        <th width="20%">Alasan</th>
-                                        <th width="8%">Tanggal</th>
-                                        <th width="7%">Jam</th>
-                                        <th class="text-center" width="10%">User</th>
-                                        <th class="text-center" width="8%">Aksi</th>
+                                        <th class="text-center" style="width: 50px;">No</th>
+                                        <th style="min-width: 150px;">Produk</th>
+                                        <th style="min-width: 100px;">Lokasi</th>
+                                        <th class="text-center" style="width: 80px;">Tipe</th>
+                                        <th class="text-center" style="width: 80px;">Qty</th>
+                                        <th style="min-width: 150px;">Alasan</th>
+                                        <th class="text-center" style="width: 100px;">Tanggal</th>
+                                        <th class="text-center" style="width: 70px;">Jam</th>
+                                        <th class="text-center" style="width: 80px;">User</th>
+                                        <th class="text-center" style="width: 90px;">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @forelse($adjustments as $index => $adjustment)
-                                        <tr @if(in_array($adjustment->id, $this->selectedAdjustments)) class="table-active" @endif>
+                                        <tr @if(in_array($adjustment->id, $this->selectedAdjustments)) class="table-warning" @endif>
                                             <td class="text-center">
                                                 <input type="checkbox" wire:click="toggleSelectAdjustment({{ $adjustment->id }})" @if(in_array($adjustment->id, $this->selectedAdjustments)) checked @endif title="Select adjustment">
                                             </td>
-                                            <td class="text-center align-middle">
-                                                <span class="badge badge-secondary">{{ $adjustments->firstItem() + $index }}</span>
+                                            <td class="text-center">
+                                                <span class="badge badge-light text-dark border">{{ $adjustments->firstItem() + $index }}</span>
                                             </td>
-                                            <td class="align-middle">
-                                                <div>
-                                                    <strong>{{ $adjustment->product->kode_produk }}</strong>
-                                                    <br>
-                                                    <small class="text-muted">{{ $adjustment->product->nama_produk }}</small>
-                                                </div>
+                                            <td>
+                                                <code class="text-warning">{{ $adjustment->product->kode_produk }}</code>
+                                                <br>
+                                                <small class="text-muted">{{ $adjustment->product->nama_produk }}</small>
                                             </td>
-                                            <td class="align-middle">
-                                                <small>{{ $adjustment->location }}</small>
+                                            <td>
+                                                <small class="badge badge-outline-secondary">{{ $adjustment->location }}</small>
                                             </td>
-                                            <td class="align-middle">
+                                            <td class="text-center">
                                                 @if($adjustment->adjustment_type === 'add')
                                                     <span class="badge badge-success">
-                                                        <i class="fas fa-plus-circle mr-1"></i>Tambah
+                                                        <i class="fas fa-plus-circle"></i> Tambah
                                                     </span>
                                                 @else
                                                     <span class="badge badge-danger">
-                                                        <i class="fas fa-minus-circle mr-1"></i>Kurang
+                                                        <i class="fas fa-minus-circle"></i> Kurang
                                                     </span>
                                                 @endif
                                             </td>
-                                            <td class="text-center align-middle">
-                                                <strong>{{ number_format($adjustment->quantity, 2) }}</strong>
+                                            <td class="text-center">
+                                                <strong class="text-primary">{{ number_format($adjustment->quantity, 0) }}</strong>
                                             </td>
-                                            <td class="align-middle">
-                                                <small>{{ $adjustment->reason ?: '-' }}</small>
+                                            <td>
+                                                <small class="text-muted">{{ Str::limit($adjustment->reason ?: '-', 30) }}</small>
                                             </td>
-                                            <td class="align-middle">
+                                            <td class="text-center">
                                                 <small>{{ $adjustment->adjustment_date->format('d/m/Y') }}</small>
                                             </td>
-                                            <td class="align-middle">
-                                                <small class="text-muted">{{ $adjustment->created_at->format('H:i:s') }}</small>
+                                            <td class="text-center">
+                                                <small class="text-muted">{{ $adjustment->created_at->format('H:i') }}</small>
                                             </td>
-                                            <td class="text-center align-middle">
-                                                <small>{{ $adjustment->user->name ?? '-' }}</small>
+                                            <td class="text-center">
+                                                <small class="badge badge-light">{{ $adjustment->user->name ?? '-' }}</small>
                                             </td>
-                                            <td class="text-center align-middle">
+                                            <td class="text-center">
                                                 <div class="btn-group btn-group-sm">
-                                                    <button wire:click="editAdjustment({{ $adjustment->id }})" class="btn btn-info btn-sm" title="Edit" data-toggle="tooltip">
+                                                    <button wire:click="editAdjustment({{ $adjustment->id }})" class="btn btn-outline-info btn-sm" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
-                                                    <button wire:click="deleteAdjustment({{ $adjustment->id }})" wire:confirm="Yakin ingin menghapus penyesuaian stok ini?" class="btn btn-danger btn-sm" title="Hapus" data-toggle="tooltip">
+                                                    <button wire:click="deleteAdjustment({{ $adjustment->id }})" wire:confirm="Yakin ingin menghapus penyesuaian stok ini?" class="btn btn-outline-danger btn-sm" title="Hapus">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
                                                 </div>
@@ -409,7 +486,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="10" class="text-center text-muted py-5">
+                                            <td colspan="11" class="text-center text-muted py-5">
                                                 <i class="fas fa-history fa-3x mb-3 d-block opacity-50"></i>
                                                 <strong>Belum ada riwayat penyesuaian stok</strong>
                                             </td>

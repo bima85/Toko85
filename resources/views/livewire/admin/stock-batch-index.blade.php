@@ -1,4 +1,69 @@
 <div>
+  <style>
+    /* Stock Batch Table Styling */
+    .batch-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.75rem 0.5rem;
+      white-space: nowrap;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+    /* Header normal state */
+    .batch-table thead.header-normal th {
+      background-color: #007bff;
+      color: #fff;
+    }
+    /* Header scrolled state - darker with shadow */
+    .batch-table thead.header-scrolled th {
+      background: linear-gradient(135deg, #0056b3 0%, #004494 100%);
+      color: #fff;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+      border-bottom: 3px solid #ffc107;
+    }
+    .batch-table tbody td {
+      font-size: 0.85rem;
+      padding: 0.5rem;
+      vertical-align: middle;
+    }
+    .batch-table tbody tr:hover {
+      background-color: rgba(0, 123, 255, 0.08) !important;
+    }
+    .batch-table .badge {
+      font-size: 0.75rem;
+      padding: 0.35em 0.65em;
+    }
+    /* Product header row */
+    .product-header-row {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+      border-left: 4px solid #007bff !important;
+    }
+    .product-header-row:hover {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    }
+    /* Batch row indent */
+    .batch-row {
+      background-color: #fff;
+    }
+    .batch-row:nth-child(even) {
+      background-color: #fafbfc;
+    }
+    /* Scrollable table container */
+    .table-scroll-wrapper {
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    /* Card improvements */
+    .card-tools .btn {
+      margin-left: 5px;
+    }
+  </style>
+
   @if (session()->has('message'))
     <div class="alert alert-success alert-dismissible">
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -31,57 +96,16 @@
     </div>
   </div>
 
-  <!-- Filter & Search Card -->
-  <div class="row mb-3">
-    <div class="col-md-12">
-      <div class="card card-outline card-primary">
-        <div class="card-header">
-          <h3 class="card-title">Filter & Pencarian</h3>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <div class="col-md-8">
-              <label>Cari Produk</label>
-              <input
-                type="text"
-                wire:model.live="search"
-                class="form-control"
-                placeholder="Nama atau kode produk..."
-              />
-            </div>
-            <div class="col-md-4">
-              <label>Lokasi</label>
-              <select wire:model.live="location" class="form-control">
-                <option value="">Semua Lokasi</option>
-                @foreach ($locations as $key => $label)
-                  <option value="{{ $key }}">{{ $label }}</option>
-                @endforeach
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Daftar Stok Tumpukan Card -->
   <div class="row">
     <div class="col-md-12">
       <div class="card card-primary card-outline">
         <div class="card-header">
-          <h3 class="card-title">Daftar Stok Tumpukan</h3>
+          <h3 class="card-title">
+            <i class="fas fa-boxes mr-2"></i>
+            Daftar Stok Tumpukan
+          </h3>
           <div class="card-tools">
-            <select
-              wire:model.live="per_page"
-              class="form-control form-control-sm"
-              style="width: 120px; display: inline-block; margin-right: 10px"
-            >
-              <option value="10">10 baris</option>
-              <option value="15">15 baris</option>
-              <option value="25">25 baris</option>
-              <option value="50">50 baris</option>
-              <option value="100">100 baris</option>
-            </select>
             @if (count($this->selectedBatches) > 0)
               <button
                 class="btn btn-sm btn-danger"
@@ -419,11 +443,140 @@
           @endif
 
           @if ($batches->count() > 0)
-            <div class="table-responsive">
-              <table class="table table-sm table-hover align-middle">
-                <thead class="bg-light">
+            <div
+              class="table-responsive table-scroll-wrapper"
+              x-data="{ isScrolled: false }"
+              x-on:scroll="isScrolled = $el.scrollTop > 10"
+            >
+              <!-- Filter & Search Card -->
+              <div class="row mb-3">
+                <div class="col-md-12">
+                  <div class="card card-outline card-primary shadow-sm">
+                    <div class="card-header py-2">
+                      <h3 class="card-title">
+                        <i class="fas fa-filter mr-2"></i>
+                        Filter & Pencarian
+                      </h3>
+                      <div class="card-tools">
+                        <button type="button" class="btn btn-tool" data-card-widget="collapse">
+                          <i class="fas fa-minus"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="card-body py-3">
+                      <div class="row align-items-end">
+                        <!-- Search Input -->
+                        <div class="col-lg-6 col-md-6 mb-2 mb-lg-0">
+                          <label class="mb-1 text-sm font-weight-bold">
+                            <i class="fas fa-search text-muted mr-1"></i>
+                            Cari Produk
+                          </label>
+                          <div class="input-group">
+                            <input
+                              type="text"
+                              wire:model.live.debounce.300ms="search"
+                              class="form-control"
+                              placeholder="Ketik nama atau kode produk..."
+                            />
+                            @if ($search)
+                              <div class="input-group-append">
+                                <button
+                                  class="btn btn-outline-secondary"
+                                  type="button"
+                                  wire:click="$set('search', '')"
+                                >
+                                  <i class="fas fa-times"></i>
+                                </button>
+                              </div>
+                            @endif
+                          </div>
+                        </div>
+
+                        <!-- Location Filter -->
+                        <div class="col-lg-3 col-md-3 mb-2 mb-lg-0">
+                          <label class="mb-1 text-sm font-weight-bold">
+                            <i class="fas fa-map-marker-alt text-muted mr-1"></i>
+                            Lokasi
+                          </label>
+                          <select wire:model.live="location" class="form-control">
+                            <option value="">Semua Lokasi</option>
+                            @foreach ($locations as $key => $label)
+                              <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                          </select>
+                        </div>
+
+                        <!-- Per Page -->
+                        <div class="col-lg-2 col-md-2 mb-2 mb-lg-0">
+                          <label class="mb-1 text-sm font-weight-bold">
+                            <i class="fas fa-list-ol text-muted mr-1"></i>
+                            Baris
+                          </label>
+                          <select wire:model.live="per_page" class="form-control">
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                          </select>
+                        </div>
+
+                        <!-- Reset Button -->
+                        <div class="col-lg-1 col-md-1 mb-2 mb-lg-0">
+                          <label class="mb-1 text-sm d-none d-lg-block">&nbsp;</label>
+                          <button
+                            type="button"
+                            class="btn btn-outline-secondary btn-block"
+                            wire:click="resetMainFilters"
+                            title="Reset semua filter"
+                          >
+                            <i class="fas fa-redo-alt"></i>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- Active Filters Info -->
+                      @if ($search || $location)
+                        <div class="mt-3 pt-2 border-top">
+                          <small class="text-muted">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Filter aktif:
+                            @if ($search)
+                              <span class="badge badge-primary ml-1">
+                                Pencarian: "{{ $search }}"
+                                <a
+                                  href="#"
+                                  wire:click.prevent="$set('search', '')"
+                                  class="text-white ml-1"
+                                >
+                                  &times;
+                                </a>
+                              </span>
+                            @endif
+
+                            @if ($location)
+                              <span class="badge badge-info ml-1">
+                                Lokasi: {{ $locations[$location] ?? $location }}
+                                <a
+                                  href="#"
+                                  wire:click.prevent="$set('location', '')"
+                                  class="text-white ml-1"
+                                >
+                                  &times;
+                                </a>
+                              </span>
+                            @endif
+                          </small>
+                        </div>
+                      @endif
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <table class="table table-sm table-bordered mb-0 batch-table">
+                <thead :class="isScrolled ? 'header-scrolled' : 'header-normal'">
                   <tr>
-                    <th style="width: 40px">
+                    <th class="text-center" style="width: 40px">
                       <input
                         type="checkbox"
                         wire:click="$toggle('selectAll')"
@@ -431,12 +584,13 @@
                         title="Select all"
                       />
                     </th>
-                    <th>#</th>
-                    <th>Nama Tumpukan</th>
-                    <th>Lokasi</th>
-                    <th class="text-center">Qty</th>
-                    <th class="text-center">Satuan</th>
-                    <th class="text-center">Aksi</th>
+                    <th class="text-center" style="width: 50px">No</th>
+                    <th style="min-width: 180px">Nama Tumpukan</th>
+                    <th class="text-center" style="width: 100px">Lokasi</th>
+                    <th class="text-center" style="width: 100px">Qty</th>
+                    <th class="text-center" style="width: 80px">Satuan</th>
+                    <th class="text-center" style="min-width: auto">Catatan</th>
+                    <th class="text-center" style="width: 100px">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -453,40 +607,45 @@
                     @endphp
 
                     <!-- Product Header Row -->
-                    <tr class="bg-light">
-                      <td
-                        colspan="6"
-                        class="font-weight-bold"
-                        style="font-size: 14px; border-top: 2px solid #007bff"
-                      >
-                        <i class="fas fa-box mr-2 text-primary"></i>
-                        <strong>{{ $product->nama_produk ?? 'N/A' }}</strong>
-                        <span class="badge badge-secondary ml-2">
-                          [{{ $product->kode_produk ?? 'N/A' }}]
-                        </span>
-                        <span class="badge badge-primary ml-2">
-                          {{ $product->category->nama_kategori ?? 'N/A' }}
-                        </span>
-                        <span class="badge badge-success ml-2">
-                          {{ $product->subcategory->nama_subkategori ?? 'N/A' }}
-                        </span>
-                        <span class="badge badge-info ml-2">
-                          <i class="fas fa-layer-group mr-1"></i>
-                          {{ $productBatches->count() }} Batch
-                        </span>
-                        <span class="badge badge-warning ml-2">
-                          <i class="fas fa-cubes mr-1"></i>
-                          Total:
-                          {{ number_format($totalQty + 0, 0) === number_format($totalQty, 0) ? number_format($totalQty, 0) : rtrim(rtrim(number_format($totalQty, 2), '0'), '.') }}
-                          {{ $product->satuan ?? 'N/A' }}
-                        </span>
+                    <tr class="product-header-row">
+                      <td colspan="8" class="py-2">
+                        <div class="d-flex align-items-center justify-content-between">
+                          <div>
+                            <i class="fas fa-box mr-2 text-primary"></i>
+                            <strong class="text-dark">{{ $product->nama_produk ?? 'N/A' }}</strong>
+                            {{--
+                              <code class="ml-2 text-primary">
+                              {{ $product->kode_produk ?? 'N/A' }}
+                              </code>
+                            --}}
+                          </div>
+                          <div>
+                            <span class="badge badge-secondary">
+                              <i class="fas fa-folder fa-xs mr-1"></i>
+                              {{ $product->category->nama_kategori ?? '-' }}
+                            </span>
+                            <span class="badge badge-info">
+                              <i class="fas fa-tag fa-xs mr-1"></i>
+                              {{ $product->subcategory->nama_subkategori ?? '-' }}
+                            </span>
+                            <span class="badge badge-primary">
+                              <i class="fas fa-layer-group fa-xs mr-1"></i>
+                              {{ $productBatches->count() }} Batch
+                            </span>
+                            <span class="badge badge-success px-2">
+                              <i class="fas fa-cubes fa-xs mr-1"></i>
+                              Total: {{ number_format($totalQty, 0) }}
+                              {{ $product->satuan ?? '' }}
+                            </span>
+                          </div>
+                        </div>
                       </td>
                     </tr>
 
                     <!-- Batch Rows -->
                     @foreach ($productBatches as $batch)
                       <tr
-                        @if(in_array($batch->id, $this->selectedBatches)) class="table-active" @endif
+                        class="batch-row @if(in_array($batch->id, $this->selectedBatches)) table-warning @endif"
                       >
                         <td class="text-center">
                           <input
@@ -497,42 +656,68 @@
                           />
                         </td>
                         <td class="text-center">
-                          <span class="badge badge-dark">{{ $no }}</span>
+                          <span class="badge badge-light text-dark border">{{ $no }}</span>
                         </td>
                         <td class="pl-4">
                           <i class="fas fa-angle-right mr-2 text-muted"></i>
-                          <strong>{{ $batch->nama_tumpukan }}</strong>
-                        </td>
-                        <td>
-                          <span class="badge badge-info">
-                            {{ ucfirst($batch->location_type) }}
-                          </span>
+                          <strong class="text-dark">{{ $batch->nama_tumpukan }}</strong>
+                          {{--
+                            @if ($batch->note)
+                            <br />
+                            <small class="text-muted pl-4">
+                            <i class="fas fa-sticky-note fa-xs"></i>
+                            {{ Str::limit($batch->note, 40) }}
+                            </small>
+                            @endif
+                          --}}
                         </td>
                         <td class="text-center">
-                          <strong>
-                            {{ rtrim(rtrim(number_format($batch->qty, 2), '0'), '.') }}
+                          @if ($batch->location_type === 'store')
+                            <span class="badge badge-primary">
+                              <i class="fas fa-store fa-xs mr-1"></i>
+                              Toko
+                            </span>
+                          @else
+                            <span class="badge badge-success">
+                              <i class="fas fa-warehouse fa-xs mr-1"></i>
+                              Gudang
+                            </span>
+                          @endif
+                        </td>
+                        <td class="text-center">
+                          <strong class="text-primary" style="font-size: 1rem">
+                            {{ number_format($batch->qty, 0) }}
                           </strong>
                         </td>
                         <td class="text-center">
-                          <span class="badge badge-secondary">
-                            {{ $batch->product->satuan ?? 'N/A' }}
-                          </span>
+                          <small class="text-muted" style="font-size: 15px">
+                            {{ $batch->product->satuan ?? '-' }}
+                          </small>
+                        </td>
+                        <td>
+                          @if ($batch->note)
+                            <span class="text-dark">
+                              <i class="fas fa-sticky-note text-warning fa-sm mr-1"></i>
+                              {{ Str::limit($batch->note, 50) }}
+                            </span>
+                          @else
+                            <small class="text-muted text-italic">-</small>
+                          @endif
                         </td>
                         <td class="text-center">
                           <div class="btn-group btn-group-sm" role="group">
                             <button
                               type="button"
                               wire:click="editBatch({{ $batch->id }})"
-                              class="btn btn-primary"
+                              class="btn btn-outline-primary"
                               title="Edit"
                             >
                               <i class="fas fa-edit"></i>
                             </button>
                             <button
                               type="button"
-                              wire:click="deleteBatch({{ $batch->id }})"
-                              onclick="return confirm('Apakah Anda yakin ingin menghapus?')"
-                              class="btn btn-danger"
+                              onclick="confirmDelete({{ $batch->id }})"
+                              class="btn btn-outline-danger"
                               title="Hapus"
                             >
                               <i class="fas fa-trash"></i>
@@ -620,9 +805,35 @@
               </div>
             </div>
           @else
-            <div class="alert alert-info">
-              <i class="icon fas fa-info"></i>
-              Tidak ada data
+            <div class="alert alert-info d-flex justify-content-between align-items-center">
+              <div>
+                <i class="icon fas fa-info"></i>
+                @if ($search || $location || $dateFrom || $dateTo || $satuan)
+                  Tidak ada hasil untuk filter yang diterapkan
+                  @if ($search)
+                    (pencarian: "{{ $search }}")
+                  @endif
+                @else
+                  Tidak ada data
+                @endif
+              </div>
+              <div class="btn-group btn-group-sm" role="group">
+                @if ($search)
+                  <button
+                    type="button"
+                    class="btn btn-outline-secondary"
+                    wire:click="clearSearchFilter"
+                  >
+                    <i class="fas fa-times mr-1"></i>
+                    Hapus pencarian
+                  </button>
+                @endif
+
+                <button type="button" class="btn btn-outline-primary" wire:click="resetMainFilters">
+                  <i class="fas fa-redo-alt mr-1"></i>
+                  Reset filter
+                </button>
+              </div>
             </div>
           @endif
         </div>
@@ -632,157 +843,555 @@
 
   @include('livewire.admin.stock-batch-slot-summary')
 
-  <!-- Total Per Product Table -->
+  <!-- Total Per Product Table with Tabs -->
   <div class="row mb-3">
     <div class="col-md-12">
-      <div class="card card-outline card-info">
-        <div class="card-header">
+      <div class="card card-outline card-info shadow-sm">
+        <div class="card-header py-2">
           <h3 class="card-title">
-            <i class="fas fa-table mr-2"></i>
-            Total Stok Per Produk
+            <i class="fas fa-chart-bar mr-2"></i>
+            Ringkasan Stok
           </h3>
           <div class="card-tools">
-            <select
-              wire:model.live="productPerPage"
-              class="form-control form-control-sm"
-              style="width: 120px; display: inline-block"
-            >
-              <option value="5">5 baris</option>
-              <option value="10">10 baris</option>
-              <option value="25">25 baris</option>
-              <option value="50">50 baris</option>
-              <option value="100">100 baris</option>
-            </select>
+            <button type="button" class="btn btn-tool" data-card-widget="collapse">
+              <i class="fas fa-minus"></i>
+            </button>
           </div>
         </div>
-        <div class="card-body">
-          @if ($this->totalPerProductPaginated['total'] > 0)
-            <div class="table-responsive">
-              <table class="table table-striped table-hover table-sm">
-                <thead class="bg-info text-white">
-                  <tr>
-                    <th style="width: 5%">#</th>
-                    <th style="width: 15%">Kode Produk</th>
-                    <th style="width: 25%">Nama Produk</th>
-                    <th style="width: 12%">Kategori</th>
-                    <th style="width: 12%">Sub Kategori</th>
-                    <th style="width: 10%">Total Stok</th>
-                    <th style="width: 5%">Satuan</th>
-                    <th style="width: 16%">Tanggal Terakhir</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @php
-                    $no =
-                      ($this->totalPerProductPaginated['currentPage'] - 1) *
-                        $this->totalPerProductPaginated['perPage'] +
-                      1;
-                  @endphp
 
-                  @foreach ($this->totalPerProductPaginated['items'] as $item)
-                    <tr>
-                      <td class="text-center">{{ $no }}</td>
-                      <td>
-                        <span class="badge badge-secondary">
-                          {{ $item->product->kode_produk }}
-                        </span>
-                      </td>
-                      <td><strong>{{ $item->product->nama_produk }}</strong></td>
-                      <td><span class="badge badge-primary">{{ $item->category }}</span></td>
-                      <td><span class="badge badge-success">{{ $item->subcategory }}</span></td>
-                      <td class="text-center font-weight-bold">
-                        {{ rtrim(rtrim(number_format($item->total_qty, 2), '0'), '.') }}
-                      </td>
-                      <td class="text-center">{{ $item->satuan }}</td>
-                      <td class="text-center">
-                        <small style="font-size: 15px">
-                          {{ $item->latest_date ? $item->latest_date->format('d/m/Y H:i') : '-' }}
-                        </small>
-                      </td>
-                    </tr>
-                    @php
-                      $no++;
-                    @endphp
-                  @endforeach
-                </tbody>
-              </table>
-            </div>
+        <!-- Tab Navigation -->
+        <div class="card-header p-0 border-bottom-0">
+          <ul class="nav nav-tabs" id="stockSummaryTabs" role="tablist">
+            <li class="nav-item">
+              <a
+                class="nav-link {{ $stockSummaryTab === 'product' ? 'active' : '' }}"
+                href="#"
+                wire:click.prevent="setStockSummaryTab('product')"
+                role="tab"
+              >
+                <i class="fas fa-box mr-1"></i>
+                Per Produk
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
+                class="nav-link {{ $stockSummaryTab === 'location' ? 'active' : '' }}"
+                href="#"
+                wire:click.prevent="setStockSummaryTab('location')"
+                role="tab"
+              >
+                <i class="fas fa-map-marker-alt mr-1"></i>
+                Per Lokasi
+              </a>
+            </li>
+          </ul>
+        </div>
 
-            <!-- Pagination -->
-            @if ($this->totalPerProductPaginated['lastPage'] > 1)
-              <div class="row mt-3">
-                <div class="col-sm-12 col-md-5">
-                  <div class="dataTables_info">
-                    Menampilkan {{ $this->totalPerProductPaginated['from'] }} sampai
-                    {{ $this->totalPerProductPaginated['to'] }} dari
-                    {{ $this->totalPerProductPaginated['total'] }} produk
+        <div class="card-body p-0">
+          <div class="tab-content">
+            <!-- Tab: Per Produk -->
+            <div
+              class="tab-pane {{ $stockSummaryTab === 'product' ? 'active show' : '' }}"
+              id="tabProduct"
+            >
+              <!-- Filter bar -->
+              <div class="p-3 bg-light border-bottom">
+                <div class="row align-items-center">
+                  <div class="col-md-3 col-6 mb-2 mb-md-0">
+                    <label class="mb-1 text-sm font-weight-bold">
+                      <i class="fas fa-calendar text-muted mr-1"></i>
+                      Dari Tanggal
+                    </label>
+                    <input
+                      type="date"
+                      wire:model.live="summaryDateFrom"
+                      class="form-control form-control-sm"
+                    />
+                  </div>
+                  <div class="col-md-3 col-6 mb-2 mb-md-0">
+                    <label class="mb-1 text-sm font-weight-bold">
+                      <i class="fas fa-calendar-alt text-muted mr-1"></i>
+                      Sampai Tanggal
+                    </label>
+                    <input
+                      type="date"
+                      wire:model.live="summaryDateTo"
+                      class="form-control form-control-sm"
+                    />
+                  </div>
+                  <div class="col-md-3 col-6">
+                    <label class="mb-1 text-sm font-weight-bold">
+                      <i class="fas fa-list-ol text-muted mr-1"></i>
+                      Tampilkan
+                    </label>
+                    <select wire:model.live="productPerPage" class="form-control form-control-sm">
+                      <option value="5">5 baris</option>
+                      <option value="10">10 baris</option>
+                      <option value="25">25 baris</option>
+                      <option value="50">50 baris</option>
+                      <option value="100">100 baris</option>
+                    </select>
+                  </div>
+                  <div class="col-md-3 col-6">
+                    <label class="mb-1 text-sm d-none d-md-block">&nbsp;</label>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm btn-block"
+                      wire:click="$wire.set('summaryDateFrom', ''); $wire.set('summaryDateTo', '')"
+                      title="Reset filter tanggal"
+                    >
+                      <i class="fas fa-redo-alt mr-1"></i>
+                      Reset Filter
+                    </button>
                   </div>
                 </div>
-                <div class="col-sm-12 col-md-7">
-                  <nav class="float-right">
-                    <ul class="pagination pagination-sm m-0">
-                      @if ($this->totalPerProductPaginated['currentPage'] == 1)
-                        <li class="page-item disabled">
-                          <span class="page-link">&laquo;</span>
-                        </li>
-                      @else
-                        <li class="page-item">
-                          <button type="button" wire:click="gotoProductPage(1)" class="page-link">
-                            &laquo;
-                          </button>
-                        </li>
-                      @endif
-
-                      @for ($i = 1; $i <= $this->totalPerProductPaginated['lastPage']; $i++)
-                        @if ($i == $this->totalPerProductPaginated['currentPage'])
-                          <li class="page-item active">
-                            <span class="page-link">{{ $i }}</span>
-                          </li>
-                        @else
-                          <li class="page-item">
-                            <button
-                              type="button"
-                              wire:click="gotoProductPage({{ $i }})"
-                              class="page-link"
-                            >
-                              {{ $i }}
-                            </button>
-                          </li>
-                        @endif
-                      @endfor
-
-                      @if ($this->totalPerProductPaginated['currentPage'] == $this->totalPerProductPaginated['lastPage'])
-                        <li class="page-item disabled">
-                          <span class="page-link">&raquo;</span>
-                        </li>
-                      @else
-                        <li class="page-item">
-                          <button
-                            type="button"
-                            wire:click="gotoProductPage({{ $this->totalPerProductPaginated['lastPage'] }})"
-                            class="page-link"
+                @if ($summaryDateFrom || $summaryDateTo)
+                  <div class="mt-2 pt-2 border-top">
+                    <small class="text-muted">
+                      <i class="fas fa-filter mr-1"></i>
+                      Filter aktif:
+                      @if ($summaryDateFrom)
+                        <span class="badge badge-success ml-1">
+                          Dari: {{ \Carbon\Carbon::parse($summaryDateFrom)->format('d/m/Y') }}
+                          <a
+                            href="#"
+                            wire:click.prevent="$set('summaryDateFrom', '')"
+                            class="text-white ml-1"
                           >
-                            &raquo;
-                          </button>
-                        </li>
+                            &times;
+                          </a>
+                        </span>
                       @endif
-                    </ul>
-                  </nav>
+
+                      @if ($summaryDateTo)
+                        <span class="badge badge-warning ml-1">
+                          Sampai: {{ \Carbon\Carbon::parse($summaryDateTo)->format('d/m/Y') }}
+                          <a
+                            href="#"
+                            wire:click.prevent="$set('summaryDateTo', '')"
+                            class="text-white ml-1"
+                          >
+                            &times;
+                          </a>
+                        </span>
+                      @endif
+                    </small>
+                  </div>
+                @endif
+
+                <div class="mt-2">
+                  <small class="text-muted">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Total
+                    <strong>{{ $this->totalPerProductPaginated['total'] }}</strong>
+                    produk dengan stok aktif
+                  </small>
                 </div>
               </div>
-            @endif
-          @else
-            <div class="alert alert-info">
-              <i class="icon fas fa-info"></i>
-              Tidak ada data stok tumpukan
+
+              @if ($this->totalPerProductPaginated['total'] > 0)
+                <div class="table-responsive">
+                  <table class="table table-hover table-sm mb-0 stock-summary-table">
+                    <thead>
+                      <tr class="bg-gradient-info text-white">
+                        <th class="text-center" style="width: 50px">#</th>
+                        <th style="width: 120px">
+                          <i class="fas fa-barcode mr-1"></i>
+                          Kode
+                        </th>
+                        <th>
+                          <i class="fas fa-box mr-1"></i>
+                          Nama Produk
+                        </th>
+                        <th style="width: 130px">
+                          <i class="fas fa-folder mr-1"></i>
+                          Kategori
+                        </th>
+                        <th style="width: 130px">
+                          <i class="fas fa-tag mr-1"></i>
+                          Sub Kategori
+                        </th>
+                        <th class="text-center" style="width: 100px">
+                          <i class="fas fa-cubes mr-1"></i>
+                          Total
+                        </th>
+                        <th class="text-center" style="width: 70px">Satuan</th>
+                        <th class="text-center" style="width: 140px">
+                          <i class="fas fa-clock mr-1"></i>
+                          Update
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @php
+                        $no = ($this->totalPerProductPaginated['currentPage'] - 1) * $this->totalPerProductPaginated['perPage'] + 1;
+                      @endphp
+
+                      @foreach ($this->totalPerProductPaginated['items'] as $item)
+                        <tr>
+                          <td class="text-center">
+                            <span class="badge badge-light border">{{ $no }}</span>
+                          </td>
+                          <td>
+                            <code class="text-info">{{ $item->product->kode_produk }}</code>
+                          </td>
+                          <td>
+                            <strong>{{ $item->product->nama_produk }}</strong>
+                          </td>
+                          <td>
+                            <span class="badge badge-primary">{{ $item->category }}</span>
+                          </td>
+                          <td>
+                            <span class="badge badge-success">{{ $item->subcategory }}</span>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-info px-3 py-2" style="font-size: 0.9rem">
+                              {{ rtrim(rtrim(number_format($item->total_qty, 2), '0'), '.') }}
+                            </span>
+                          </td>
+                          <td class="text-center">
+                            <small class="text-muted">{{ $item->satuan }}</small>
+                          </td>
+                          <td class="text-center">
+                            <small class="text-muted">
+                              <i class="fas fa-calendar-alt mr-1"></i>
+                              {{ $item->latest_date ? $item->latest_date->format('d/m/Y H:i') : '-' }}
+                            </small>
+                          </td>
+                        </tr>
+                        @php
+                          $no++;
+                        @endphp
+                      @endforeach
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Pagination -->
+                @if ($this->totalPerProductPaginated['lastPage'] > 1)
+                  <div class="card-footer bg-white">
+                    <div class="row align-items-center">
+                      <div class="col-sm-12 col-md-5">
+                        <small class="text-muted">
+                          Menampilkan {{ $this->totalPerProductPaginated['from'] }} -
+                          {{ $this->totalPerProductPaginated['to'] }} dari
+                          {{ $this->totalPerProductPaginated['total'] }} produk
+                        </small>
+                      </div>
+                      <div class="col-sm-12 col-md-7">
+                        <nav class="float-right">
+                          <ul class="pagination pagination-sm m-0">
+                            <li
+                              class="page-item {{ $this->totalPerProductPaginated['currentPage'] == 1 ? 'disabled' : '' }}"
+                            >
+                              <button
+                                type="button"
+                                wire:click="gotoProductPage(1)"
+                                class="page-link"
+                                {{ $this->totalPerProductPaginated['currentPage'] == 1 ? 'disabled' : '' }}
+                              >
+                                <i class="fas fa-angle-double-left"></i>
+                              </button>
+                            </li>
+                            <li
+                              class="page-item {{ $this->totalPerProductPaginated['currentPage'] == 1 ? 'disabled' : '' }}"
+                            >
+                              <button
+                                type="button"
+                                wire:click="gotoProductPage({{ $this->totalPerProductPaginated['currentPage'] - 1 }})"
+                                class="page-link"
+                                {{ $this->totalPerProductPaginated['currentPage'] == 1 ? 'disabled' : '' }}
+                              >
+                                <i class="fas fa-angle-left"></i>
+                              </button>
+                            </li>
+
+                            @php
+                              $start = max(1, $this->totalPerProductPaginated['currentPage'] - 2);
+                              $end = min($this->totalPerProductPaginated['lastPage'], $this->totalPerProductPaginated['currentPage'] + 2);
+                            @endphp
+
+                            @for ($i = $start; $i <= $end; $i++)
+                              <li
+                                class="page-item {{ $i == $this->totalPerProductPaginated['currentPage'] ? 'active' : '' }}"
+                              >
+                                <button
+                                  type="button"
+                                  wire:click="gotoProductPage({{ $i }})"
+                                  class="page-link"
+                                >
+                                  {{ $i }}
+                                </button>
+                              </li>
+                            @endfor
+
+                            <li
+                              class="page-item {{ $this->totalPerProductPaginated['currentPage'] == $this->totalPerProductPaginated['lastPage'] ? 'disabled' : '' }}"
+                            >
+                              <button
+                                type="button"
+                                wire:click="gotoProductPage({{ $this->totalPerProductPaginated['currentPage'] + 1 }})"
+                                class="page-link"
+                                {{ $this->totalPerProductPaginated['currentPage'] == $this->totalPerProductPaginated['lastPage'] ? 'disabled' : '' }}
+                              >
+                                <i class="fas fa-angle-right"></i>
+                              </button>
+                            </li>
+                            <li
+                              class="page-item {{ $this->totalPerProductPaginated['currentPage'] == $this->totalPerProductPaginated['lastPage'] ? 'disabled' : '' }}"
+                            >
+                              <button
+                                type="button"
+                                wire:click="gotoProductPage({{ $this->totalPerProductPaginated['lastPage'] }})"
+                                class="page-link"
+                                {{ $this->totalPerProductPaginated['currentPage'] == $this->totalPerProductPaginated['lastPage'] ? 'disabled' : '' }}
+                              >
+                                <i class="fas fa-angle-double-right"></i>
+                              </button>
+                            </li>
+                          </ul>
+                        </nav>
+                      </div>
+                    </div>
+                  </div>
+                @endif
+              @else
+                <div class="p-4 text-center">
+                  <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                  <p class="text-muted mb-0">Tidak ada data stok produk</p>
+                </div>
+              @endif
             </div>
-          @endif
+
+            <!-- Tab: Per Lokasi -->
+            <div
+              class="tab-pane {{ $stockSummaryTab === 'location' ? 'active show' : '' }}"
+              id="tabLocation"
+            >
+              <div class="p-3 bg-light border-bottom">
+                <div class="row align-items-center">
+                  <div class="col-md-3 col-6 mb-2 mb-md-0">
+                    <label class="mb-1 text-sm font-weight-bold">
+                      <i class="fas fa-calendar text-muted mr-1"></i>
+                      Dari Tanggal
+                    </label>
+                    <input
+                      type="date"
+                      wire:model.live="summaryDateFrom"
+                      class="form-control form-control-sm"
+                    />
+                  </div>
+                  <div class="col-md-3 col-6 mb-2 mb-md-0">
+                    <label class="mb-1 text-sm font-weight-bold">
+                      <i class="fas fa-calendar-alt text-muted mr-1"></i>
+                      Sampai Tanggal
+                    </label>
+                    <input
+                      type="date"
+                      wire:model.live="summaryDateTo"
+                      class="form-control form-control-sm"
+                    />
+                  </div>
+                  <div class="col-md-3 col-6">
+                    <label class="mb-1 text-sm d-none d-md-block">&nbsp;</label>
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary btn-sm btn-block"
+                      wire:click="$wire.set('summaryDateFrom', ''); $wire.set('summaryDateTo', '')"
+                      title="Reset filter tanggal"
+                    >
+                      <i class="fas fa-redo-alt mr-1"></i>
+                      Reset Filter
+                    </button>
+                  </div>
+                  <div class="col-md-3 col-6">
+                    <label class="mb-1 text-sm d-none d-md-block">&nbsp;</label>
+                    <small class="text-muted d-block">
+                      <i class="fas fa-info-circle mr-1"></i>
+                      Ringkasan per lokasi
+                    </small>
+                  </div>
+                </div>
+                @if ($summaryDateFrom || $summaryDateTo)
+                  <div class="mt-2 pt-2 border-top">
+                    <small class="text-muted">
+                      <i class="fas fa-filter mr-1"></i>
+                      Filter aktif:
+                      @if ($summaryDateFrom)
+                        <span class="badge badge-success ml-1">
+                          Dari: {{ \Carbon\Carbon::parse($summaryDateFrom)->format('d/m/Y') }}
+                          <a
+                            href="#"
+                            wire:click.prevent="$set('summaryDateFrom', '')"
+                            class="text-white ml-1"
+                          >
+                            &times;
+                          </a>
+                        </span>
+                      @endif
+
+                      @if ($summaryDateTo)
+                        <span class="badge badge-warning ml-1">
+                          Sampai: {{ \Carbon\Carbon::parse($summaryDateTo)->format('d/m/Y') }}
+                          <a
+                            href="#"
+                            wire:click.prevent="$set('summaryDateTo', '')"
+                            class="text-white ml-1"
+                          >
+                            &times;
+                          </a>
+                        </span>
+                      @endif
+                    </small>
+                  </div>
+                @endif
+              </div>
+
+              @if ($this->totalPerLocation->count() > 0)
+                <div class="table-responsive">
+                  <table class="table table-hover table-sm mb-0 stock-summary-table">
+                    <thead>
+                      <tr class="bg-gradient-success text-white">
+                        <th class="text-center" style="width: 50px">#</th>
+                        <th style="width: 100px">
+                          <i class="fas fa-building mr-1"></i>
+                          Tipe
+                        </th>
+                        <th>
+                          <i class="fas fa-map-marker-alt mr-1"></i>
+                          Nama Lokasi
+                        </th>
+                        <th class="text-center" style="width: 120px">
+                          <i class="fas fa-box mr-1"></i>
+                          Jml Produk
+                        </th>
+                        <th class="text-center" style="width: 120px">
+                          <i class="fas fa-layer-group mr-1"></i>
+                          Jml Batch
+                        </th>
+                        <th class="text-center" style="width: 130px">
+                          <i class="fas fa-cubes mr-1"></i>
+                          Total Stok
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @foreach ($this->totalPerLocation as $index => $loc)
+                        <tr>
+                          <td class="text-center">
+                            <span class="badge badge-light border">{{ $index + 1 }}</span>
+                          </td>
+                          <td>
+                            @if ($loc['type'] === 'store')
+                              <span class="badge badge-primary">
+                                <i class="fas fa-store mr-1"></i>
+                                {{ $loc['type_label'] }}
+                              </span>
+                            @else
+                              <span class="badge badge-warning">
+                                <i class="fas fa-warehouse mr-1"></i>
+                                {{ $loc['type_label'] }}
+                              </span>
+                            @endif
+                          </td>
+                          <td>
+                            <strong>{{ $loc['name'] }}</strong>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-secondary px-2">
+                              {{ $loc['total_products'] }}
+                            </span>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-info px-2">{{ $loc['total_batches'] }}</span>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-success px-3 py-2" style="font-size: 0.9rem">
+                              {{ rtrim(rtrim(number_format($loc['total_qty'], 2), '0'), '.') }}
+                            </span>
+                          </td>
+                        </tr>
+                      @endforeach
+                    </tbody>
+                    <tfoot class="bg-light">
+                      <tr class="font-weight-bold">
+                        <td colspan="3" class="text-right">Total Keseluruhan:</td>
+                        <td class="text-center">
+                          <span class="badge badge-dark px-2">
+                            {{ $this->totalPerLocation->sum('total_products') }}
+                          </span>
+                        </td>
+                        <td class="text-center">
+                          <span class="badge badge-dark px-2">
+                            {{ $this->totalPerLocation->sum('total_batches') }}
+                          </span>
+                        </td>
+                        <td class="text-center">
+                          <span class="badge badge-dark px-3 py-2" style="font-size: 0.9rem">
+                            {{ rtrim(rtrim(number_format($this->totalPerLocation->sum('total_qty'), 2), '0'), '.') }}
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              @else
+                <div class="p-4 text-center">
+                  <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                  <p class="text-muted mb-0">Tidak ada data stok per lokasi</p>
+                </div>
+              @endif
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <style>
+    /* Stock Summary Table Styling */
+    .stock-summary-table thead th {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 0.75rem 0.5rem;
+      white-space: nowrap;
+      border: none;
+    }
+    .stock-summary-table tbody td {
+      font-size: 0.85rem;
+      padding: 0.6rem 0.5rem;
+      vertical-align: middle;
+      border-top: 1px solid #dee2e6;
+    }
+    .stock-summary-table tbody tr:hover {
+      background-color: rgba(0, 123, 255, 0.05) !important;
+    }
+    .stock-summary-table tfoot td {
+      padding: 0.75rem 0.5rem;
+      border-top: 2px solid #dee2e6;
+    }
+
+    /* Tab styling */
+    #stockSummaryTabs .nav-link {
+      border-radius: 0;
+      padding: 0.75rem 1.5rem;
+      font-weight: 500;
+      color: #6c757d;
+      border: none;
+      border-bottom: 3px solid transparent;
+    }
+    #stockSummaryTabs .nav-link:hover {
+      color: #17a2b8;
+      border-bottom-color: #dee2e6;
+    }
+    #stockSummaryTabs .nav-link.active {
+      color: #17a2b8;
+      background: transparent;
+      border-bottom-color: #17a2b8;
+    }
+
     /* Scroll container for Total Stok Per Produk */
     .product-scroll-container {
       max-height: 600px;

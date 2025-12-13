@@ -33,6 +33,12 @@ class StockBatchIndex extends Component
     #[Url]
     public int $per_page = 15;
 
+    #[Url]
+    public string $dateFrom = '';
+
+    #[Url]
+    public string $dateTo = '';
+
     // Inline create form properties
     public bool $showCreateForm = false;
     public bool $isCreatingBatch = false; // Flag untuk prevent double submission
@@ -73,6 +79,13 @@ class StockBatchIndex extends Component
     // Pagination for total per product
     public int $productPerPage = 10;
     public int $productPage = 1;
+
+    // Tab for Total Stok section
+    public string $stockSummaryTab = 'product'; // 'product' or 'location'
+
+    // Filter tanggal untuk Ringkasan Stok
+    public string $summaryDateFrom = '';
+    public string $summaryDateTo = '';
 
     // Selection properties
     public array $selectedBatches = [];
@@ -240,6 +253,15 @@ class StockBatchIndex extends Component
             $query->byLocation($this->location);
         }
 
+        // Filter berdasarkan tanggal ringkasan
+        if ($this->summaryDateFrom) {
+            $query->whereDate('created_at', '>=', $this->summaryDateFrom);
+        }
+
+        if ($this->summaryDateTo) {
+            $query->whereDate('created_at', '<=', $this->summaryDateTo);
+        }
+
         // Group by product_id dan hitung total qty
         $totals = $query->with('product')
             ->get()
@@ -288,6 +310,78 @@ class StockBatchIndex extends Component
         $this->productPage = $page;
     }
 
+    public function setStockSummaryTab($tab)
+    {
+        $this->stockSummaryTab = $tab;
+    }
+
+    #[Computed]
+    public function totalPerLocation()
+    {
+        $query = StockBatch::active();
+
+        // Filter berdasarkan tanggal ringkasan
+        if ($this->summaryDateFrom) {
+            $query->whereDate('created_at', '>=', $this->summaryDateFrom);
+        }
+
+        if ($this->summaryDateTo) {
+            $query->whereDate('created_at', '<=', $this->summaryDateTo);
+        }
+
+        $batches = $query->with(['product'])->get();
+
+        // Preload stores and warehouses for efficiency
+        $storeIds = $batches->where('location_type', 'store')->pluck('location_id')->unique();
+        $warehouseIds = $batches->where('location_type', 'warehouse')->pluck('location_id')->unique();
+
+        $stores = Store::whereIn('id', $storeIds)->pluck('nama_toko', 'id');
+        $warehouses = Warehouse::whereIn('id', $warehouseIds)->pluck('nama_gudang', 'id');
+
+        $locations = [];
+
+        foreach ($batches as $batch) {
+            $locationType = $batch->location_type;
+            $locationId = $batch->location_id;
+
+            // Get location name based on location type
+            $locationName = 'Unknown';
+            if ($locationType === 'store') {
+                $locationName = $stores[$locationId] ?? 'Unknown Store';
+            } else {
+                $locationName = $warehouses[$locationId] ?? 'Unknown Warehouse';
+            }
+
+            $key = $locationType . '_' . $locationId;
+
+            if (!isset($locations[$key])) {
+                $locations[$key] = [
+                    'type' => $locationType,
+                    'type_label' => $locationType === 'store' ? 'Toko' : 'Gudang',
+                    'name' => $locationName,
+                    'total_products' => 0,
+                    'total_batches' => 0,
+                    'total_qty' => 0,
+                    'products' => [],
+                ];
+            }
+
+            $productId = $batch->product_id;
+            if (!in_array($productId, $locations[$key]['products'])) {
+                $locations[$key]['products'][] = $productId;
+                $locations[$key]['total_products']++;
+            }
+
+            $locations[$key]['total_batches']++;
+            $locations[$key]['total_qty'] += $batch->qty;
+        }
+
+        // Sort by location name
+        usort($locations, fn($a, $b) => strcmp($a['name'], $b['name']));
+
+        return collect($locations);
+    }
+
     public function updatingProductPerPage()
     {
         $this->productPage = 1;
@@ -295,7 +389,12 @@ class StockBatchIndex extends Component
 
     public function render()
     {
-        $query = StockBatch::active()->latestFirst()->with('product');
+        // Urutkan berdasarkan product_id terlebih dahulu, lalu updated_at
+        // Ini memastikan batch dengan produk yang sama selalu bersebelahan
+        $query = StockBatch::active()
+            ->with(['product', 'product.category', 'product.subcategory'])
+            ->orderBy('product_id')
+            ->orderBy('updated_at', 'desc');
 
         // Filter berdasarkan search (nama produk)
         if ($this->search) {
@@ -317,7 +416,23 @@ class StockBatchIndex extends Component
             });
         }
 
+        // Filter berdasarkan tanggal
+        if ($this->dateFrom) {
+            $query->whereDate('created_at', '>=', $this->dateFrom);
+        }
+
+        if ($this->dateTo) {
+            $query->whereDate('created_at', '<=', $this->dateTo);
+        }
+
         $batches = $query->paginate($this->per_page);
+
+        // Jika halaman saat ini lebih besar dari total halaman, reset ke halaman 1
+        if ($batches->currentPage() > $batches->lastPage() && $batches->lastPage() > 0) {
+            $this->resetPage();
+            $batches = $query->paginate($this->per_page);
+        }
+
         $products = Product::select('id', 'kode_produk', 'nama_produk', 'satuan', 'category_id', 'subcategory_id')
             ->orderBy('nama_produk')
             ->get();
@@ -445,6 +560,22 @@ class StockBatchIndex extends Component
         $this->resetEditForm();
     }
 
+    public function resetMainFilters(): void
+    {
+        // Reset filter utama dan kembalikan pagination ke halaman pertama
+        $this->search = '';
+        $this->location = '';
+        $this->per_page = 10;
+        $this->resetPage();
+    }
+
+    public function clearSearchFilter(): void
+    {
+        // Hapus hanya pencarian produk dan kembali ke halaman pertama
+        $this->search = '';
+        $this->resetPage();
+    }
+
     private function resetEditForm()
     {
         $this->editBatchId = null;
@@ -486,6 +617,8 @@ class StockBatchIndex extends Component
             ]);
 
             $this->validate([
+                'createCategoryId' => 'required|numeric|exists:categories,id',
+                'createSubcategoryId' => 'required|numeric|exists:subcategories,id',
                 'createProductId' => 'required|numeric|min:1|exists:products,id',
                 'createLocationType' => 'required|in:store,warehouse',
                 'createLocationId' => 'required|numeric|min:1',
@@ -494,6 +627,10 @@ class StockBatchIndex extends Component
                 'createSatuan' => 'nullable|string|max:50',
                 'createDate' => 'nullable|date',
             ], [
+                'createCategoryId.required' => 'Kategori harus dipilih',
+                'createCategoryId.exists' => 'Kategori tidak ditemukan',
+                'createSubcategoryId.required' => 'Subkategori harus dipilih',
+                'createSubcategoryId.exists' => 'Subkategori tidak ditemukan',
                 'createProductId.required' => 'Produk harus dipilih',
                 'createProductId.exists' => 'Produk tidak ditemukan',
                 'createLocationType.required' => 'Lokasi harus dipilih',
@@ -566,26 +703,18 @@ class StockBatchIndex extends Component
 
     private function resetCreateForm()
     {
-        // Reset semua properties
+        // Hanya reset field yang perlu di-reset untuk input batch berikutnya
+        // Pertahankan: tanggal, kategori, subkategori, produk, satuan, lokasi
         $this->reset([
-            'createProductId',
-            'createProductSearch',
-            'createCategoryId',
-            'createSubcategoryId',
-            'createLocationType',
-            'createLocationId',
             'createNamaTumpukan',
             'createQty',
             'createNote',
-            'createSatuan',
-            'createDate',
         ]);
 
         // Reset validasi
         $this->clearValidation();
 
-        // Re-initialize default values
-        $this->createLocationType = 'store';
+        // Re-initialize qty ke 0
         $this->createQty = 0;
     }
 

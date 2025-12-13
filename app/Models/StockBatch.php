@@ -20,6 +20,7 @@ class StockBatch extends Model
         'locationable_type',
         'nama_tumpukan',
         'qty',
+        'note',
         'created_at',
         'updated_at',
     ];
