@@ -181,16 +181,39 @@
           <div class="form-group col-md-6">
             <label for="addNamaTumpukan">
               Nama Tumpukan
-              <span class="text-danger">*</span>
+              <span class="badge badge-info">Opsional</span>
             </label>
-            <input
-              type="text"
-              wire:model="namaTumpukan"
-              id="addNamaTumpukan"
-              class="form-control"
-              placeholder="Contoh: Tumpukan A"
-              required
-            />
+            @if ($existingNames && count($existingNames) > 0)
+              <div class="input-group">
+                <input
+                  type="text"
+                  wire:model="namaTumpukan"
+                  id="addNamaTumpukan"
+                  class="form-control"
+                  placeholder="Kosongkan untuk auto-generate atau pilih dari dropdown"
+                  list="existingNamesList"
+                />
+                <datalist id="existingNamesList">
+                  @foreach ($existingNames as $name)
+                    <option value="{{ $name }}">{{ $name }}</option>
+                  @endforeach
+                </datalist>
+              </div>
+              <small class="text-muted d-block mt-1">
+                <i class="fas fa-info-circle"></i> Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
+              </small>
+            @else
+              <input
+                type="text"
+                wire:model="namaTumpukan"
+                id="addNamaTumpukan"
+                class="form-control"
+                placeholder="Kosongkan untuk auto-generate nama"
+              />
+              <small class="text-muted d-block mt-1">
+                <i class="fas fa-info-circle"></i> Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
+              </small>
+            @endif
             @error('namaTumpukan')
               <span class="text-danger small">{{ $message }}</span>
             @enderror
@@ -371,16 +394,39 @@
           <div class="form-group col-md-6">
             <label for="moveToNamaTumpukan">
               Nama Tumpukan Tujuan
-              <span class="text-danger">*</span>
+              <span class="badge badge-info">Opsional</span>
             </label>
-            <input
-              type="text"
-              wire:model="toNamaTumpukan"
-              id="moveToNamaTumpukan"
-              class="form-control"
-              placeholder="Contoh: Tumpukan B"
-              required
-            />
+            @if ($existingNames && count($existingNames) > 0)
+              <div class="input-group">
+                <input
+                  type="text"
+                  wire:model="toNamaTumpukan"
+                  id="moveToNamaTumpukan"
+                  class="form-control"
+                  placeholder="Kosongkan untuk auto-generate atau pilih dari dropdown"
+                  list="moveExistingNamesList"
+                />
+                <datalist id="moveExistingNamesList">
+                  @foreach ($existingNames as $name)
+                    <option value="{{ $name }}">{{ $name }}</option>
+                  @endforeach
+                </datalist>
+              </div>
+              <small class="text-muted d-block mt-1">
+                <i class="fas fa-info-circle"></i> Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
+              </small>
+            @else
+              <input
+                type="text"
+                wire:model="toNamaTumpukan"
+                id="moveToNamaTumpukan"
+                class="form-control"
+                placeholder="Kosongkan untuk auto-generate nama"
+              />
+              <small class="text-muted d-block mt-1">
+                <i class="fas fa-info-circle"></i> Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
+              </small>
+            @endif
             @error('toNamaTumpukan')
               <span class="text-danger small">{{ $message }}</span>
             @enderror
