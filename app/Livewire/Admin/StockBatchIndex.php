@@ -62,7 +62,7 @@ class StockBatchIndex extends Component
     public ?int $createLocationId = null;
     public bool $createNamaTumpukanType = false; // true jika ingin input nama tumpukan
     public array $createNamaTumpukanList = []; // Array untuk multiple inputs
-    public float $createQty = 0;
+    public array $createQtyList = []; // Array untuk multiple qty input
     public string $createNote = '';
     public string $createSatuan = '';
     public string $createDate = '';
@@ -890,13 +890,20 @@ class StockBatchIndex extends Component
                 }
             }
 
-            // Buat batch untuk setiap nama tumpukan
-            foreach ($namaTumpukanList as $namaTumpukan) {
+            // Buat batch untuk setiap nama tumpukan dengan qty masing-masing
+            foreach ($namaTumpukanList as $index => $namaTumpukan) {
+                // Ambil qty dari array, atau 0 jika tidak ada
+                $qty = $this->createQtyList[$index] ?? 0;
+                // Jika qty masih 0, skip atau gunakan default minimal
+                if ($qty <= 0) {
+                    continue; // Skip jika qty tidak valid
+                }
+                
                 $batch = app(StockBatchService::class)->addStock(
                     $this->createProductId,
                     $this->createLocationType,
                     $namaTumpukan,
-                    $this->createQty,
+                    $qty,
                     $this->createLocationId,
                     $this->createNote ?: null,
                     $batchDate
@@ -905,7 +912,7 @@ class StockBatchIndex extends Component
                 Log::info('Stock batch created successfully', [
                     'batch_id' => $batch->id,
                     'product_id' => $this->createProductId,
-                    'qty' => $this->createQty,
+                    'qty' => $qty,
                     'nama_tumpukan' => $namaTumpukan,
                 ]);
             }
@@ -1048,12 +1055,15 @@ class StockBatchIndex extends Component
     public function addNamaTumpukanInput()
     {
         $this->createNamaTumpukanList[] = '';
+        $this->createQtyList[] = 0;
     }
 
     public function removeNamaTumpukanInput($index)
     {
         unset($this->createNamaTumpukanList[$index]);
+        unset($this->createQtyList[$index]);
         $this->createNamaTumpukanList = array_values($this->createNamaTumpukanList); // Re-index array
+        $this->createQtyList = array_values($this->createQtyList); // Re-index array
     }
 
     public function updatedCreateNamaTumpukanType($value)
@@ -1061,6 +1071,11 @@ class StockBatchIndex extends Component
         // Ketika checkbox di-check dan array kosong, initialize dengan satu input kosong
         if ($value && empty($this->createNamaTumpukanList)) {
             $this->createNamaTumpukanList = [''];
+            $this->createQtyList = [0];
+        } else if (!$value) {
+            // Reset jika di-uncheck
+            $this->createNamaTumpukanList = [];
+            $this->createQtyList = [];
         }
     }
 
@@ -1071,7 +1086,7 @@ class StockBatchIndex extends Component
         $this->reset([
             'createNamaTumpukanType',
             'createNamaTumpukanList',
-            'createQty',
+            'createQtyList',
             'createNote',
             // Inline create helpers
             'newCreateCategoryName',

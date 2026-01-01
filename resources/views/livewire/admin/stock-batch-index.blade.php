@@ -503,25 +503,39 @@
                     @if ($createNamaTumpukanType)
                       <div class="mb-3">
                         @foreach ($createNamaTumpukanList as $index => $value)
-                          <div class="input-group mb-2">
-                            <input
-                              type="text"
-                              wire:model="createNamaTumpukanList.{{ $index }}"
-                              class="form-control @error('createNamaTumpukanList.*') is-invalid @enderror"
-                              placeholder="Kosongkan untuk auto-generate nama (Tumpukan 1, 2, dst)"
-                              maxlength="255"
-                            />
-                            @if (count($createNamaTumpukanList) > 1)
-                              <div class="input-group-append">
-                                <button
-                                  class="btn btn-danger btn-sm"
-                                  type="button"
-                                  wire:click="removeNamaTumpukanInput({{ $index }})"
-                                >
-                                  <i class="fas fa-trash"></i>
-                                </button>
+                          <div class="row mb-2">
+                            <div class="col-8">
+                              <div class="input-group">
+                                <input
+                                  type="text"
+                                  wire:model="createNamaTumpukanList.{{ $index }}"
+                                  class="form-control @error('createNamaTumpukanList.*') is-invalid @enderror"
+                                  placeholder="Kosongkan untuk auto-generate nama"
+                                  maxlength="255"
+                                />
+                                @if (count($createNamaTumpukanList) > 1)
+                                  <div class="input-group-append">
+                                    <button
+                                      class="btn btn-danger btn-sm"
+                                      type="button"
+                                      wire:click="removeNamaTumpukanInput({{ $index }})"
+                                    >
+                                      <i class="fas fa-trash"></i>
+                                    </button>
+                                  </div>
+                                @endif
                               </div>
-                            @endif
+                            </div>
+                            <div class="col-4">
+                              <input
+                                type="number"
+                                wire:model="createQtyList.{{ $index }}"
+                                class="form-control @error('createQtyList.*') is-invalid @enderror"
+                                placeholder="Qty"
+                                step="0.01"
+                                min="0"
+                              />
+                            </div>
                           </div>
                         @endforeach
 
@@ -538,8 +552,7 @@
 
                         <small class="text-muted d-block mt-2">
                           <i class="fas fa-info-circle"></i>
-                          Ketik nama custom atau kosongkan untuk auto-generate. Klik tombol + untuk
-                          menambah lebih banyak.
+                          Contoh: T1 - 169 qty, T2 - 3 qty. Nama kosong akan auto-generate.
                         </small>
                       </div>
                     @endif
@@ -550,30 +563,7 @@
                   </div>
                 </div>
 
-                <!-- 8. Qty -->
-                <div class="col-12 col-md-2">
-                  <div class="form-group">
-                    <label>
-                      <strong>
-                        Qty
-                        <span class="text-danger">*</span>
-                      </strong>
-                    </label>
-                    <input
-                      type="number"
-                      wire:model="createQty"
-                      class="form-control @error('createQty') is-invalid @enderror"
-                      placeholder="0.00"
-                      step="0.01"
-                      min="0"
-                    />
-                    @error('createQty')
-                      <small class="text-danger d-block mt-1">{{ $message }}</small>
-                    @enderror
-                  </div>
-                </div>
-
-                <!-- 9. Catatan -->
+                <!-- 8. Catatan -->
                 <div class="col-12 col-md-7">
                   <div class="form-group">
                     <label>
