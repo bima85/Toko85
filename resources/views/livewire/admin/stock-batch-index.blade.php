@@ -483,7 +483,7 @@
                       </strong>
                     </label>
 
-                    <!-- Radio Button -->
+                    <!-- Checkbox -->
                     <div class="mb-3">
                       <div class="custom-control custom-checkbox">
                         <input
@@ -502,21 +502,47 @@
                     <!-- Input Tumpukan Baru -->
                     @if ($createNamaTumpukanType)
                       <div class="mb-3">
-                        <input
-                          type="text"
-                          wire:model="createNamaTumpukan"
-                          class="form-control @error('createNamaTumpukan') is-invalid @enderror"
-                          placeholder="Kosongkan untuk auto-generate nama (Tumpukan 1, 2, dst)"
-                          maxlength="255"
-                        />
+                        @foreach ($createNamaTumpukanList as $index => $value)
+                          <div class="input-group mb-2">
+                            <input
+                              type="text"
+                              wire:model="createNamaTumpukanList.{{ $index }}"
+                              class="form-control @error('createNamaTumpukanList.*') is-invalid @enderror"
+                              placeholder="Kosongkan untuk auto-generate nama (Tumpukan 1, 2, dst)"
+                              maxlength="255"
+                            />
+                            @if (count($createNamaTumpukanList) > 1)
+                              <div class="input-group-append">
+                                <button
+                                  class="btn btn-danger btn-sm"
+                                  type="button"
+                                  wire:click="removeNamaTumpukanInput({{ $index }})"
+                                >
+                                  <i class="fas fa-trash"></i>
+                                </button>
+                              </div>
+                            @endif
+                          </div>
+                        @endforeach
+
+                        <div class="mb-2">
+                          <button
+                            class="btn btn-primary btn-sm"
+                            type="button"
+                            wire:click="addNamaTumpukanInput"
+                          >
+                            <i class="fas fa-plus"></i> Tambah Input
+                          </button>
+                        </div>
+
                         <small class="text-muted d-block mt-2">
                           <i class="fas fa-info-circle"></i>
-                          Ketik nama custom atau kosongkan untuk auto-generate
+                          Ketik nama custom atau kosongkan untuk auto-generate. Klik tombol + untuk menambah lebih banyak.
                         </small>
                       </div>
                     @endif
 
-                    @error('createNamaTumpukan')
+                    @error('createNamaTumpukanList')
                       <small class="text-danger d-block mt-1">{{ $message }}</small>
                     @enderror
                   </div>

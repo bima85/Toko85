@@ -61,7 +61,7 @@ class StockBatchIndex extends Component
     public string $createLocationType = 'store';
     public ?int $createLocationId = null;
     public bool $createNamaTumpukanType = false; // true jika ingin input nama tumpukan
-    public string $createNamaTumpukan = '';
+    public array $createNamaTumpukanList = []; // Array untuk multiple inputs
     public float $createQty = 0;
     public string $createNote = '';
     public string $createSatuan = '';
@@ -860,13 +860,15 @@ class StockBatchIndex extends Component
             ]);
 
             // Auto-generate nama tumpukan jika checkbox checked dan field kosong
-            $namaTumpukan = '';
-            if ($this->createNamaTumpukanType) {
-                // Checkbox adalah true, gunakan input atau auto-generate
-                $namaTumpukan = $this->createNamaTumpukan ?: $this->generateBatchName();
+            $namaTumpukanList = [];
+            if ($this->createNamaTumpukanType && !empty($this->createNamaTumpukanList)) {
+                // Gunakan list dari input fields
+                foreach ($this->createNamaTumpukanList as $nama) {
+                    $namaTumpukanList[] = !empty($nama) ? $nama : $this->generateBatchName();
+                }
             } else {
-                // Checkbox false, auto-generate default
-                $namaTumpukan = $this->generateBatchName();
+                // Generate satu nama default
+                $namaTumpukanList[] = $this->generateBatchName();
             }
 
             // Update satuan product jika diisi
@@ -888,21 +890,25 @@ class StockBatchIndex extends Component
                 }
             }
 
-            $batch = app(StockBatchService::class)->addStock(
-                $this->createProductId,
-                $this->createLocationType,
-                $namaTumpukan,
-                $this->createQty,
-                $this->createLocationId,
-                $this->createNote ?: null,
-                $batchDate
-            );
+            // Buat batch untuk setiap nama tumpukan
+            foreach ($namaTumpukanList as $namaTumpukan) {
+                $batch = app(StockBatchService::class)->addStock(
+                    $this->createProductId,
+                    $this->createLocationType,
+                    $namaTumpukan,
+                    $this->createQty,
+                    $this->createLocationId,
+                    $this->createNote ?: null,
+                    $batchDate
+                );
 
-            Log::info('Stock batch created successfully', [
-                'batch_id' => $batch->id,
-                'product_id' => $this->createProductId,
-                'qty' => $this->createQty,
-            ]);
+                Log::info('Stock batch created successfully', [
+                    'batch_id' => $batch->id,
+                    'product_id' => $this->createProductId,
+                    'qty' => $this->createQty,
+                    'nama_tumpukan' => $namaTumpukan,
+                ]);
+            }
 
             session()->flash('message', 'Stok tumpukan berhasil dibuat!');
 
@@ -1039,13 +1045,24 @@ class StockBatchIndex extends Component
         }
     }
 
+    public function addNamaTumpukanInput()
+    {
+        $this->createNamaTumpukanList[] = '';
+    }
+
+    public function removeNamaTumpukanInput($index)
+    {
+        unset($this->createNamaTumpukanList[$index]);
+        $this->createNamaTumpukanList = array_values($this->createNamaTumpukanList); // Re-index array
+    }
+
     private function resetCreateForm()
     {
         // Hanya reset field yang perlu di-reset untuk input batch berikutnya
         // Pertahankan: tanggal, kategori, subkategori, produk, satuan, lokasi
         $this->reset([
             'createNamaTumpukanType',
-            'createNamaTumpukan',
+            'createNamaTumpukanList',
             'createQty',
             'createNote',
             // Inline create helpers
