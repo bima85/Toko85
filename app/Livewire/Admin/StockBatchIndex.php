@@ -826,9 +826,9 @@ class StockBatchIndex extends Component
 
         try {
             Log::info('Creating stock batch with data', [
-                'createQty' => $this->createQty,
+                'createQtyList' => $this->createQtyList,
                 'createProductId' => $this->createProductId,
-                'createNamaTumpukan' => $this->createNamaTumpukan,
+                'createNamaTumpukanList' => $this->createNamaTumpukanList,
             ]);
 
             $this->validate([
@@ -837,8 +837,8 @@ class StockBatchIndex extends Component
                 'createProductId' => 'required|numeric|min:1|exists:products,id',
                 'createLocationType' => 'required|in:store,warehouse',
                 'createLocationId' => 'required|numeric|min:1',
-                'createNamaTumpukan' => 'nullable|string|max:255',
-                'createQty' => 'required|numeric|min:0.01',
+                'createNamaTumpukanList.*' => 'nullable|string|max:255',
+                'createQtyList.*' => 'nullable|numeric|min:0.01',
                 'createSatuan' => 'nullable|string|max:50',
                 'createDate' => 'nullable|date',
             ], [
@@ -852,23 +852,36 @@ class StockBatchIndex extends Component
                 'createLocationType.in' => 'Lokasi tidak valid',
                 'createLocationId.required' => 'Toko/Gudang harus dipilih',
                 'createLocationId.numeric' => 'Toko/Gudang tidak valid',
-                'createNamaTumpukan.max' => 'Nama tumpukan maksimal 255 karakter',
-                'createQty.required' => 'Kuantitas harus diisi',
-                'createQty.min' => 'Kuantitas minimal 0.01',
+                'createNamaTumpukanList.*.max' => 'Nama tumpukan maksimal 255 karakter',
+                'createQtyList.*.numeric' => 'Kuantitas harus berupa angka',
+                'createQtyList.*.min' => 'Kuantitas minimal 0.01',
                 'createSatuan.max' => 'Satuan maksimal 50 karakter',
                 'createDate.date' => 'Tanggal harus format yang valid',
             ]);
 
             // Auto-generate nama tumpukan jika checkbox checked dan field kosong
             $namaTumpukanList = [];
+            $qtyList = [];
+            
             if ($this->createNamaTumpukanType && !empty($this->createNamaTumpukanList)) {
-                // Gunakan list dari input fields
-                foreach ($this->createNamaTumpukanList as $nama) {
+                // Gunakan list dari input fields dengan qty masing-masing
+                foreach ($this->createNamaTumpukanList as $index => $nama) {
+                    $qty = $this->createQtyList[$index] ?? 0;
+                    // Skip jika qty tidak valid
+                    if ($qty <= 0) {
+                        continue;
+                    }
                     $namaTumpukanList[] = !empty($nama) ? $nama : $this->generateBatchName();
+                    $qtyList[] = $qty;
+                }
+                
+                // Jika tidak ada qty yang valid, tampilkan error
+                if (empty($qtyList)) {
+                    throw new \Exception('Minimal satu input harus memiliki qty lebih dari 0');
                 }
             } else {
-                // Generate satu nama default
-                $namaTumpukanList[] = $this->generateBatchName();
+                // Checkbox tidak dicheck, error
+                throw new \Exception('Silakan centang "Buat Nama Tumpukan Baru" untuk menggunakan fitur ini');
             }
 
             // Update satuan product jika diisi
@@ -892,12 +905,7 @@ class StockBatchIndex extends Component
 
             // Buat batch untuk setiap nama tumpukan dengan qty masing-masing
             foreach ($namaTumpukanList as $index => $namaTumpukan) {
-                // Ambil qty dari array, atau 0 jika tidak ada
-                $qty = $this->createQtyList[$index] ?? 0;
-                // Jika qty masih 0, skip atau gunakan default minimal
-                if ($qty <= 0) {
-                    continue; // Skip jika qty tidak valid
-                }
+                $qty = $qtyList[$index] ?? 0;
                 
                 $batch = app(StockBatchService::class)->addStock(
                     $this->createProductId,
