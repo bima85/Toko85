@@ -482,30 +482,13 @@
                         <span class="badge badge-info">Opsional</span>
                       </strong>
                     </label>
-                    
-                    <!-- Radio Button Options -->
+
+                    <!-- Radio Button -->
                     <div class="mb-3">
-                      @if ($existingNames && count($existingNames) > 0)
-                        <div class="custom-control custom-radio">
-                          <input
-                            type="radio"
-                            id="createNameExisting"
-                            name="createNamaTumpukanType"
-                            wire:model="createNamaTumpukanType"
-                            value="existing"
-                            class="custom-control-input"
-                          />
-                          <label class="custom-control-label" for="createNameExisting">
-                            Gunakan Nama Tumpukan Existing
-                          </label>
-                        </div>
-                      @endif
-                      
-                      <div class="custom-control custom-radio">
+                      <div class="custom-control custom-checkbox">
                         <input
-                          type="radio"
+                          type="checkbox"
                           id="createNameNew"
-                          name="createNamaTumpukanType"
                           wire:model="createNamaTumpukanType"
                           value="new"
                           class="custom-control-input"
@@ -516,27 +499,8 @@
                       </div>
                     </div>
 
-                    <!-- Input untuk Existing Names -->
-                    @if ($createNamaTumpukanType === 'existing' && $existingNames && count($existingNames) > 0)
-                      <div class="mb-3">
-                        <select
-                          wire:model="createNamaTumpukan"
-                          class="form-control @error('createNamaTumpukan') is-invalid @enderror"
-                        >
-                          <option value="">-- Pilih Nama Tumpukan --</option>
-                          @foreach ($existingNames as $name)
-                            <option value="{{ $name }}">{{ $name }}</option>
-                          @endforeach
-                        </select>
-                        <small class="text-muted d-block mt-2">
-                          <i class="fas fa-info-circle"></i>
-                          Pilih nama tumpukan yang sudah ada
-                        </small>
-                      </div>
-                    @endif
-
-                    <!-- Input untuk New Names -->
-                    @if ($createNamaTumpukanType === 'new')
+                    <!-- Input Tumpukan Baru -->
+                    @if ($createNamaTumpukanType)
                       <div class="mb-3">
                         <input
                           type="text"

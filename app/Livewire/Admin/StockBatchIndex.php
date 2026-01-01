@@ -60,7 +60,7 @@ class StockBatchIndex extends Component
 
     public string $createLocationType = 'store';
     public ?int $createLocationId = null;
-    public string $createNamaTumpukanType = ''; // 'existing' atau 'new'
+    public bool $createNamaTumpukanType = false; // true jika ingin input nama tumpukan
     public string $createNamaTumpukan = '';
     public float $createQty = 0;
     public string $createNote = '';
@@ -859,9 +859,13 @@ class StockBatchIndex extends Component
                 'createDate.date' => 'Tanggal harus format yang valid',
             ]);
 
-            // Auto-generate nama tumpukan jika kosong dan tipe adalah 'new'
-            $namaTumpukan = $this->createNamaTumpukan;
-            if (empty($namaTumpukan) && $this->createNamaTumpukanType === 'new') {
+            // Auto-generate nama tumpukan jika checkbox checked dan field kosong
+            $namaTumpukan = '';
+            if ($this->createNamaTumpukanType) {
+                // Checkbox adalah true, gunakan input atau auto-generate
+                $namaTumpukan = $this->createNamaTumpukan ?: $this->generateBatchName();
+            } else {
+                // Checkbox false, auto-generate default
                 $namaTumpukan = $this->generateBatchName();
             }
 
