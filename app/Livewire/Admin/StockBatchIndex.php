@@ -60,6 +60,7 @@ class StockBatchIndex extends Component
 
     public string $createLocationType = 'store';
     public ?int $createLocationId = null;
+    public string $createNamaTumpukanType = ''; // 'existing' atau 'new'
     public string $createNamaTumpukan = '';
     public float $createQty = 0;
     public string $createNote = '';
@@ -858,8 +859,11 @@ class StockBatchIndex extends Component
                 'createDate.date' => 'Tanggal harus format yang valid',
             ]);
 
-            // Auto-generate nama tumpukan jika kosong
-            $namaTumpukan = $this->createNamaTumpukan ?: $this->generateBatchName();
+            // Auto-generate nama tumpukan jika kosong dan tipe adalah 'new'
+            $namaTumpukan = $this->createNamaTumpukan;
+            if (empty($namaTumpukan) && $this->createNamaTumpukanType === 'new') {
+                $namaTumpukan = $this->generateBatchName();
+            }
 
             // Update satuan product jika diisi
             if ($this->createSatuan) {
@@ -1036,6 +1040,7 @@ class StockBatchIndex extends Component
         // Hanya reset field yang perlu di-reset untuk input batch berikutnya
         // Pertahankan: tanggal, kategori, subkategori, produk, satuan, lokasi
         $this->reset([
+            'createNamaTumpukanType',
             'createNamaTumpukan',
             'createQty',
             'createNote',
@@ -1401,11 +1406,11 @@ class StockBatchIndex extends Component
         // Generate nama seperti "Tumpukan 1", "Tumpukan 2", dst
         $basePattern = 'Tumpukan';
         $counter = 1;
-        
+
         $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern . '%')
             ->latest('id')
             ->first();
-        
+
         if ($lastBatch) {
             // Extract number from last batch name
             preg_match('/\d+$/', $lastBatch->nama_tumpukan, $matches);
@@ -1415,7 +1420,7 @@ class StockBatchIndex extends Component
                 $counter = 1;
             }
         }
-        
+
         return $basePattern . ' ' . $counter;
     }
 }

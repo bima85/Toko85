@@ -191,32 +191,51 @@
                         @foreach ($categories as $cat)
                           <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
                         @endforeach
+
                         <option value="__add__">+ Tambah Kategori...</option>
                       </select>
                     </div>
 
                     @if ($showCreateCategoryInline)
-                      <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa;">
+                      <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa">
                         <div class="form-group mb-2">
                           <label class="small"><strong>Kode (opsional)</strong></label>
-                          <input type="text" wire:model.defer="newCreateCategoryCode" class="form-control form-control-sm" placeholder="Contoh: BERAS" />
+                          <input
+                            type="text"
+                            wire:model.defer="newCreateCategoryCode"
+                            class="form-control form-control-sm"
+                            placeholder="Contoh: BERAS"
+                          />
                           @error('newCreateCategoryCode')
                             <small class="text-danger d-block mt-1">{{ $message }}</small>
                           @enderror
                         </div>
                         <div class="form-group mb-2">
                           <label class="small"><strong>Nama Kategori</strong></label>
-                          <input type="text" wire:model.defer="newCreateCategoryName" class="form-control form-control-sm" placeholder="Contoh: Beras Putih" />
+                          <input
+                            type="text"
+                            wire:model.defer="newCreateCategoryName"
+                            class="form-control form-control-sm"
+                            placeholder="Contoh: Beras Putih"
+                          />
                           @error('newCreateCategoryName')
                             <small class="text-danger d-block mt-1">{{ $message }}</small>
                           @enderror
                         </div>
                         <div class="form-group mb-0">
-                          <button class="btn btn-success btn-sm" wire:click.prevent="createInlineCategory">
-                            <i class="fas fa-check"></i> Tambah
+                          <button
+                            class="btn btn-success btn-sm"
+                            wire:click.prevent="createInlineCategory"
+                          >
+                            <i class="fas fa-check"></i>
+                            Tambah
                           </button>
-                          <button class="btn btn-secondary btn-sm" wire:click.prevent="$set('showCreateCategoryInline', false)">
-                            <i class="fas fa-times"></i> Batal
+                          <button
+                            class="btn btn-secondary btn-sm"
+                            wire:click.prevent="$set('showCreateCategoryInline', false)"
+                          >
+                            <i class="fas fa-times"></i>
+                            Batal
                           </button>
                         </div>
                       </div>
@@ -256,32 +275,53 @@
                     </div>
 
                     @if ($showCreateSubcategoryInline)
-                      <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa;">
+                      <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa">
                         <div class="form-group mb-2">
                           <label class="small"><strong>Kode (opsional)</strong></label>
-                          <input type="text" wire:model.defer="newCreateSubcategoryCode" class="form-control form-control-sm" placeholder="Contoh: BR_PUTIH" />
+                          <input
+                            type="text"
+                            wire:model.defer="newCreateSubcategoryCode"
+                            class="form-control form-control-sm"
+                            placeholder="Contoh: BR_PUTIH"
+                          />
                           @error('newCreateSubcategoryCode')
                             <small class="text-danger d-block mt-1">{{ $message }}</small>
                           @enderror
                         </div>
                         <div class="form-group mb-2">
                           <label class="small"><strong>Nama Subkategori</strong></label>
-                          <input type="text" wire:model.defer="newCreateSubcategoryName" class="form-control form-control-sm" placeholder="Contoh: Beras Putih Premium" />
+                          <input
+                            type="text"
+                            wire:model.defer="newCreateSubcategoryName"
+                            class="form-control form-control-sm"
+                            placeholder="Contoh: Beras Putih Premium"
+                          />
                           @error('newCreateSubcategoryName')
                             <small class="text-danger d-block mt-1">{{ $message }}</small>
                           @enderror
                         </div>
-                        @if (!$createCategoryId)
+                        @if (! $createCategoryId)
                           <div class="alert alert-info alert-sm mb-2" role="alert">
-                            <small>Pilih kategori terlebih dahulu agar subkategori terkait dibuat.</small>
+                            <small>
+                              Pilih kategori terlebih dahulu agar subkategori terkait dibuat.
+                            </small>
                           </div>
                         @endif
+
                         <div class="form-group mb-0">
-                          <button class="btn btn-success btn-sm" wire:click.prevent="createInlineSubcategory">
-                            <i class="fas fa-check"></i> Tambah
+                          <button
+                            class="btn btn-success btn-sm"
+                            wire:click.prevent="createInlineSubcategory"
+                          >
+                            <i class="fas fa-check"></i>
+                            Tambah
                           </button>
-                          <button class="btn btn-secondary btn-sm" wire:click.prevent="$set('showCreateSubcategoryInline', false)">
-                            <i class="fas fa-times"></i> Batal
+                          <button
+                            class="btn btn-secondary btn-sm"
+                            wire:click.prevent="$set('showCreateSubcategoryInline', false)"
+                          >
+                            <i class="fas fa-times"></i>
+                            Batal
                           </button>
                         </div>
                       </div>
@@ -434,7 +474,7 @@
 
               <div class="row">
                 <!-- 7. Nama Tumpukan -->
-                <div class="col-12 col-md-3">
+                <div class="col-12">
                   <div class="form-group">
                     <label>
                       <strong>
@@ -442,35 +482,76 @@
                         <span class="badge badge-info">Opsional</span>
                       </strong>
                     </label>
-                    @if ($existingNames && count($existingNames) > 0)
-                      <input
-                        type="text"
-                        wire:model="createNamaTumpukan"
-                        class="form-control @error('createNamaTumpukan') is-invalid @enderror"
-                        placeholder="Kosongkan untuk auto-generate atau pilih dari dropdown"
-                        maxlength="255"
-                        list="existingNamesList"
-                      />
-                      <datalist id="existingNamesList">
-                        @foreach ($existingNames as $name)
-                          <option value="{{ $name }}">{{ $name }}</option>
-                        @endforeach
-                      </datalist>
-                      <small class="text-muted d-block mt-1">
-                        <i class="fas fa-info-circle"></i> Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
-                      </small>
-                    @else
-                      <input
-                        type="text"
-                        wire:model="createNamaTumpukan"
-                        class="form-control @error('createNamaTumpukan') is-invalid @enderror"
-                        placeholder="Kosongkan untuk auto-generate nama"
-                        maxlength="255"
-                      />
-                      <small class="text-muted d-block mt-1">
-                        <i class="fas fa-info-circle"></i> Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
-                      </small>
+                    
+                    <!-- Radio Button Options -->
+                    <div class="mb-3">
+                      @if ($existingNames && count($existingNames) > 0)
+                        <div class="custom-control custom-radio">
+                          <input
+                            type="radio"
+                            id="createNameExisting"
+                            name="createNamaTumpukanType"
+                            wire:model="createNamaTumpukanType"
+                            value="existing"
+                            class="custom-control-input"
+                          />
+                          <label class="custom-control-label" for="createNameExisting">
+                            Gunakan Nama Tumpukan Existing
+                          </label>
+                        </div>
+                      @endif
+                      
+                      <div class="custom-control custom-radio">
+                        <input
+                          type="radio"
+                          id="createNameNew"
+                          name="createNamaTumpukanType"
+                          wire:model="createNamaTumpukanType"
+                          value="new"
+                          class="custom-control-input"
+                        />
+                        <label class="custom-control-label" for="createNameNew">
+                          Buat Nama Tumpukan Baru
+                        </label>
+                      </div>
+                    </div>
+
+                    <!-- Input untuk Existing Names -->
+                    @if ($createNamaTumpukanType === 'existing' && $existingNames && count($existingNames) > 0)
+                      <div class="mb-3">
+                        <select
+                          wire:model="createNamaTumpukan"
+                          class="form-control @error('createNamaTumpukan') is-invalid @enderror"
+                        >
+                          <option value="">-- Pilih Nama Tumpukan --</option>
+                          @foreach ($existingNames as $name)
+                            <option value="{{ $name }}">{{ $name }}</option>
+                          @endforeach
+                        </select>
+                        <small class="text-muted d-block mt-2">
+                          <i class="fas fa-info-circle"></i>
+                          Pilih nama tumpukan yang sudah ada
+                        </small>
+                      </div>
                     @endif
+
+                    <!-- Input untuk New Names -->
+                    @if ($createNamaTumpukanType === 'new')
+                      <div class="mb-3">
+                        <input
+                          type="text"
+                          wire:model="createNamaTumpukan"
+                          class="form-control @error('createNamaTumpukan') is-invalid @enderror"
+                          placeholder="Kosongkan untuk auto-generate nama (Tumpukan 1, 2, dst)"
+                          maxlength="255"
+                        />
+                        <small class="text-muted d-block mt-2">
+                          <i class="fas fa-info-circle"></i>
+                          Ketik nama custom atau kosongkan untuk auto-generate
+                        </small>
+                      </div>
+                    @endif
+
                     @error('createNamaTumpukan')
                       <small class="text-danger d-block mt-1">{{ $message }}</small>
                     @enderror
@@ -547,7 +628,10 @@
                 <i class="fas fa-hand-paper"></i>
                 Form Buat Tumpukan Hold
               </h5>
-              <p class="mb-0">Tumpukan ini akan dibuat dengan status HOLD untuk menyimpan stok yang ditahan sementara.</p>
+              <p class="mb-0">
+                Tumpukan ini akan dibuat dengan status HOLD untuk menyimpan stok yang ditahan
+                sementara.
+              </p>
             </div>
 
             <form wire:submit.prevent="createHoldBatch" class="mb-4">
@@ -581,9 +665,12 @@
                       class="form-control @error('holdCategoryId') is-invalid @enderror"
                     >
                       <option value="">Pilih Kategori</option>
-                      @foreach($categories as $category)
-                        <option value="{{ $category->id }}">{{ $category->nama_kategori }}</option>
+                      @foreach ($categories as $category)
+                        <option value="{{ $category->id }}">
+                          {{ $category->nama_kategori }}
+                        </option>
                       @endforeach
+
                       <option value="__add__">+ Tambah Kategori...</option>
                     </select>
                     @error('holdCategoryId')
@@ -607,11 +694,14 @@
                       @if(!$holdCategoryId) disabled @endif
                     >
                       <option value="">Pilih Subkategori</option>
-                      @if($holdCategoryId && $holdCategoryId !== '__add__')
-                        @foreach($subcategories->where('category_id', $holdCategoryId) as $subcategory)
-                          <option value="{{ $subcategory->id }}">{{ $subcategory->nama_subkategori }}</option>
+                      @if ($holdCategoryId && $holdCategoryId !== '__add__')
+                        @foreach ($subcategories->where('category_id', $holdCategoryId) as $subcategory)
+                          <option value="{{ $subcategory->id }}">
+                            {{ $subcategory->nama_subkategori }}
+                          </option>
                         @endforeach
                       @endif
+
                       <option value="__add__">+ Tambah Subkategori...</option>
                     </select>
                     @error('holdSubcategoryId')
@@ -719,7 +809,9 @@
                   <div class="form-group">
                     <label>
                       <strong>
-                        <span x-text="$wire.holdLocationType === 'store' ? 'Toko' : 'Gudang'"></span>
+                        <span
+                          x-text="$wire.holdLocationType === 'store' ? 'Toko' : 'Gudang'"
+                        ></span>
                         <span class="text-danger">*</span>
                       </strong>
                     </label>
@@ -728,15 +820,19 @@
                       class="form-control @error('holdLocationId') is-invalid @enderror"
                     >
                       <option value="">
-                        <span x-text="$wire.holdLocationType === 'store' ? 'Pilih Toko' : 'Pilih Gudang'"></span>
+                        <span
+                          x-text="$wire.holdLocationType === 'store' ? 'Pilih Toko' : 'Pilih Gudang'"
+                        ></span>
                       </option>
-                      @if($holdLocationType === 'store')
-                        @foreach($stores as $store)
+                      @if ($holdLocationType === 'store')
+                        @foreach ($stores as $store)
                           <option value="{{ $store->id }}">{{ $store->nama_toko }}</option>
                         @endforeach
-                      @elseif($holdLocationType === 'warehouse')
-                        @foreach($warehouses as $warehouse)
-                          <option value="{{ $warehouse->id }}">{{ $warehouse->nama_gudang }}</option>
+                      @elseif ($holdLocationType === 'warehouse')
+                        @foreach ($warehouses as $warehouse)
+                          <option value="{{ $warehouse->id }}">
+                            {{ $warehouse->nama_gudang }}
+                          </option>
                         @endforeach
                       @endif
                     </select>
@@ -762,14 +858,14 @@
                       class="form-control @error('holdNamaTumpukan') is-invalid @enderror"
                     >
                       <option value="">
-                        @if($holdProductId)
+                        @if ($holdProductId)
                           Pilih Nama Tumpukan
                         @else
-                          Pilih produk terlebih dahulu
+                            Pilih produk terlebih dahulu
                         @endif
                       </option>
-                      @if($holdProductId)
-                        @foreach($holdBatchOptions as $batchName)
+                      @if ($holdProductId)
+                        @foreach ($holdBatchOptions as $batchName)
                           <option value="{{ $batchName }}">{{ $batchName }}</option>
                         @endforeach
                       @endif
@@ -859,17 +955,20 @@
 
               <div class="row">
                 <div class="col-md-12">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     class="btn btn-warning btn-sm px-4"
                     wire:loading.attr="disabled"
                     wire:target="createHoldBatch"
                     :disabled="$wire.isCreatingHoldBatch"
                   >
                     <i class="fas fa-hand-paper"></i>
-                    <span wire:loading.remove wire:target="createHoldBatch">Buat Tumpukan Hold</span>
+                    <span wire:loading.remove wire:target="createHoldBatch">
+                      Buat Tumpukan Hold
+                    </span>
                     <span wire:loading wire:target="createHoldBatch">
-                      <i class="fas fa-spinner fa-spin"></i> Menyimpan...
+                      <i class="fas fa-spinner fa-spin"></i>
+                      Menyimpan...
                     </span>
                   </button>
                   <button
@@ -1056,7 +1155,9 @@
                     <!-- Product Header Row -->
                     <tr class="product-header-row">
                       <td class="text-center" style="width: 40px">
-                        <span class="badge badge-light text-dark border">{{ $productNumbers[$productId] ?? '-' }}</span>
+                        <span class="badge badge-light text-dark border">
+                          {{ $productNumbers[$productId] ?? '-' }}
+                        </span>
                       </td>
                       <td colspan="7" class="py-2">
                         <div class="d-flex align-items-center justify-content-between">
@@ -1106,12 +1207,13 @@
                         <td class="pl-4">
                           <i class="fas fa-angle-right mr-2 text-muted"></i>
                           <strong class="text-dark">{{ $batch->nama_tumpukan }}</strong>
-                          @if($batch->status === 'hold')
+                          @if ($batch->status === 'hold')
                             <span class="badge badge-warning ml-2">
                               <i class="fas fa-hand-paper fa-xs mr-1"></i>
                               HOLD
                             </span>
                           @endif
+
                           {{--
                             @if ($batch->note)
                             <br />
@@ -1255,12 +1357,20 @@
           @else
             <div class="text-center py-3">
               @if ($search || $location || $dateFrom || $dateTo || $satuan)
-                <div class="d-inline-flex align-items-start alert alert-info py-2 px-3" role="alert">
+                <div
+                  class="d-inline-flex align-items-start alert alert-info py-2 px-3"
+                  role="alert"
+                >
                   <i class="fas fa-search fa-lg mr-2 mt-1 text-info"></i>
                   <div class="text-left">
-                    <div class="font-weight-semibold mb-1">Tidak ada hasil untuk filter yang diterapkan</div>
+                    <div class="font-weight-semibold mb-1">
+                      Tidak ada hasil untuk filter yang diterapkan
+                    </div>
                     @if ($search)
-                      <div class="small text-muted">Pencarian: <strong>"{{ $search }}"</strong></div>
+                      <div class="small text-muted">
+                        Pencarian:
+                        <strong>"{{ $search }}"</strong>
+                      </div>
                     @endif
                   </div>
                 </div>
@@ -1270,14 +1380,24 @@
 
               <div class="mt-2">
                 @if ($search)
-                  <button type="button" class="btn btn-link btn-sm text-secondary" wire:click="clearSearchFilter">
-                    <i class="fas fa-times mr-1"></i> Hapus Pencarian
+                  <button
+                    type="button"
+                    class="btn btn-link btn-sm text-secondary"
+                    wire:click="clearSearchFilter"
+                  >
+                    <i class="fas fa-times mr-1"></i>
+                    Hapus Pencarian
                   </button>
                 @endif
 
                 @if ($search || $location || $dateFrom || $dateTo || $satuan)
-                  <button type="button" class="btn btn-link btn-sm text-primary" wire:click="resetMainFilters">
-                    <i class="fas fa-redo-alt mr-1"></i> Reset Semua Filter
+                  <button
+                    type="button"
+                    class="btn btn-link btn-sm text-primary"
+                    wire:click="resetMainFilters"
+                  >
+                    <i class="fas fa-redo-alt mr-1"></i>
+                    Reset Semua Filter
                   </button>
                 @endif
               </div>
