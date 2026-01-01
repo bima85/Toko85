@@ -862,7 +862,7 @@ class StockBatchIndex extends Component
             // Auto-generate nama tumpukan jika checkbox checked dan field kosong
             $namaTumpukanList = [];
             $qtyList = [];
-            
+
             if ($this->createNamaTumpukanType && !empty($this->createNamaTumpukanList)) {
                 // Gunakan list dari input fields dengan qty masing-masing
                 foreach ($this->createNamaTumpukanList as $index => $nama) {
@@ -874,7 +874,7 @@ class StockBatchIndex extends Component
                     $namaTumpukanList[] = !empty($nama) ? $nama : $this->generateBatchName();
                     $qtyList[] = $qty;
                 }
-                
+
                 // Jika tidak ada qty yang valid, tampilkan error
                 if (empty($qtyList)) {
                     throw new \Exception('Minimal satu input harus memiliki qty lebih dari 0');
@@ -906,7 +906,7 @@ class StockBatchIndex extends Component
             // Buat batch untuk setiap nama tumpukan dengan qty masing-masing
             foreach ($namaTumpukanList as $index => $namaTumpukan) {
                 $qty = $qtyList[$index] ?? 0;
-                
+
                 $batch = app(StockBatchService::class)->addStock(
                     $this->createProductId,
                     $this->createLocationType,

@@ -489,7 +489,7 @@
                         <input
                           type="checkbox"
                           id="createNameNew"
-                          wire:model="createNamaTumpukanType"
+                          wire:model.live="createNamaTumpukanType"
                           value="new"
                           class="custom-control-input"
                         />
