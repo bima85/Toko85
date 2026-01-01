@@ -1056,6 +1056,14 @@ class StockBatchIndex extends Component
         $this->createNamaTumpukanList = array_values($this->createNamaTumpukanList); // Re-index array
     }
 
+    public function updatedCreateNamaTumpukanType($value)
+    {
+        // Ketika checkbox di-check dan array kosong, initialize dengan satu input kosong
+        if ($value && empty($this->createNamaTumpukanList)) {
+            $this->createNamaTumpukanList = [''];
+        }
+    }
+
     private function resetCreateForm()
     {
         // Hanya reset field yang perlu di-reset untuk input batch berikutnya

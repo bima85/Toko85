@@ -531,13 +531,15 @@
                             type="button"
                             wire:click="addNamaTumpukanInput"
                           >
-                            <i class="fas fa-plus"></i> Tambah Input
+                            <i class="fas fa-plus"></i>
+                            Tambah Input
                           </button>
                         </div>
 
                         <small class="text-muted d-block mt-2">
                           <i class="fas fa-info-circle"></i>
-                          Ketik nama custom atau kosongkan untuk auto-generate. Klik tombol + untuk menambah lebih banyak.
+                          Ketik nama custom atau kosongkan untuk auto-generate. Klik tombol + untuk
+                          menambah lebih banyak.
                         </small>
                       </div>
                     @endif
