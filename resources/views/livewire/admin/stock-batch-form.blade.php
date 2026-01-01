@@ -67,15 +67,14 @@
         <!-- Kategori & Subkategori -->
         <div class="form-row">
           <div class="form-group col-md-6">
-            <label for="addCategory">
-              Kategori
-            </label>
+            <label for="addCategory">Kategori</label>
             <div class="input-group">
               <select wire:model="categoryId" id="addCategory" class="form-control">
                 <option value="">-- Pilih Kategori (opsional) --</option>
                 @foreach ($categories as $cat)
                   <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
                 @endforeach
+
                 <option value="__add__">+ Tambah Kategori...</option>
               </select>
             </div>
@@ -84,27 +83,42 @@
             @enderror
 
             @if ($showCategoryModal)
-              <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa;">
+              <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa">
                 <div class="form-group mb-2">
                   <label class="small"><strong>Kode (opsional)</strong></label>
-                  <input type="text" wire:model.defer="newCategoryCode" class="form-control form-control-sm" placeholder="Contoh: BERAS" />
+                  <input
+                    type="text"
+                    wire:model.defer="newCategoryCode"
+                    class="form-control form-control-sm"
+                    placeholder="Contoh: BERAS"
+                  />
                   @error('newCategoryCode')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
                 </div>
                 <div class="form-group mb-2">
                   <label class="small"><strong>Nama Kategori</strong></label>
-                  <input type="text" wire:model.defer="newCategoryName" class="form-control form-control-sm" placeholder="Contoh: Beras Putih" />
+                  <input
+                    type="text"
+                    wire:model.defer="newCategoryName"
+                    class="form-control form-control-sm"
+                    placeholder="Contoh: Beras Putih"
+                  />
                   @error('newCategoryName')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
                 </div>
                 <div class="form-group mb-0">
                   <button class="btn btn-success btn-sm" wire:click.prevent="createCategory">
-                    <i class="fas fa-check"></i> Tambah
+                    <i class="fas fa-check"></i>
+                    Tambah
                   </button>
-                  <button class="btn btn-secondary btn-sm" wire:click.prevent="$set('showCategoryModal', false)">
-                    <i class="fas fa-times"></i> Batal
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    wire:click.prevent="$set('showCategoryModal', false)"
+                  >
+                    <i class="fas fa-times"></i>
+                    Batal
                   </button>
                 </div>
               </div>
@@ -112,15 +126,14 @@
           </div>
 
           <div class="form-group col-md-6">
-            <label for="addSubcategory">
-              Subkategori
-            </label>
+            <label for="addSubcategory">Subkategori</label>
             <div class="input-group">
               <select wire:model="subcategoryId" id="addSubcategory" class="form-control">
                 <option value="">-- Pilih Subkategori (opsional) --</option>
                 @foreach ($subcategories as $sub)
                   <option value="{{ $sub->id }}">{{ $sub->nama_subkategori }}</option>
                 @endforeach
+
                 <option value="__add__">+ Tambah Subkategori...</option>
               </select>
             </div>
@@ -129,32 +142,48 @@
             @enderror
 
             @if ($showSubcategoryModal)
-              <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa;">
+              <div class="mt-2 p-2 border rounded" style="background-color: #f8f9fa">
                 <div class="form-group mb-2">
                   <label class="small"><strong>Kode (opsional)</strong></label>
-                  <input type="text" wire:model.defer="newSubcategoryCode" class="form-control form-control-sm" placeholder="Contoh: BR_PUTIH" />
+                  <input
+                    type="text"
+                    wire:model.defer="newSubcategoryCode"
+                    class="form-control form-control-sm"
+                    placeholder="Contoh: BR_PUTIH"
+                  />
                   @error('newSubcategoryCode')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
                 </div>
                 <div class="form-group mb-2">
                   <label class="small"><strong>Nama Subkategori</strong></label>
-                  <input type="text" wire:model.defer="newSubcategoryName" class="form-control form-control-sm" placeholder="Contoh: Beras Putih Premium" />
+                  <input
+                    type="text"
+                    wire:model.defer="newSubcategoryName"
+                    class="form-control form-control-sm"
+                    placeholder="Contoh: Beras Putih Premium"
+                  />
                   @error('newSubcategoryName')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
                 </div>
-                @if (!$categoryId)
+                @if (! $categoryId)
                   <div class="alert alert-info alert-sm mb-2" role="alert">
                     <small>Pilih kategori terlebih dahulu agar subkategori terkait dibuat.</small>
                   </div>
                 @endif
+
                 <div class="form-group mb-0">
                   <button class="btn btn-success btn-sm" wire:click.prevent="createSubcategory">
-                    <i class="fas fa-check"></i> Tambah
+                    <i class="fas fa-check"></i>
+                    Tambah
                   </button>
-                  <button class="btn btn-secondary btn-sm" wire:click.prevent="$set('showSubcategoryModal', false)">
-                    <i class="fas fa-times"></i> Batal
+                  <button
+                    class="btn btn-secondary btn-sm"
+                    wire:click.prevent="$set('showSubcategoryModal', false)"
+                  >
+                    <i class="fas fa-times"></i>
+                    Batal
                   </button>
                 </div>
               </div>
@@ -200,7 +229,8 @@
                 </datalist>
               </div>
               <small class="text-muted d-block mt-1">
-                <i class="fas fa-info-circle"></i> Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
+                <i class="fas fa-info-circle"></i>
+                Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
               </small>
             @else
               <input
@@ -211,7 +241,8 @@
                 placeholder="Kosongkan untuk auto-generate nama"
               />
               <small class="text-muted d-block mt-1">
-                <i class="fas fa-info-circle"></i> Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
+                <i class="fas fa-info-circle"></i>
+                Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
               </small>
             @endif
             @error('namaTumpukan')
@@ -226,6 +257,7 @@
             @if ($this->selectedProduct && $this->selectedProduct->satuan)
               <span class="text-muted">({{ $this->selectedProduct->satuan }})</span>
             @endif
+
             <span class="text-danger">*</span>
           </label>
           <input
@@ -290,6 +322,7 @@
             @if ($this->selectedProduct && $this->selectedProduct->satuan)
               <span class="text-muted">({{ $this->selectedProduct->satuan }})</span>
             @endif
+
             <span class="text-danger">*</span>
           </label>
           <input
@@ -354,6 +387,7 @@
             @if ($this->selectedProduct && $this->selectedProduct->satuan)
               <span class="text-muted">({{ $this->selectedProduct->satuan }})</span>
             @endif
+
             <span class="text-danger">*</span>
           </label>
           <input
@@ -413,7 +447,8 @@
                 </datalist>
               </div>
               <small class="text-muted d-block mt-1">
-                <i class="fas fa-info-circle"></i> Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
+                <i class="fas fa-info-circle"></i>
+                Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
               </small>
             @else
               <input
@@ -424,7 +459,8 @@
                 placeholder="Kosongkan untuk auto-generate nama"
               />
               <small class="text-muted d-block mt-1">
-                <i class="fas fa-info-circle"></i> Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
+                <i class="fas fa-info-circle"></i>
+                Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
               </small>
             @endif
             @error('toNamaTumpukan')

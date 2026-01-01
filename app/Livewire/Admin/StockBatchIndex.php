@@ -667,6 +667,12 @@ class StockBatchIndex extends Component
         $stores = Store::orderBy('nama_toko')->get();
         $warehouses = Warehouse::orderBy('nama_gudang')->get();
 
+        // Get existing batch names for datalist
+        $existingNames = StockBatch::distinct()
+            ->pluck('nama_tumpukan')
+            ->filter()
+            ->toArray();
+
         return view('livewire.admin.stock-batch-index', [
             'batches' => $batches,
             'productNumbers' => $productNumbers,
@@ -678,6 +684,7 @@ class StockBatchIndex extends Component
             'subcategories' => $subcategories,
             'stores' => $stores,
             'warehouses' => $warehouses,
+            'existingNames' => $existingNames,
             'totalPerProduct' => $this->totalPerProduct,
             'holdBatchOptions' => $this->holdBatchOptions,
         ]);
@@ -829,7 +836,7 @@ class StockBatchIndex extends Component
                 'createProductId' => 'required|numeric|min:1|exists:products,id',
                 'createLocationType' => 'required|in:store,warehouse',
                 'createLocationId' => 'required|numeric|min:1',
-                'createNamaTumpukan' => 'required|string|max:255',
+                'createNamaTumpukan' => 'nullable|string|max:255',
                 'createQty' => 'required|numeric|min:0.01',
                 'createSatuan' => 'nullable|string|max:50',
                 'createDate' => 'nullable|date',
@@ -844,13 +851,15 @@ class StockBatchIndex extends Component
                 'createLocationType.in' => 'Lokasi tidak valid',
                 'createLocationId.required' => 'Toko/Gudang harus dipilih',
                 'createLocationId.numeric' => 'Toko/Gudang tidak valid',
-                'createNamaTumpukan.required' => 'Nama tumpukan tidak boleh kosong',
                 'createNamaTumpukan.max' => 'Nama tumpukan maksimal 255 karakter',
                 'createQty.required' => 'Kuantitas harus diisi',
                 'createQty.min' => 'Kuantitas minimal 0.01',
                 'createSatuan.max' => 'Satuan maksimal 50 karakter',
                 'createDate.date' => 'Tanggal harus format yang valid',
             ]);
+
+            // Auto-generate nama tumpukan jika kosong
+            $namaTumpukan = $this->createNamaTumpukan ?: $this->generateBatchName();
 
             // Update satuan product jika diisi
             if ($this->createSatuan) {
@@ -874,7 +883,7 @@ class StockBatchIndex extends Component
             $batch = app(StockBatchService::class)->addStock(
                 $this->createProductId,
                 $this->createLocationType,
-                $this->createNamaTumpukan,
+                $namaTumpukan,
                 $this->createQty,
                 $this->createLocationId,
                 $this->createNote ?: null,
@@ -1385,5 +1394,28 @@ class StockBatchIndex extends Component
                     'subcategory_id' => $product->subcategory_id ? (int)$product->subcategory_id : null,
                 ];
             });
+    }
+
+    private function generateBatchName(): string
+    {
+        // Generate nama seperti "Tumpukan 1", "Tumpukan 2", dst
+        $basePattern = 'Tumpukan';
+        $counter = 1;
+        
+        $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern . '%')
+            ->latest('id')
+            ->first();
+        
+        if ($lastBatch) {
+            // Extract number from last batch name
+            preg_match('/\d+$/', $lastBatch->nama_tumpukan, $matches);
+            if (!empty($matches)) {
+                $counter = (int)$matches[0] + 1;
+            } else {
+                $counter = 1;
+            }
+        }
+        
+        return $basePattern . ' ' . $counter;
     }
 }

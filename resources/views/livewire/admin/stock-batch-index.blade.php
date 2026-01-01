@@ -439,16 +439,38 @@
                     <label>
                       <strong>
                         Nama Tumpukan
-                        <span class="text-danger">*</span>
+                        <span class="badge badge-info">Opsional</span>
                       </strong>
                     </label>
-                    <input
-                      type="text"
-                      wire:model="createNamaTumpukan"
-                      class="form-control @error('createNamaTumpukan') is-invalid @enderror"
-                      placeholder="A, B, C..."
-                      maxlength="50"
-                    />
+                    @if ($existingNames && count($existingNames) > 0)
+                      <input
+                        type="text"
+                        wire:model="createNamaTumpukan"
+                        class="form-control @error('createNamaTumpukan') is-invalid @enderror"
+                        placeholder="Kosongkan untuk auto-generate atau pilih dari dropdown"
+                        maxlength="255"
+                        list="existingNamesList"
+                      />
+                      <datalist id="existingNamesList">
+                        @foreach ($existingNames as $name)
+                          <option value="{{ $name }}">{{ $name }}</option>
+                        @endforeach
+                      </datalist>
+                      <small class="text-muted d-block mt-1">
+                        <i class="fas fa-info-circle"></i> Pilih dari dropdown atau ketik nama baru. Kosongkan untuk auto-generate.
+                      </small>
+                    @else
+                      <input
+                        type="text"
+                        wire:model="createNamaTumpukan"
+                        class="form-control @error('createNamaTumpukan') is-invalid @enderror"
+                        placeholder="Kosongkan untuk auto-generate nama"
+                        maxlength="255"
+                      />
+                      <small class="text-muted d-block mt-1">
+                        <i class="fas fa-info-circle"></i> Kosongkan untuk auto-generate nama tumpukan (Tumpukan 1, 2, dst).
+                      </small>
+                    @endif
                     @error('createNamaTumpukan')
                       <small class="text-danger d-block mt-1">{{ $message }}</small>
                     @enderror

@@ -122,7 +122,7 @@ class StockBatchForm extends Component
       try {
          // Auto-generate nama tumpukan jika kosong
          $namaTumpukan = $this->namaTumpukan ?: $this->generateBatchName();
-         
+
          // Selalu buat batch baru - tidak menggabungkan dengan batch yang sudah ada
          $this->stockBatchService->addStock(
             $this->productId,
@@ -174,7 +174,7 @@ class StockBatchForm extends Component
          $batch = StockBatch::findOrFail($this->batchId);
          // Auto-generate nama tumpukan jika kosong
          $toNamaTumpukan = $this->toNamaTumpukan ?: $this->generateBatchName();
-         
+
          $this->stockBatchService->moveStock(
             $batch,
             $this->toLocationType,
@@ -240,11 +240,11 @@ class StockBatchForm extends Component
       // Generate nama seperti "Tumpukan 1", "Tumpukan 2", dst
       $basePattern = 'Tumpukan';
       $counter = 1;
-      
+
       $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern . '%')
          ->latest('id')
          ->first();
-      
+
       if ($lastBatch) {
          // Extract number from last batch name
          preg_match('/\d+$/', $lastBatch->nama_tumpukan, $matches);
@@ -254,7 +254,7 @@ class StockBatchForm extends Component
             $counter = 1;
          }
       }
-      
+
       return $basePattern . ' ' . $counter;
    }
 
