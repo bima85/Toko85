@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             StoreWarehouseUnitSeeder::class,
             BerasMENTIKSeeder::class,
+            ShopCustomSeeder::class,
         ]);
     }
 }

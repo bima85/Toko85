@@ -1,18 +1,4 @@
-<div>
-  <!-- DataTables CSS -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap4.min.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap4.min.css"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap4.min.css"
-  />
-
+<div class="purchases-list-wrapper">
   @if (session()->has('message'))
     <div class="alert alert-success alert-dismissible">
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -94,8 +80,29 @@
               <div class="col-md-6">
                 <div class="form-group">
                   <label>
+                    <strong>Supplier/Owner</strong>
+                  </label>
+                  <input
+                    type="text"
+                    list="owners-datalist"
+                    wire:model="ownerFilter"
+                    wire:change="ownerChanged($event.target.value)"
+                    class="form-control"
+                    placeholder="Cari Supplier/Owner..."
+                  />
+                  <datalist id="owners-datalist">
+                    @foreach ($owners as $owner)
+                      <option value="{{ $owner }}"></option>
+                    @endforeach
+                  </datalist>
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="form-group">
+                  <label>
                     <strong>
-                      Supplier
+                      Perusahaan
                       <span class="text-danger">*</span>
                     </strong>
                   </label>
@@ -104,7 +111,7 @@
                       wire:model="supplier_id"
                       class="form-control @error('supplier_id') is-invalid @enderror"
                     >
-                      <option value="">-- Pilih Supplier --</option>
+                      <option value="">-- pilih Perusahaan--</option>
                       @foreach ($suppliers as $sup)
                         <option value="{{ $sup->id }}">{{ $sup->nama_supplier }}</option>
                       @endforeach
@@ -125,38 +132,42 @@
                   @enderror
                 </div>
               </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label><strong>Lokasi Toko</strong></label>
-                  <select
-                    wire:model="store_id"
-                    class="form-control @error('store_id') is-invalid @enderror"
-                  >
-                    <option value="">-- Tidak Ada --</option>
-                    @foreach ($stores as $store)
-                      <option value="{{ $store->id }}">{{ $store->nama_toko }}</option>
-                    @endforeach
-                  </select>
-                  @error('store_id')
-                    <small class="text-danger d-block mt-1">{{ $message }}</small>
-                  @enderror
-                </div>
-              </div>
             </div>
 
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label><strong>Gudang</strong></label>
+                  <label><strong>Lokasi</strong></label>
                   <select
-                    wire:model="warehouse_id"
-                    class="form-control @error('warehouse_id') is-invalid @enderror"
+                    wire:change="selectLocation($event.target.value)"
+                    class="form-control @error('store_id') is-invalid @enderror @error('warehouse_id') is-invalid @enderror"
                   >
                     <option value="">-- Tidak Ada --</option>
-                    @foreach ($warehouses as $wh)
-                      <option value="{{ $wh->id }}">{{ $wh->nama_gudang }}</option>
-                    @endforeach
+                    <optgroup label="Toko">
+                      @foreach ($stores as $s)
+                        <option
+                          value="store:{{ $s->id }}"
+                          @if($store_id == $s->id) selected @endif
+                        >
+                          {{ $s->nama_toko }}
+                        </option>
+                      @endforeach
+                    </optgroup>
+                    <optgroup label="Gudang">
+                      @foreach ($warehouses as $wh)
+                        <option
+                          value="warehouse:{{ $wh->id }}"
+                          @if($warehouse_id == $wh->id) selected @endif
+                        >
+                          {{ $wh->nama_gudang }}
+                        </option>
+                      @endforeach
+                    </optgroup>
                   </select>
+                  @error('store_id')
+                    <small class="text-danger d-block mt-1">{{ $message }}</small>
+                  @enderror
+
                   @error('warehouse_id')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
@@ -185,7 +196,7 @@
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group m-2">
               <label><strong>Keterangan</strong></label>
               <textarea
                 wire:model="keterangan"
@@ -210,7 +221,7 @@
                   >
                     <thead class="bg-light">
                       <tr>
-                        <th style="width: 10%">#</th>
+                        <th style="width: 3%">#</th>
                         <th style="width: 12%">Kategori</th>
                         <th style="width: 12%">Subkategori</th>
                         <th style="width: 15%">Produk</th>
@@ -230,18 +241,22 @@
                             <select
                               wire:model="purchaseItems.{{ $index }}.category_id"
                               wire:change="updateCategoryFilter({{ $index }})"
+                              onchange="handleCategoryChange(event, {{ $index }})"
                               class="form-control form-control-sm"
                             >
                               <option value="">--</option>
                               @foreach ($categories as $cat)
                                 <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
                               @endforeach
+
+                              <option value="__add_category__">+ Tambah kategori...</option>
                             </select>
                           </td>
                           <td>
                             <select
                               wire:model="purchaseItems.{{ $index }}.subcategory_id"
                               wire:change="updateSubcategoryFilter({{ $index }})"
+                              onchange="handleSubcategoryChange(event, {{ $index }})"
                               class="form-control form-control-sm"
                             >
                               <option value="">--</option>
@@ -250,21 +265,23 @@
                                   {{ $sub->nama_subkategori }}
                                 </option>
                               @endforeach
+
+                              <option value="__add_subcategory__">+ Tambah subkategori...</option>
                             </select>
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              list="products-datalist"
-                              wire:model="purchaseItems.{{ $index }}.product_search"
+                            <select
+                              wire:model="purchaseItems.{{ $index }}.product_id"
+                              onchange="handleProductSelectChange(event, {{ $index }})"
                               class="form-control form-control-sm"
-                              placeholder="Cari produk..."
-                            />
-                            <datalist id="products-datalist">
+                            >
+                              <option value="">--</option>
                               @foreach ($products as $prod)
-                                <option value="{{ $prod->nama_produk }}"></option>
+                                <option value="{{ $prod->id }}">{{ $prod->nama_produk }}</option>
                               @endforeach
-                            </datalist>
+
+                              <option value="__add_product__">+ Tambah produk...</option>
+                            </select>
                           </td>
                           <td>
                             <input
@@ -355,7 +372,7 @@
                 <i class="fas fa-times"></i>
                 Batal
               </button>
-              <button wire:click="save" class="btn btn-success btn-xl">
+              <button wire:click="save" class="btn btn-success btn-lg">
                 <i class="fas fa-save"></i>
                 Simpan Pembelian
               </button>
@@ -450,7 +467,7 @@
                       <td>
                         <button
                           wire:click="edit({{ $purchase->id }})"
-                          class="btn btn-info btn-xs mr-1"
+                          class="btn btn-info btn-sm mr-1"
                           title="Edit"
                         >
                           <i class="fas fa-edit"></i>
@@ -458,7 +475,7 @@
                         <button
                           wire:click="delete({{ $purchase->id }})"
                           wire:confirm="Yakin ingin menghapus pembelian ini?"
-                          class="btn btn-danger btn-xs"
+                          class="btn btn-danger btn-sm"
                           title="Hapus"
                         >
                           <i class="fas fa-trash"></i>
@@ -605,7 +622,7 @@
               <div class="form-group">
                 <label><strong>Keterangan</strong></label>
                 <textarea
-                  wire:model.defer="keterangan"
+                  wire:model.defer="supplier_keterangan"
                   class="form-control"
                   rows="2"
                   placeholder="Keterangan tambahan (opsional)..."
@@ -627,64 +644,267 @@
       </div>
     </div>
   @endif
-</div>
 
-<!-- DataTables JS -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap4.min.js"></script>
+  <!-- DataTables JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap4.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap4.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+  <script src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap4.min.js"></script>
 
-@if ($editingPurchaseId)
-  <script>
-    $(document).ready(function () {
-      // Initialize DataTable for purchase items only if we're editing
-      if ($('#purchaseItemsTable').length) {
-        var table = $('#purchaseItemsTable').DataTable({
-          processing: true,
-          serverSide: true,
-          ajax: {
-            url: '{{ route('admin.purchases.items', $editingPurchaseId) }}',
-            data: function (d) {
-              d.purchase_id = {{ $editingPurchaseId }};
+  @if ($editingPurchaseId)
+    <script>
+      $(document).ready(function () {
+        // Initialize DataTable for purchase items only if we're editing
+        if ($('#purchaseItemsTable').length) {
+          var table = $('#purchaseItemsTable').DataTable({
+            processing: true,
+            serverSide: true,
+            ajax: {
+              url: '{{ route('admin.purchases.items', $editingPurchaseId) }}',
+              data: function (d) {
+                d.purchase_id = {{ $editingPurchaseId }};
+              },
             },
-          },
-          columns: [
-            { data: 'DT_RowIndex', orderable: false, searchable: false },
-            { data: 'category_name' },
-            { data: 'subcategory_name' },
-            { data: 'product_name' },
-            { data: 'qty' },
-            { data: 'qty_gudang' },
-            { data: 'unit_name' },
-            { data: 'harga_beli' },
-            { data: 'total_formatted' },
-            { data: 'action', orderable: false, searchable: false },
-          ],
-          order: [[0, 'asc']],
-          pageLength: 10,
-          responsive: true,
-          dom: 'Bfrtip',
-          buttons: ['excel', 'pdf', 'print'],
-        });
+            columns: [
+              { data: 'DT_RowIndex', orderable: false, searchable: false },
+              { data: 'category_name' },
+              { data: 'subcategory_name' },
+              { data: 'product_name' },
+              { data: 'qty' },
+              { data: 'qty_gudang' },
+              { data: 'unit_name' },
+              { data: 'harga_beli' },
+              { data: 'total_formatted' },
+              { data: 'action', orderable: false, searchable: false },
+            ],
+            order: [[0, 'asc']],
+            pageLength: 10,
+            responsive: true,
+            dom: 'Bfrtip',
+            buttons: ['excel', 'pdf', 'print'],
+          });
 
-        // Handle edit button click
-        $(document).on('click', '.edit-item', function () {
-          var id = $(this).data('id');
-          alert('Edit item ' + id + ' - Feature coming soon');
-        });
+          // Handle edit button click
+          $(document).on('click', '.edit-item', function () {
+            var id = $(this).data('id');
+            alert('Edit item ' + id + ' - Feature coming soon');
+          });
 
-        // Handle delete button click
-        $(document).on('click', '.delete-item', function () {
-          var id = $(this).data('id');
-          if (confirm('Yakin ingin menghapus item ini?')) {
-            alert('Delete item ' + id + ' - Feature coming soon');
+          // Handle delete button click
+          $(document).on('click', '.delete-item', function () {
+            var id = $(this).data('id');
+            if (confirm('Yakin ingin menghapus item ini?')) {
+              alert('Delete item ' + id + ' - Feature coming soon');
+            }
+          });
+        }
+      });
+    </script>
+  @endif
+
+  <!-- Category Modal -->
+  @if ($showCategoryModal)
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal-dialog" role="document" style="z-index: 1050; position: relative">
+        <div class="modal-content">
+          <div class="modal-header bg-primary">
+            <h5 class="modal-title">Tambah Kategori</h5>
+            <button type="button" class="close" wire:click="closeCategoryModal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form wire:submit.prevent="saveCategoryModal">
+            <div class="modal-body">
+              <div class="form-group">
+                <label>
+                  Nama Kategori
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="text" wire:model.defer="new_category_name" class="form-control" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" wire:click="closeCategoryModal">
+                Batal
+              </button>
+              <button type="submit" class="btn btn-primary">Simpan Kategori</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  <!-- Subcategory Modal -->
+  @if ($showSubcategoryModal)
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal-dialog" role="document" style="z-index: 1050; position: relative">
+        <div class="modal-content">
+          <div class="modal-header bg-primary">
+            <h5 class="modal-title">Tambah Subkategori</h5>
+            <button
+              type="button"
+              class="close"
+              wire:click="closeSubcategoryModal"
+              aria-label="Close"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form wire:submit.prevent="saveSubcategoryModal">
+            <div class="modal-body">
+              <div class="form-group">
+                <label>
+                  Kategori
+                  <span class="text-danger">*</span>
+                </label>
+                <select wire:model="subcategory_modal_category_id" class="form-control">
+                  <option value="">-- pilih kategori --</option>
+                  @foreach ($categories as $cat)
+                    <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="form-group">
+                <label>
+                  Nama Subkategori
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="text" wire:model.defer="new_subcategory_name" class="form-control" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" wire:click="closeSubcategoryModal">
+                Batal
+              </button>
+              <button type="submit" class="btn btn-primary">Simpan Subkategori</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  <!-- Product Modal -->
+  @if ($showProductModal)
+    <div class="modal fade show d-block" tabindex="-1" role="dialog">
+      <div class="modal-backdrop fade show"></div>
+      <div class="modal-dialog" role="document" style="z-index: 1050; position: relative">
+        <div class="modal-content">
+          <div class="modal-header bg-primary">
+            <h5 class="modal-title">Tambah Produk</h5>
+            <button type="button" class="close" wire:click="closeProductModal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form wire:submit.prevent="saveProductModal">
+            <div class="modal-body">
+              <div class="form-group">
+                <label>
+                  Kategori
+                  <span class="text-danger">*</span>
+                </label>
+                <select wire:model="product_modal_category_id" class="form-control">
+                  <option value="">-- pilih kategori --</option>
+                  @foreach ($categories as $cat)
+                    <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Subkategori (opsional)</label>
+                <select wire:model="product_modal_subcategory_id" class="form-control">
+                  <option value="">-- pilih subkategori --</option>
+                  @foreach ($subcategories as $sub)
+                    <option value="{{ $sub->id }}">{{ $sub->nama_subkategori }}</option>
+                  @endforeach
+                </select>
+              </div>
+              <div class="form-group">
+                <label>
+                  Nama Produk
+                  <span class="text-danger">*</span>
+                </label>
+                <input type="text" wire:model.defer="new_product_name" class="form-control" />
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" wire:click="closeProductModal">
+                Batal
+              </button>
+              <button type="submit" class="btn btn-primary">Simpan Produk</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  <script>
+    function emitLW(eventName, ...params) {
+      try {
+        if (window.Livewire && typeof window.Livewire.emit === 'function') {
+          window.Livewire.emit(eventName, ...params);
+          return;
+        }
+        if (window.livewire && typeof window.livewire.emit === 'function') {
+          window.livewire.emit(eventName, ...params);
+          return;
+        }
+
+        // attempt to find component instance and call method directly as a fallback
+        const root = document.querySelector('[wire\\:id], [wire-id]');
+        const id = root ? root.getAttribute('wire:id') || root.getAttribute('wire-id') : null;
+        if (id && window.Livewire && typeof window.Livewire.find === 'function') {
+          const comp = window.Livewire.find(id);
+          if (comp) {
+            if (typeof comp.call === 'function') {
+              // call the component method directly (openCategoryModal/openSubcategoryModal/openProductModal exist)
+              comp.call(eventName, ...params);
+              return;
+            }
           }
-        });
+        }
+      } catch (err) {
+        console.warn('emitLW error', err);
       }
-    });
+      console.warn('Livewire emit not available for', eventName);
+    }
+    function handleCategoryChange(e, index) {
+      const val = e.target.value;
+      if (val === '__add_category__') {
+        emitLW('openCategoryModal', index);
+        e.target.value = '';
+      }
+    }
+
+    function handleSubcategoryChange(e, index) {
+      const val = e.target.value;
+      if (val === '__add_subcategory__') {
+        emitLW('openSubcategoryModal', index);
+        e.target.value = '';
+      }
+    }
+
+    function handleProductSelectChange(e, index) {
+      const val = e.target.value;
+      if (val === '__add_product__') {
+        emitLW('openProductModal', index);
+        e.target.value = '';
+      }
+    }
   </script>
-@endif
+
+  <style>
+    /* Minimal styling adjustments for product select to match other fields */
+    .form-control.form-control-sm {
+      font-size: 0.875rem;
+      line-height: 1.2;
+    }
+  </style>
+</div>

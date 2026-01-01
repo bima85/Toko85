@@ -18,14 +18,21 @@ class Sale extends Model
         'customer_id',
         'store_id',
         'warehouse_id',
+        'total_amount',
         'status',
         'keterangan',
         'user_id',
+        'held_at',
+        'cancelled_at',
+        'completed_at',
     ];
 
     protected $casts = [
         'tanggal_penjualan' => 'datetime',
         'delivery_date' => 'date',
+        'held_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     public function customer()

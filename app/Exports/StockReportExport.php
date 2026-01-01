@@ -18,12 +18,14 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
    protected $data;
    protected $title;
    protected $reportType;
+   protected $dateRange;
 
-   public function __construct($data, $reportType = 'store', $title = 'Laporan Stok')
+   public function __construct($data, $reportType = 'store', $title = 'Laporan Stok', $dateRange = null)
    {
       $this->data = $data;
       $this->title = $title;
       $this->reportType = $reportType;
+      $this->dateRange = $dateRange;
    }
 
    public function array(): array
@@ -33,10 +35,10 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
          [''],
          ['LAPORAN STOK ' . ($this->reportType === 'store' ? 'TOKO' : 'GUDANG')],
          ['PT. Your Company'],
-         ['Tanggal Report: ' . now()->format('d/m/Y H:i:s')],
+         ['Tanggal Report: ' . now()->format('d/m/Y H:i:s') . ($this->dateRange ? ' (Filter: ' . $this->dateRange . ')' : '')],
          [''],
-         // Row 6 = header kolom
-         ['No', 'Kode Produk', 'Nama Produk', 'Kategori', 'Sub Kategori', 'Unit', 'Stok Awal', 'Stok Masuk', 'Stok Keluar', 'Stok Akhir'],
+         // Row 6 = header kolom (added Tanggal, Batch, Lokasi, Keterangan)
+         ['No', 'Kode Produk', 'Nama Produk', 'Kategori', 'Sub Kategori', 'Unit', 'Tanggal Transaksi', 'Batch', 'Lokasi', 'Keterangan', 'Stok Masuk', 'Stok Keluar', 'Stok Akhir'],
       ];
 
       // Tambah data (mulai dari row 7)
@@ -47,10 +49,10 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
          $result[] = [''];
          $result[] = ['RINGKASAN:'];
          $result[] = ['Total Produk', count($this->data)];
-         $result[] = ['Total Stok Awal', $this->sumColumn(6)];
-         $result[] = ['Total Stok Masuk', $this->sumColumn(7)];
-         $result[] = ['Total Stok Keluar', $this->sumColumn(8)];
-         $result[] = ['Total Stok Akhir', $this->sumColumn(9)];
+         // Provide summary totals for Masuk, Keluar, Akhir (columns indices: 10=Masuk, 11=Keluar, 12=Akhir)
+         $result[] = ['Total Stok Masuk', $this->sumColumn(10)];
+         $result[] = ['Total Stok Keluar', $this->sumColumn(11)];
+         $result[] = ['Total Stok Akhir', $this->sumColumn(12)];
       }
 
       return $result;
@@ -71,28 +73,31 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
       return [
          'A' => 5,    // No
          'B' => 15,   // Kode Produk
-         'C' => 25,   // Nama Produk
+         'C' => 30,   // Nama Produk
          'D' => 15,   // Kategori
          'E' => 15,   // Sub Kategori
          'F' => 10,   // Unit
-         'G' => 12,   // Stok Awal
-         'H' => 12,   // Stok Masuk
-         'I' => 12,   // Stok Keluar
-         'J' => 12,   // Stok Akhir
+         'G' => 18,   // Tanggal Transaksi
+         'H' => 30,   // Batch
+         'I' => 18,   // Lokasi
+         'J' => 20,   // Keterangan
+         'K' => 12,   // Stok Masuk
+         'L' => 12,   // Stok Keluar
+         'M' => 12,   // Stok Akhir
       ];
    }
 
    public function styles(Worksheet $sheet)
    {
       // Style header info (rows 2-4)
-      $sheet->mergeCells('A2:J2');
+      $sheet->mergeCells('A2:M2');
       $sheet->getStyle('A2')->getFont()->setBold(true)->setSize(14)->setColor(new Color('FF366092'));
       $sheet->getStyle('A2')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
-      $sheet->mergeCells('A3:J3');
+      $sheet->mergeCells('A3:M3');
       $sheet->getStyle('A3')->getFont()->setSize(10)->setColor(new Color('FF666666'));
 
-      $sheet->mergeCells('A4:J4');
+      $sheet->mergeCells('A4:M4');
       $sheet->getStyle('A4')->getFont()->setSize(10)->setColor(new Color('FF666666'));
 
       // Style kolom header (row 6)
@@ -120,9 +125,11 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
       ];
 
       // Apply header style
-      for ($col = 'A'; $col <= 'J'; $col++) {
+      for ($col = 'A'; $col <= 'M'; $col++) {
          $sheet->getStyle($col . '6')->applyFromArray($headerStyle);
       }
+      // Ensure header texts wrap
+      $sheet->getStyle('A6:M6')->getAlignment()->setWrapText(true);
 
       // Style data rows
       $dataStyle = [
@@ -150,7 +157,7 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
                   'startColor' => ['rgb' => 'F0F0F0'],
                ],
             ];
-            for ($col = 'A'; $col <= 'J'; $col++) {
+            for ($col = 'A'; $col <= 'M'; $col++) {
                $sheet->getStyle($col . $row)->applyFromArray($fill);
             }
          }
@@ -158,11 +165,11 @@ class StockReportExport implements FromArray, WithHeadings, WithStyles, WithColu
 
       // Style kolom angka (center dan format)
       for ($row = $dataRowStart; $row <= $dataRowEnd; $row++) {
-         for ($col = 'A'; $col <= 'J'; $col++) {
+         for ($col = 'A'; $col <= 'M'; $col++) {
             $sheet->getStyle($col . $row)->applyFromArray($dataStyle);
 
-            // Format angka untuk kolom G-J
-            if (in_array($col, ['G', 'H', 'I', 'J'])) {
+            // Format angka for numeric columns (K: Stok Masuk, L: Stok Keluar, M: Stok Akhir)
+            if (in_array($col, ['K', 'L', 'M'])) {
                $sheet->getStyle($col . $row)->getNumberFormat()->setFormatCode('#,##0');
                $sheet->getStyle($col . $row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
             }

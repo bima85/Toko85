@@ -95,7 +95,7 @@
 
   <!-- Summary Cards -->
   <div class="row mb-3">
-    <div class="col-lg-4 col-md-4 col-sm-12 mb-2">
+    <div class="col-lg-3 col-md-6 col-sm-12 mb-2">
       <div class="info-box shadow-sm">
         <span class="info-box-icon bg-success elevation-1">
           <i class="fas fa-arrow-down"></i>
@@ -106,10 +106,11 @@
             {{ number_format($totalIn, 2, ',', '.') }}
             <small>{{ $commonUnit }}</small>
           </span>
+          <small class="text-muted">dari history transaksi</small>
         </div>
       </div>
     </div>
-    <div class="col-lg-4 col-md-4 col-sm-12 mb-2">
+    <div class="col-lg-3 col-md-6 col-sm-12 mb-2">
       <div class="info-box shadow-sm">
         <span class="info-box-icon bg-danger elevation-1">
           <i class="fas fa-arrow-up"></i>
@@ -120,24 +121,61 @@
             {{ number_format($totalOut, 2, ',', '.') }}
             <small>{{ $commonUnit }}</small>
           </span>
+          <small class="text-muted">dari history transaksi</small>
         </div>
       </div>
     </div>
-    <div class="col-lg-4 col-md-4 col-sm-12 mb-2">
+    <div class="col-lg-3 col-md-6 col-sm-12 mb-2">
       <div class="info-box shadow-sm">
-        <span class="info-box-icon {{ $net >= 0 ? 'bg-primary' : 'bg-warning' }} elevation-1">
-          <i class="fas fa-balance-scale"></i>
+        <span class="info-box-icon {{ $net >= 0 ? 'bg-info' : 'bg-warning' }} elevation-1">
+          <i class="fas fa-calculator"></i>
         </span>
         <div class="info-box-content">
-          <span class="info-box-text">Saldo Bersih</span>
-          <span class="info-box-number {{ $net >= 0 ? 'text-primary' : 'text-warning' }}">
+          <span class="info-box-text">Saldo (Masuk - Keluar)</span>
+          <span class="info-box-number {{ $net >= 0 ? 'text-info' : 'text-warning' }}">
             {{ $net >= 0 ? '+' : '' }}{{ number_format($net, 2, ',', '.') }}
             <small>{{ $commonUnit }}</small>
           </span>
+          <small class="text-muted">perhitungan dari history</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-12 mb-2">
+      <div class="info-box shadow-sm">
+        <span class="info-box-icon bg-primary elevation-1">
+          <i class="fas fa-warehouse"></i>
+        </span>
+        <div class="info-box-content">
+          <span class="info-box-text">Stok Aktual (Batch)</span>
+          <span class="info-box-number text-primary">
+            {{ number_format($currentStock, 2, ',', '.') }}
+            <small>{{ $commonUnit }}</small>
+          </span>
+          <small class="text-muted">dari stok batch aktif</small>
         </div>
       </div>
     </div>
   </div>
+
+  @if(abs($net - $currentStock) > 0.01)
+    <div class="alert alert-warning alert-dismissible">
+      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
+      <h5><i class="icon fas fa-exclamation-triangle"></i> Perbedaan Stok Terdeteksi!</h5>
+      <p>
+        Terdapat perbedaan antara perhitungan dari history transaksi ({{ number_format($net, 2, ',', '.') }} {{ $commonUnit }}) 
+        dengan stok aktual di batch ({{ number_format($currentStock, 2, ',', '.') }} {{ $commonUnit }}).
+        <br>
+        <strong>Selisih: {{ number_format(abs($net - $currentStock), 2, ',', '.') }} {{ $commonUnit }}</strong>
+      </p>
+      <p class="mb-0">
+        <small>
+          <i class="fas fa-info-circle mr-1"></i>
+          Stok aktual dari <strong>Stok Batch</strong> adalah sumber data yang paling akurat. 
+          Perbedaan ini mungkin terjadi karena ada transaksi manual atau penyesuaian yang belum tercatat di kartu stok.
+        </small>
+      </p>
+    </div>
+  @endif
 
   <!-- Main Card -->
   <div class="card card-outline card-primary elevation-2">
@@ -328,6 +366,12 @@
                     <span class="badge badge-pill badge-secondary mr-2">
                       {{ $cards->count() }} transaksi
                     </span>
+                    @if(!empty($holdTotals[$productId] ?? 0) && ($holdTotals[$productId] ?? 0) > 0)
+                      <span class="badge badge-pill badge-warning mr-1" title="Jumlah yang di-hold">
+                        <i class="fas fa-lock mr-1"></i>
+                        Hold: {{ number_format($holdTotals[$productId] ?? 0, 2, ',', '.') }}
+                      </span>
+                    @endif
                     <span class="badge badge-pill badge-success mr-1" title="Total Masuk">
                       <i class="fas fa-arrow-down"></i>
                       {{ number_format($totalIn, 2, ',', '.') }}
@@ -406,10 +450,13 @@
                             </td>
                             <td class="align-middle">
                               @if ($card->batch)
-                                <span class="badge badge-info">
-                                  <i class="fas fa-cube mr-1"></i>
-                                  {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
-                                </span>
+                                  <span class="badge badge-info">
+                                    <i class="fas fa-cube mr-1"></i>
+                                    {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
+                                  </span>
+                                  @if(isset($card->batch->status) && $card->batch->status === 'hold')
+                                    <small class="badge badge-warning ml-1">HOLD</small>
+                                  @endif
                               @else
                                 <span class="text-muted">-</span>
                               @endif
@@ -551,6 +598,9 @@
                           <i class="fas fa-cube mr-1"></i>
                           {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
                         </span>
+                        @if(isset($card->batch->status) && $card->batch->status === 'hold')
+                          <small class="badge badge-warning ml-1">HOLD</small>
+                        @endif
                       @else
                         <span class="text-muted">-</span>
                       @endif

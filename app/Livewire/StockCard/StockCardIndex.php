@@ -79,6 +79,24 @@ class StockCardIndex extends Component
         return $this->stockCards->groupBy('product_id');
     }
 
+    public function getHoldTotalsProperty()
+    {
+        // Compute hold totals per product for the current page/group
+        $productIds = $this->stockCards->pluck('product_id')->unique()->filter()->toArray();
+
+        if (empty($productIds)) {
+            return [];
+        }
+
+        return \App\Models\StockBatch::whereIn('product_id', $productIds)
+            ->where('status', 'hold')
+            ->where('qty', '>', 0)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(qty) as total')
+            ->pluck('total', 'product_id')
+            ->toArray();
+    }
+
     public function toggleGroup($productId)
     {
         if (in_array($productId, $this->expandedGroups)) {
@@ -110,12 +128,28 @@ class StockCardIndex extends Component
 
     public function getTotalInProperty()
     {
-        return StockCard::where('type', 'in')->sum('qty');
+        // Hitung semua transaksi yang menambah stok: 'in' dan 'return'
+        // Untuk 'adjustment', hanya hitung yang qty positif (penambahan)
+        $totalIn = StockCard::whereIn('type', ['in', 'return'])->sum('qty');
+        $adjustmentIn = StockCard::where('type', 'adjustment')->where('qty', '>', 0)->sum('qty');
+
+        return $totalIn + $adjustmentIn;
     }
 
     public function getTotalOutProperty()
     {
-        return StockCard::where('type', 'out')->sum('qty');
+        // Hitung semua transaksi yang mengurangi stok: 'out'
+        // Untuk 'adjustment', hitung nilai absolute dari qty negatif (pengurangan)
+        $totalOut = StockCard::where('type', 'out')->sum('qty');
+        $adjustmentOut = abs(StockCard::where('type', 'adjustment')->where('qty', '<', 0)->sum('qty'));
+
+        return $totalOut + $adjustmentOut;
+    }
+
+    public function getCurrentStockProperty()
+    {
+        // Ambil total stok tersedia: aktual dikurangi yang sedang di-hold
+        return \App\Models\StockBatch::getTotalQtyAllTumpukan();
     }
 
     public function getNetProperty()
@@ -220,6 +254,7 @@ class StockCardIndex extends Component
             'totalIn' => $this->totalIn,
             'totalOut' => $this->totalOut,
             'net' => $this->net,
+            'currentStock' => $this->currentStock,
             'commonUnit' => $this->commonUnit,
         ])->layout('layouts.admin');
     }

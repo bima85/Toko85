@@ -26,6 +26,7 @@ class StockReports extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+    public $searchAdjustments = '';
     public $activeTab = 'store'; // 'store' or 'warehouse'
     public $filterStoreId;
     public $filterWarehouseId;
@@ -37,6 +38,7 @@ class StockReports extends Component
     protected $queryString = [
         'activeTab' => ['except' => 'store'],
         'search' => ['except' => ''],
+        'searchAdjustments' => ['except' => ''],
         'currentPage' => ['except' => 1],
         'adjustmentsPage' => ['except' => 1],
     ];
@@ -79,6 +81,11 @@ class StockReports extends Component
     public function updatedSearch()
     {
         $this->currentPage = 1;
+    }
+
+    public function updatingSearchAdjustments()
+    {
+        $this->adjustmentsPage = 1;
     }
 
     public function updatingPerPage()
@@ -176,6 +183,15 @@ class StockReports extends Component
                 return $query->whereNotNull('warehouse_id')
                     ->where('warehouse_id', $this->filterWarehouseId);
             })
+            ->when($this->searchAdjustments, function ($query) {
+                return $query->where(function ($q) {
+                    $q->whereHas('product', function ($productQuery) {
+                        $productQuery->where('nama_produk', 'like', '%' . $this->searchAdjustments . '%')
+                            ->orWhere('kode_produk', 'like', '%' . $this->searchAdjustments . '%');
+                    })
+                        ->orWhere('reason', 'like', '%' . $this->searchAdjustments . '%');
+                });
+            })
             ->latest()
             ->paginate($this->perPageAdjustments, ['*'], 'adjustments_page', $this->adjustmentsPage);
     }
@@ -190,11 +206,36 @@ class StockReports extends Component
 
         $batchTotals = $this->getStockBatchTotalByProduct();
 
+        // Compute hold totals for products shown on the current stocks page
+        $holdTotals = $this->getHoldTotalsForStocks($stocks);
+
         return view('livewire.admin.stock-reports', [
             'stocks' => $stocks,
             'batchTotals' => $batchTotals,
             'adjustments' => $this->adjustments,
+            'holdTotals' => $holdTotals,
         ]);
+    }
+
+    /**
+     * Compute hold totals (qty) for products in the provided stocks paginator/collection
+     * Returns array keyed by product_id => total_hold_qty
+     */
+    private function getHoldTotalsForStocks($stocks)
+    {
+        $productIds = collect($stocks->items())->pluck('product_id')->unique()->filter()->toArray();
+
+        if (empty($productIds)) {
+            return [];
+        }
+
+        return StockBatch::whereIn('product_id', $productIds)
+            ->where('status', 'hold')
+            ->where('qty', '>', 0)
+            ->groupBy('product_id')
+            ->selectRaw('product_id, SUM(qty) as total_qty')
+            ->pluck('total_qty', 'product_id')
+            ->toArray();
     }
 
     private function getStoreStocks()
@@ -625,23 +666,53 @@ class StockReports extends Component
     public function getTotalStokGudang()
     {
         // Gunakan StockBatch sebagai sumber data yang paling akurat
-        return StockBatch::where('location_type', 'warehouse')->sum('qty');
+        $actual = StockBatch::where('location_type', 'warehouse')
+            ->where('status', 'aktual')
+            ->where('qty', '>', 0)
+            ->sum('qty');
+
+        $hold = StockBatch::where('location_type', 'warehouse')
+            ->where('status', 'hold')
+            ->where('qty', '>', 0)
+            ->sum('qty');
+
+        return $actual - $hold;
     }
 
     public function getStockBatchTotalByProduct()
     {
-        $batches = StockBatch::query()
-            ->with('product')
-            ->where('qty', '>', 0)  // Only active batches
+        // Calculate per-product available quantities: sum(aktual) - sum(hold)
+        $actual = StockBatch::where('qty', '>', 0)
+            ->where('status', 'aktual')
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
                 $product = $items->first()->product;
                 return (object) [
                     'product_id' => $product->id,
-                    'total_qty' => $items->sum('qty'),
+                    'actual_qty' => $items->sum('qty'),
                 ];
             });
+
+        $holds = StockBatch::where('qty', '>', 0)
+            ->where('status', 'hold')
+            ->get()
+            ->groupBy('product_id')
+            ->map(function ($items) {
+                $product = $items->first()->product;
+                return (object) [
+                    'product_id' => $product->id,
+                    'hold_qty' => $items->sum('qty'),
+                ];
+            });
+
+        $batches = $actual->mapWithKeys(function ($a) use ($holds) {
+            $hold = $holds[$a->product_id]->hold_qty ?? 0;
+            return [$a->product_id => (object)[
+                'product_id' => $a->product_id,
+                'total_qty' => $a->actual_qty - $hold,
+            ]];
+        });
 
         // Convert to keyed array for template access
         $result = [];
@@ -719,5 +790,11 @@ class StockReports extends Component
     {
         $this->selectedAdjustments = [];
         $this->selectAllAdjustments = false;
+    }
+
+    public function clearSearchAdjustments()
+    {
+        $this->searchAdjustments = '';
+        $this->adjustmentsPage = 1;
     }
 }

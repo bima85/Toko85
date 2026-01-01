@@ -1,4 +1,168 @@
 <div>
+  <style>
+    /* Item Penjualan - Responsive Design */
+    .sale-items-container {
+      margin-top: 2rem;
+    }
+
+    /* Desktop View - Table */
+    @media (min-width: 769px) {
+      .sale-items-desktop {
+        display: table;
+        width: 100%;
+      }
+
+      .sale-items-mobile {
+        display: none;
+      }
+
+      .sale-items-table {
+        width: 100%;
+      }
+
+      .sale-items-table thead th {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+      }
+
+      .sale-items-table tbody td {
+        padding: 0.75rem 0.5rem;
+        vertical-align: middle;
+      }
+
+      .sale-items-table .form-control-sm {
+        font-size: 0.9rem;
+      }
+    }
+
+    /* Mobile View - Cards */
+    @media (max-width: 768px) {
+      .sale-items-desktop {
+        display: none;
+      }
+
+      .sale-items-mobile {
+        display: block;
+      }
+
+      .sale-item-card {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      .sale-item-card.active {
+        border-color: #007bff;
+        background: #f0f7ff;
+      }
+
+      .sale-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .sale-item-no {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #495057;
+        background: #f8f9fa;
+        padding: 0.25rem 0.75rem;
+        border-radius: 0.25rem;
+      }
+
+      .sale-item-delete {
+        margin: 0;
+      }
+
+      .sale-item-row {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.5rem 1rem;
+        margin-bottom: 1rem;
+        font-size: 0.95rem;
+      }
+
+      .sale-item-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .sale-item-label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .sale-item-value {
+        display: flex;
+        align-items: center;
+      }
+
+      .sale-item-row .form-control-sm,
+      .sale-item-row .form-select-sm {
+        font-size: 0.9rem;
+        padding: 0.4rem 0.5rem;
+      }
+
+      .sale-item-row input[type='text'],
+      .sale-item-row input[type='number'],
+      .sale-item-row select {
+        max-width: 100%;
+      }
+
+      .sale-item-total {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 0.25rem;
+        text-align: right;
+        font-weight: 600;
+        color: #28a745;
+        font-size: 1rem;
+      }
+
+      .sale-items-summary {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-top: 1rem;
+      }
+
+      .sale-items-summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+      }
+
+      .sale-items-summary-row:last-child {
+        border-top: 2px solid #e0e0e0;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+    }
+
+    /* Shared Styles */
+    .sale-items-label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 0.95rem;
+    }
+  </style>
+
   @if (session()->has('success'))
     <div class="alert alert-success alert-dismissible">
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
@@ -85,15 +249,27 @@
                       <span class="text-danger">*</span>
                     </strong>
                   </label>
-                  <select
-                    wire:model.live="customer_id"
-                    class="form-control @error('customer_id') is-invalid @enderror"
-                  >
-                    <option value="">-- Pilih Pelanggan --</option>
-                    @foreach ($customers as $cust)
-                      <option value="{{ $cust->id }}">{{ $cust->nama_pelanggan }}</option>
-                    @endforeach
-                  </select>
+                  <div class="input-group">
+                    <select
+                      wire:model.live="customer_id"
+                      class="form-control @error('customer_id') is-invalid @enderror"
+                    >
+                      <option value="">-- Pilih Pelanggan --</option>
+                      @foreach ($customers as $cust)
+                        <option value="{{ $cust->id }}">{{ $cust->nama_pelanggan }}</option>
+                      @endforeach
+                    </select>
+                    <div class="input-group-append">
+                      <button
+                        type="button"
+                        class="btn btn-outline-success"
+                        wire:click.prevent="showCreateCustomerModal = true"
+                        title="Tambah Pelanggan"
+                      >
+                        <i class="fas fa-plus"></i>
+                      </button>
+                    </div>
+                  </div>
                   @error('customer_id')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
@@ -101,41 +277,73 @@
               </div>
               <div class="col-md-6">
                 <div class="form-group">
-                  <label><strong>Lokasi Toko</strong></label>
-                  <select
-                    wire:model="store_id"
-                    class="form-control @error('store_id') is-invalid @enderror"
-                  >
-                    <option value="">-- Tidak Ada --</option>
-                    @foreach ($stores as $store)
-                      <option value="{{ $store->id }}">{{ $store->nama_toko }}</option>
-                    @endforeach
-                  </select>
-                  @error('store_id')
-                    <small class="text-danger d-block mt-1">{{ $message }}</small>
-                  @enderror
+                  <label>
+                    <strong>
+                      Ambil Stok Dari
+                      <span class="text-danger">*</span>
+                    </strong>
+                  </label>
+                  <div class="d-flex gap-3 mb-2">
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        wire:model.live="location_source"
+                        value="toko"
+                        id="locationToko"
+                      />
+                      <label class="form-check-label" for="locationToko">
+                        <i class="fas fa-store text-info"></i>
+                        Toko
+                      </label>
+                    </div>
+                    <div class="form-check">
+                      <input
+                        class="form-check-input"
+                        type="radio"
+                        wire:model.live="location_source"
+                        value="gudang"
+                        id="locationGudang"
+                      />
+                      <label class="form-check-label" for="locationGudang">
+                        <i class="fas fa-warehouse text-success"></i>
+                        Gudang
+                      </label>
+                    </div>
+                  </div>
+
+                  @if ($location_source === 'toko')
+                    <select
+                      wire:model.live="store_id"
+                      class="form-control @error('store_id') is-invalid @enderror"
+                    >
+                      <option value="">-- Pilih Toko --</option>
+                      @foreach ($stores as $store)
+                        <option value="{{ $store->id }}">{{ $store->nama_toko }}</option>
+                      @endforeach
+                    </select>
+                    @error('store_id')
+                      <small class="text-danger d-block mt-1">{{ $message }}</small>
+                    @enderror
+                  @else
+                    <select
+                      wire:model.live="warehouse_id"
+                      class="form-control @error('warehouse_id') is-invalid @enderror"
+                    >
+                      <option value="">-- Pilih Gudang --</option>
+                      @foreach ($warehouses as $wh)
+                        <option value="{{ $wh->id }}">{{ $wh->nama_gudang }}</option>
+                      @endforeach
+                    </select>
+                    @error('warehouse_id')
+                      <small class="text-danger d-block mt-1">{{ $message }}</small>
+                    @enderror
+                  @endif
                 </div>
               </div>
             </div>
 
             <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label><strong>Gudang</strong></label>
-                  <select
-                    wire:model="warehouse_id"
-                    class="form-control @error('warehouse_id') is-invalid @enderror"
-                  >
-                    <option value="">-- Tidak Ada --</option>
-                    @foreach ($warehouses as $wh)
-                      <option value="{{ $wh->id }}">{{ $wh->nama_gudang }}</option>
-                    @endforeach
-                  </select>
-                  @error('warehouse_id')
-                    <small class="text-danger d-block mt-1">{{ $message }}</small>
-                  @enderror
-                </div>
-              </div>
               <div class="col-md-6">
                 <div class="form-group">
                   <label>
@@ -149,6 +357,7 @@
                     class="form-control @error('status') is-invalid @enderror"
                   >
                     <option value="pending">Pending</option>
+                    <option value="hold">Hold / Keep (Tahan Stok)</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
@@ -172,223 +381,433 @@
               @enderror
             </div>
 
-            <!-- Items Table -->
+            <!-- Inline Add Customer Modal -->
+            @if ($showCreateCustomerModal)
+              <div class="modal fade show" style="display: block" tabindex="-1" role="dialog">
+                <div class="modal-dialog" role="document">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Tambah Pelanggan</h5>
+                      <button
+                        type="button"
+                        class="close"
+                        wire:click="$set('showCreateCustomerModal', false)"
+                      >
+                        <span>&times;</span>
+                      </button>
+                    </div>
+                    <div class="modal-body">
+                      <div class="form-group">
+                        <label>Nama Pelanggan</label>
+                        <input wire:model.defer="new_customer_nama" class="form-control" />
+                      </div>
+                      <div class="form-group">
+                        <label>Telepon</label>
+                        <input wire:model.defer="new_customer_telepon" class="form-control" />
+                      </div>
+                      <div class="form-group">
+                        <label>Email</label>
+                        <input wire:model.defer="new_customer_email" class="form-control" />
+                      </div>
+                      <div class="form-group">
+                        <label>Alamat</label>
+                        <textarea
+                          wire:model.defer="new_customer_alamat"
+                          class="form-control"
+                          rows="2"
+                        ></textarea>
+                      </div>
+                    </div>
+                    <div class="modal-footer">
+                      <button class="btn btn-success" wire:click.prevent="saveNewCustomer">
+                        Simpan
+                      </button>
+                      <button
+                        class="btn btn-secondary"
+                        wire:click="$set('showCreateCustomerModal', false)"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            @endif
+
+            <!-- Items Table/Cards -->
             @if (count($saleItems) > 0)
-              <div class="form-group mt-4">
-                <label><strong>Item Penjualan</strong></label>
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered">
-                    <thead class="bg-light">
-                      <tr>
-                        <th style="width: 5%">#</th>
-                        <th style="width: 10%">Kategori</th>
-                        <th style="width: 10%">Subkategori</th>
-                        <th style="width: 12%">Produk</th>
-                        <th style="width: 12%">Batch/Tumpukan</th>
-                        <th style="width: 7%">Qty</th>
-                        <th style="width: 8%">Unit</th>
-                        <th style="width: 12%">Harga Jual</th>
-                        <th style="width: 10%">Total</th>
-                        <th style="width: 5%">Hapus</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @foreach ($saleItems as $index => $item)
-                        <tr wire:key="item-{{ $index }}">
-                          <td class="text-center">{{ $index + 1 }}</td>
-                          <td>
-                            <select
-                              wire:model="saleItems.{{ $index }}.category_id"
-                              class="form-control form-control-sm"
-                            >
-                              <option value="">--</option>
-                              @foreach ($categories as $cat)
-                                <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
-                              @endforeach
-                            </select>
-                          </td>
-                          <td>
-                            <select
-                              wire:model="saleItems.{{ $index }}.subcategory_id"
-                              class="form-control form-control-sm"
-                            >
-                              <option value="">--</option>
-                              @foreach ($subcategories as $sub)
-                                <option value="{{ $sub->id }}">
-                                  {{ $sub->nama_subkategori }}
-                                </option>
-                              @endforeach
-                            </select>
-                          </td>
-                          <td>
-                            <div class="input-group input-group-sm">
-                              <input
-                                type="text"
-                                list="productList{{ $index }}"
-                                wire:model.live="saleItems.{{ $index }}.product_search"
-                                data-item-index="{{ $index }}"
-                                class="form-control form-control-sm product-search-input"
-                                placeholder="Cari produk..."
-                                autocomplete="off"
-                              />
-                              <datalist id="productList{{ $index }}">
-                                @foreach ($products as $prod)
-                                  <option
-                                    value="[{{ $prod->kode_produk }}] {{ $prod->nama_produk }}"
-                                    data-product-id="{{ $prod->id }}"
-                                  ></option>
-                                @endforeach
-                              </datalist>
-                            </div>
-                            @if ($item['product_id'])
-                              <small class="text-success d-block mt-1">
-                                <i class="fas fa-check-circle"></i>
-                                Produk dipilih
-                              </small>
-                            @endif
-                          </td>
-                          <td>
-                            <div class="input-group input-group-sm">
+              <div class="sale-items-container">
+                <label class="sale-items-label">
+                  <strong>Item Penjualan</strong>
+                </label>
+
+                <!-- Desktop View -->
+                <div class="sale-items-desktop">
+                  <div class="table-responsive">
+                    <table class="table table-sm table-bordered sale-items-table">
+                      <thead>
+                        <tr>
+                          <th style="width: 5%">#</th>
+                          <th style="width: 10%">Kategori</th>
+                          <th style="width: 10%">Subkategori</th>
+                          <th style="width: 12%">Produk</th>
+                          <th style="width: 12%">Batch/Tumpukan</th>
+                          <th style="width: 7%">Qty</th>
+                          <th style="width: 8%">Unit</th>
+                          <th style="width: 12%">Harga Jual</th>
+                          <th style="width: 10%">Total</th>
+                          <th style="width: 5%">Hapus</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @foreach ($saleItems as $index => $item)
+                          <tr wire:key="item-{{ $index }}">
+                            <td class="text-center">{{ $index + 1 }}</td>
+                            <td>
                               <select
-                                wire:model.live="saleItems.{{ $index }}.batch_id"
+                                wire:model="saleItems.{{ $index }}.category_id"
                                 class="form-control form-control-sm"
                               >
-                                <option value="">-- Pilih Batch --</option>
-                                @php
-                                  $batches = $this->getAvailableBatches($index);
-                                  $debugMsg = 'pid=' . ($item['product_id'] ?? 'null') . ' store=' . ($this->store_id ?? 'null') . ' wh=' . ($this->warehouse_id ?? 'null') . ' count=' . $batches->count();
-                                @endphp
-
-                                @if ($batches->count() === 0)
-                                  <option disabled selected>
-                                    Pilih produk dulu ({{ $debugMsg }})
+                                <option value="">--</option>
+                                @foreach ($categories as $cat)
+                                  <option value="{{ $cat->id }}">
+                                    {{ $cat->nama_kategori }}
                                   </option>
-                                @else
-                                  @foreach ($batches as $batch)
-                                    <option
-                                      value="{{ $batch->id }}"
-                                      @if($item['batch_id'] == $batch->id) selected @endif
-                                    >
-                                      {{ $batch->nama_tumpukan }} ({{ $batch->qty }} sak)
-                                    </option>
-                                  @endforeach
-                                @endif
+                                @endforeach
                               </select>
-                              @if ($item['batch_id'])
-                                @php
-                                  $selectedBatch = \App\Models\StockBatch::find($item['batch_id']);
-                                @endphp
-
-                                <span class="input-group-text" title="Stok tersedia">
-                                  @if ($selectedBatch)
-                                    <span class="badge badge-info">
-                                      {{ $selectedBatch->qty }} sak
-                                    </span>
-                                  @endif
-                                </span>
-                              @endif
-                            </div>
-                            @if ($item['batch_id'] && $item['qty'])
-                              @php
-                                $batch = \App\Models\StockBatch::find($item['batch_id']);
-                                $itemQty = $item['qty'] ?? 0;
-                                $batchQty = $batch ? $batch->qty : 0;
-                              @endphp
-
-                              @if ($itemQty > $batchQty)
-                                <small class="text-danger d-block mt-1">
-                                  <i class="fas fa-exclamation-triangle"></i>
-                                  Batch tidak cukup! Tersedia: {{ $batchQty }} sak
+                            </td>
+                            <td>
+                              <select
+                                wire:model="saleItems.{{ $index }}.subcategory_id"
+                                class="form-control form-control-sm"
+                              >
+                                <option value="">--</option>
+                                @foreach ($subcategories as $sub)
+                                  <option value="{{ $sub->id }}">
+                                    {{ $sub->nama_subkategori }}
+                                  </option>
+                                @endforeach
+                              </select>
+                            </td>
+                            <td>
+                              <div class="input-group input-group-sm">
+                                <input
+                                  type="text"
+                                  list="productList{{ $index }}"
+                                  wire:model.live="saleItems.{{ $index }}.product_search"
+                                  data-item-index="{{ $index }}"
+                                  class="form-control form-control-sm product-search-input"
+                                  placeholder="Cari produk..."
+                                  autocomplete="off"
+                                />
+                                <datalist id="productList{{ $index }}">
+                                  @foreach ($products as $prod)
+                                    <option
+                                      value="[{{ $prod->kode_produk }}] {{ $prod->nama_produk }}"
+                                      data-product-id="{{ $prod->id }}"
+                                    ></option>
+                                  @endforeach
+                                </datalist>
+                              </div>
+                              @if ($item['product_id'])
+                                <small class="text-success d-block mt-1">
+                                  <i class="fas fa-check-circle"></i>
+                                  Dipilih
                                 </small>
                               @endif
-                            @endif
+                            </td>
+                            <td>
+                              <div class="input-group input-group-sm">
+                                <select
+                                  wire:model.live="saleItems.{{ $index }}.batch_id"
+                                  class="form-control form-control-sm"
+                                >
+                                  <option value="">-- Pilih --</option>
+                                  @php
+                                    $batches = $this->getAvailableBatches($index);
+                                  @endphp
+
+                                  @if ($batches->count() === 0)
+                                    <option disabled selected>Pilih produk</option>
+                                  @else
+                                    @foreach ($batches as $batch)
+                                      <option
+                                        value="{{ $batch->id }}"
+                                        @if($item['batch_id'] == $batch->id) selected @endif
+                                      >
+                                        {{ $batch->nama_tumpukan }} ({{ $batch->qty }})
+                                      </option>
+                                    @endforeach
+                                  @endif
+                                </select>
+                              </div>
+                            </td>
+                            <td>
+                              <input
+                                wire:model="saleItems.{{ $index }}.qty"
+                                wire:change="updateTotal({{ $index }})"
+                                type="number"
+                                min="1"
+                                class="form-control form-control-sm text-center"
+                              />
+                            </td>
+                            <td>
+                              <select
+                                wire:model="saleItems.{{ $index }}.unit_id"
+                                wire:change="updateTotal({{ $index }})"
+                                class="form-control form-control-sm"
+                              >
+                                <option value="">--</option>
+                                @foreach ($units as $unit)
+                                  <option value="{{ $unit->id }}">{{ $unit->nama_unit }}</option>
+                                @endforeach
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                wire:model="saleItems.{{ $index }}.harga_jual"
+                                wire:change="updateTotal({{ $index }})"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                class="form-control form-control-sm text-right"
+                              />
+                            </td>
+                            <td class="text-right font-weight-bold">
+                              Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}
+                            </td>
+                            <td class="text-center">
+                              <button
+                                wire:click="removeItem({{ $index }})"
+                                type="button"
+                                class="btn btn-danger btn-sm"
+                              >
+                                <i class="fas fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        @endforeach
+                      </tbody>
+                      <tfoot class="bg-light font-weight-bold">
+                        <tr>
+                          <td></td>
+                          <td colspan="7" class="text-right pr-3">Kuli:</td>
+                          <td style="padding: 4px 0; width: 150px">
+                            <div class="input-group input-group-sm">
+                              <div class="input-group-prepend">
+                                <span class="input-group-text">Rp</span>
+                              </div>
+                              <input
+                                id="kuliInput"
+                                wire:model.defer="kuli"
+                                type="text"
+                                class="form-control form-control-sm text-right"
+                                placeholder="0"
+                              />
+                            </div>
                           </td>
-                          <td>
+                          <td colspan="2"></td>
+                        </tr>
+                        <tr>
+                          <td colspan="7" class="text-right pr-3">TOTAL:</td>
+                          <td colspan="2" class="text-right text-success">
+                            Rp
+                            {{ number_format(array_sum(array_column($saleItems, 'total')) + ($kuli ?? 0), 0, ',', '.') }}
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Mobile View -->
+                <div class="sale-items-mobile">
+                  @foreach ($saleItems as $index => $item)
+                    <div class="sale-item-card" wire:key="mobile-item-{{ $index }}">
+                      <div class="sale-item-header">
+                        <span class="sale-item-no">Item #{{ $index + 1 }}</span>
+                        <button
+                          wire:click="removeItem({{ $index }})"
+                          type="button"
+                          class="btn btn-danger btn-sm sale-item-delete"
+                        >
+                          <i class="fas fa-trash"></i>
+                        </button>
+                      </div>
+
+                      <!-- Kategori -->
+                      <div class="sale-item-row">
+                        <div class="sale-item-label">Kategori</div>
+                        <div class="sale-item-value">
+                          <select
+                            wire:model="saleItems.{{ $index }}.category_id"
+                            class="form-control form-control-sm form-select-sm"
+                          >
+                            <option value="">-- Pilih --</option>
+                            @foreach ($categories as $cat)
+                              <option value="{{ $cat->id }}">{{ $cat->nama_kategori }}</option>
+                            @endforeach
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Subkategori -->
+                      <div class="sale-item-row">
+                        <div class="sale-item-label">Subkategori</div>
+                        <div class="sale-item-value">
+                          <select
+                            wire:model="saleItems.{{ $index }}.subcategory_id"
+                            class="form-control form-control-sm form-select-sm"
+                          >
+                            <option value="">-- Pilih --</option>
+                            @foreach ($subcategories as $sub)
+                              <option value="{{ $sub->id }}">
+                                {{ $sub->nama_subkategori }}
+                              </option>
+                            @endforeach
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Produk -->
+                      <div class="sale-item-row">
+                        <div class="sale-item-label">Produk</div>
+                        <div class="sale-item-value">
+                          <input
+                            type="text"
+                            list="productListMobile{{ $index }}"
+                            wire:model.live="saleItems.{{ $index }}.product_search"
+                            class="form-control form-control-sm"
+                            placeholder="Cari produk..."
+                            autocomplete="off"
+                          />
+                          <datalist id="productListMobile{{ $index }}">
+                            @foreach ($products as $prod)
+                              <option
+                                value="[{{ $prod->kode_produk }}] {{ $prod->nama_produk }}"
+                                data-product-id="{{ $prod->id }}"
+                              ></option>
+                            @endforeach
+                          </datalist>
+                        </div>
+                      </div>
+                      @if ($item['product_id'])
+                        <small class="text-success">
+                          <i class="fas fa-check-circle"></i>
+                          Produk dipilih
+                        </small>
+                      @endif
+
+                      <!-- Batch -->
+                      <div class="sale-item-row">
+                        <div class="sale-item-label">Batch</div>
+                        <div class="sale-item-value">
+                          <select
+                            wire:model.live="saleItems.{{ $index }}.batch_id"
+                            class="form-control form-control-sm form-select-sm"
+                          >
+                            <option value="">-- Pilih --</option>
+                            @php
+                              $batches = $this->getAvailableBatches($index);
+                            @endphp
+
+                            @foreach ($batches as $batch)
+                              <option
+                                value="{{ $batch->id }}"
+                                @if($item['batch_id'] == $batch->id) selected @endif
+                              >
+                                {{ $batch->nama_tumpukan }} ({{ $batch->qty }})
+                              </option>
+                            @endforeach
+                          </select>
+                        </div>
+                      </div>
+
+                      <!-- Qty & Unit (Row) -->
+                      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem">
+                        <div class="sale-item-row" style="margin-bottom: 0; grid-column: 1 / 2">
+                          <div class="sale-item-label">Qty</div>
+                          <div class="sale-item-value">
                             <input
                               wire:model="saleItems.{{ $index }}.qty"
                               wire:change="updateTotal({{ $index }})"
                               type="number"
                               min="1"
-                              class="form-control form-control-sm"
-                              placeholder=""
+                              class="form-control form-control-sm text-center"
                             />
-                          </td>
-                          <td>
+                          </div>
+                        </div>
+                        <div class="sale-item-row" style="margin-bottom: 0; grid-column: 2 / 3">
+                          <div class="sale-item-label">Unit</div>
+                          <div class="sale-item-value">
                             <select
                               wire:model="saleItems.{{ $index }}.unit_id"
                               wire:change="updateTotal({{ $index }})"
-                              class="form-control form-control-sm"
+                              class="form-control form-control-sm form-select-sm"
                             >
                               <option value="">--</option>
                               @foreach ($units as $unit)
                                 <option value="{{ $unit->id }}">{{ $unit->nama_unit }}</option>
                               @endforeach
                             </select>
-                          </td>
-                          <td>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Harga Jual -->
+                      <div class="sale-item-row mt-3">
+                        <div class="sale-item-label">Harga Jual</div>
+                        <div class="sale-item-value">
+                          <div class="input-group input-group-sm">
+                            <div class="input-group-prepend">
+                              <span class="input-group-text">Rp</span>
+                            </div>
                             <input
                               wire:model="saleItems.{{ $index }}.harga_jual"
                               wire:change="updateTotal({{ $index }})"
                               type="number"
                               step="0.01"
                               min="0"
-                              class="form-control form-control-sm"
-                              placeholder=""
-                            />
-                          </td>
-                          <td class="text-right font-weight-bold">
-                            Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}
-                          </td>
-                          <td class="text-center">
-                            <button
-                              wire:click="removeItem({{ $index }})"
-                              type="button"
-                              class="btn btn-danger btn-sm"
-                            >
-                              <i class="fas fa-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      @endforeach
-                    </tbody>
-                    <tfoot class="bg-light font-weight-bold">
-                      <tr>
-                        <td></td>
-                        <td colspan="7" class="text-right pr-3">Kuli:</td>
-                        <td style="padding: 4px 0; width: 150px">
-                          <div class="input-group input-group-sm">
-                            <div class="input-group-prepend">
-                              <span class="input-group-text">Rp</span>
-                            </div>
-                            <input
-                              id="kuliInput"
-                              wire:model.defer="kuli"
-                              type="text"
                               class="form-control form-control-sm text-right"
-                              placeholder="0"
-                              @keyup="
-                                                                let value = $el.value.replace(/\D/g, '');
-                                                                if(value) {
-                                                                    $el.value = new Intl.NumberFormat('id-ID').format(parseInt(value));
-                                                                }
-                                                            "
-                              @blur="@this.set('kuli', parseInt($el.value.replace(/\D/g, '') || 0))"
                             />
                           </div>
-                        </td>
-                        <td colspan="2"></td>
-                      </tr>
-                      <tr>
-                        <td colspan="7" class="text-right pr-3">TOTAL:</td>
-                        <td colspan="2" class="text-right text-success">
-                          Rp
-                          {{ number_format(array_sum(array_column($saleItems, 'total')) + ($kuli ?? 0), 0, ',', '.') }}
-                        </td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                        </div>
+                      </div>
+
+                      <!-- Total -->
+                      <div class="sale-item-total">
+                        Total: Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}
+                      </div>
+                    </div>
+                  @endforeach
+
+                  <!-- Summary for Mobile -->
+                  <div class="sale-items-summary">
+                    <div class="sale-items-summary-row">
+                      <span>Kuli:</span>
+                      <div class="input-group input-group-sm" style="width: 120px">
+                        <div class="input-group-prepend">
+                          <span class="input-group-text">Rp</span>
+                        </div>
+                        <input
+                          wire:model.defer="kuli"
+                          type="text"
+                          class="form-control form-control-sm text-right"
+                          placeholder="0"
+                        />
+                      </div>
+                    </div>
+                    <div class="sale-items-summary-row">
+                      <span>TOTAL:</span>
+                      <span class="text-success">
+                        Rp
+                        {{ number_format(array_sum(array_column($saleItems, 'total')) + ($kuli ?? 0), 0, ',', '.') }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
                 @error('saleItems')
                   <small class="text-danger">{{ $message }}</small>
                 @enderror
@@ -419,9 +838,10 @@
         </div>
       </div>
     </div>
+
+    <!-- List View -->
   @endif
 
-  <!-- List View -->
   <div class="row">
     <div class="col-md-12">
       <div class="card card-primary card-outline">
@@ -460,11 +880,13 @@
                   <tr>
                     <th style="width: 5%">#</th>
                     <th style="width: 12%">No Invoice</th>
-                    <th style="width: 12%">Tanggal</th>
-                    <th style="width: 18%">Pelanggan</th>
-                    <th style="width: 12%">Lokasi</th>
-                    <th style="width: 15%">Total Item</th>
-                    <th style="width: 12%">Status</th>
+                    <th style="width: 10%">Tanggal</th>
+                    <th style="width: 14%">Pelanggan</th>
+                    <th style="width: 12%">Owner</th>
+                    <th style="width: 10%">Lokasi</th>
+                    <th style="width: 8%">Total Item</th>
+                    <th style="width: 12%" class="text-right">Total Amount</th>
+                    <th style="width: 8%">Status</th>
                     <th style="width: 14%">Aksi</th>
                   </tr>
                 </thead>
@@ -475,6 +897,19 @@
                       <td><strong>{{ $sale->no_invoice }}</strong></td>
                       <td>{{ $sale->tanggal_penjualan?->format('d/m/Y') ?? '-' }}</td>
                       <td>{{ $sale->customer?->nama_pelanggan ?? '-' }}</td>
+                      <td>
+                        @php
+                          $owners = $sale->saleItems
+                            ->map(fn ($it) => $it->product?->supplier?->owner)
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all();
+                          $ownerText = count($owners) ? implode(', ', $owners) : '-';
+                        @endphp
+
+                        {{ $ownerText }}
+                      </td>
                       <td>
                         @if ($sale->store_id)
                           <span class="badge badge-primary">{{ $sale->store?->nama_toko }}</span>
@@ -489,11 +924,22 @@
                       <td>
                         <span class="badge badge-info">{{ $sale->saleItems->count() }} item</span>
                       </td>
+                      <td class="text-right">
+                        <strong class="text-primary">
+                          Rp
+                          {{ number_format($sale->total_amount ?? $sale->saleItems->sum(fn ($item) => $item->qty * $item->harga_jual), 0, ',', '.') }}
+                        </strong>
+                      </td>
                       <td>
                         @if ($sale->status === 'completed')
                           <span class="badge badge-success">Completed</span>
+                        @elseif ($sale->status === 'hold')
+                          <span class="badge badge-warning">
+                            <i class="fas fa-hand-paper"></i>
+                            Hold
+                          </span>
                         @elseif ($sale->status === 'pending')
-                          <span class="badge badge-warning">Pending</span>
+                          <span class="badge badge-info">Pending</span>
                         @else
                           <span class="badge badge-danger">Cancelled</span>
                         @endif
@@ -720,90 +1166,3 @@
     </div>
   @endif
 </div>
-
-<script>
-  // Handle product datalist selection dengan Livewire integration
-
-  function setupProductListeners() {
-    document.querySelectorAll('.product-search-input').forEach((input) => {
-      // Remove old listeners by cloning
-      const newInput = input.cloneNode(true);
-      if (input.parentNode) {
-        input.parentNode.replaceChild(newInput, input);
-      }
-
-      // Add change listener
-      newInput.addEventListener('change', function () {
-        const searchValue = this.value.trim();
-        const itemIndex = this.dataset.itemIndex;
-        const listId = this.getAttribute('list');
-
-        // Extract product code dari format "[CODE] Name"
-        const codeMatch = searchValue.match(/\[([^\]]+)\]/);
-        if (codeMatch && itemIndex !== undefined) {
-          const productCode = codeMatch[1];
-
-          // Find datalist option untuk product code ini
-          const datalist = document.getElementById(listId);
-          if (datalist) {
-            const option = Array.from(datalist.options).find((opt) => {
-              return opt.value.includes('[' + productCode + ']');
-            });
-
-            if (option) {
-              console.log('Product found: ' + productCode + ' at index ' + itemIndex);
-
-              // Trigger Livewire input event untuk update model
-              this.dispatchEvent(new Event('input', { bubbles: true }));
-
-              // Defer update untuk ensure wire:model.live terprocessing
-              setTimeout(() => {
-                // Ensure batch dropdown re-render
-                const batchSelect = this.closest('tr')?.querySelector(
-                  'select[wire\\:model\\.live*="batch_id"]'
-                );
-                if (batchSelect) {
-                  console.log('Batch dropdown found, should be updated');
-                }
-              }, 50);
-            }
-          }
-        }
-      });
-
-      // Also listen to input event untuk detect paste/autocomplete
-      newInput.addEventListener('input', function () {
-        // Could add debounce here if needed
-      });
-    });
-  }
-
-  // Initial setup
-  document.addEventListener('DOMContentLoaded', function () {
-    setupProductListeners();
-  });
-
-  // Re-setup setelah Livewire re-render
-  if (window.Livewire) {
-    Livewire.hook('morph.updated', () => {
-      setupProductListeners();
-    });
-  }
-
-  // Fallback: MutationObserver untuk detect changes
-  const container = document.querySelector('[wire\\:id]');
-  if (container) {
-    const observer = new MutationObserver(function (mutations) {
-      const hasProductInputs = mutations.some((m) => {
-        return Array.from(m.addedNodes).some((node) => {
-          return node.classList && node.classList.contains('product-search-input');
-        });
-      });
-
-      if (hasProductInputs) {
-        setupProductListeners();
-      }
-    });
-    observer.observe(container, { childList: true, subtree: true });
-  }
-</script>

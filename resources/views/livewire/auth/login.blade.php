@@ -1,3 +1,36 @@
+@push('styles')
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback"
+  />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  />
+  <link rel="stylesheet" href="{{ asset('plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}" />
+  <link rel="stylesheet" href="{{ asset('css/adminlte.min.css') }}" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background-attachment: fixed;
+      background-size: cover;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .login-box {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+    .card-outline {
+      border: none;
+    }
+  </style>
+@endpush
+
 <div class="login-box">
   <div class="card card-outline card-primary">
     <div class="card-header text-center">
@@ -83,19 +116,6 @@
   <!-- /.card -->
 </div>
 <!-- /.login-box -->
-
-@push('styles')
-  <link
-    rel="stylesheet"
-    href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback"
-  />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-  />
-  <link rel="stylesheet" href="{{ asset('plugins/icheck-bootstrap/icheck-bootstrap.min.css') }}" />
-  <link rel="stylesheet" href="{{ asset('css/adminlte.min.css') }}" />
-@endpush
 
 @push('scripts')
   <script src="{{ asset('js/jquery.min.js') }}"></script>

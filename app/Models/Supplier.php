@@ -13,5 +13,6 @@ class Supplier extends Model
         'telepon',
         'email',
         'keterangan',
+        'owner',
     ];
 }

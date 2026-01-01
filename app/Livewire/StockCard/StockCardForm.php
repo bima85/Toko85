@@ -35,6 +35,11 @@ class StockCardForm extends Component
     public function mount($stockCard = null)
     {
         if ($stockCard) {
+            // Handle if $stockCard is an ID (string/int) instead of model instance
+            if (!$stockCard instanceof StockCard) {
+                $stockCard = StockCard::findOrFail($stockCard);
+            }
+
             $this->stockCard = $stockCard;
             $this->fill($stockCard->only(
                 'product_id',
@@ -52,13 +57,13 @@ class StockCardForm extends Component
 
     public function save()
     {
-        $this->validate();
+        $validated = $this->validate();
 
         if ($this->stockCard) {
-            $this->stockCard->update($this->validated());
+            $this->stockCard->update($validated);
             $message = 'Kartu stok berhasil diperbarui';
         } else {
-            StockCard::create($this->validated());
+            StockCard::create($validated);
             $message = 'Kartu stok berhasil dibuat';
         }
 
@@ -82,7 +87,7 @@ class StockCardForm extends Component
         }
 
         return StockBatch::where('product_id', $this->product_id)
-            ->orderBy('batch_number')
+            ->orderBy('nama_tumpukan')
             ->get();
     }
 

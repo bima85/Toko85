@@ -16,6 +16,7 @@ use App\Livewire\Admin\StockReports;
 use App\Livewire\Admin\Adjustments;
 use App\Livewire\Admin\StockBatchIndex;
 use App\Livewire\Admin\Sales;
+use App\Livewire\Admin\HoldOrderManager;
 use App\Livewire\Admin\TransactionHistory\HistoryIndex;
 use App\Livewire\StockCard\StockCardIndex;
 use App\Livewire\StockCard\StockCardShow;
@@ -27,17 +28,31 @@ use App\Livewire\Settings\TwoFactor;
 use App\Http\Controllers\PurchaseItemController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\StockBatchController;
+use App\Http\Controllers\ProfitMarginController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
 // Halaman utama / beranda
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
 
-// Halaman login
-Route::get('/login', Login::class)->name('login');
+/*Route::get('/', function () {
+    return view('welcome');
+})->name('home');*/
+
+// Halaman login (komponen Livewire pada root) — beri nama 'home' untuk menghindari duplikat
+Route::get('/', Login::class)->name('home');
+
+// // Halaman logout
+// Route::post('/logout', function () {
+//     Auth::logout();
+
+//     request()->session()->invalidate();
+//     request()->session()->regenerateToken();
+
+//     return redirect()->route('login');
+// })->middleware('auth')->name('logout');
+
+
 
 // Halaman pencarian
 Route::get('/search', function () {
@@ -126,6 +141,8 @@ Route::middleware(['auth'])->group(function () {
 
     // Halaman laporan stok
     Route::get('admin/stock-reports', StockReports::class)->name('admin.stock-reports');
+    // Endpoint partial untuk refresh tabel tanpa bergantung pada Livewire client
+    Route::get('admin/stock-reports/partial', [\App\Http\Controllers\Admin\StockReportController::class, 'partial'])->name('admin.stock-reports.partial');
 
     // Halaman penyesuaian stok
     Route::get('admin/adjustments', Adjustments::class)->name('admin.adjustments');
@@ -135,6 +152,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Endpoint API untuk data batch stok (DataTable)
     Route::get('admin/stock-batches/data', [StockBatchController::class, 'data'])->name('admin.stock-batches.data');
+
+    // Halaman manajemen hold orders
+    Route::get('admin/hold-orders', HoldOrderManager::class)->name('admin.hold-orders');
 
     // Endpoint API untuk data total per produk (DataTable)
     Route::get('admin/stock-batches/data/total-per-product', [StockBatchController::class, 'getTotalPerProduct'])->name('admin.stock-batches.total-per-product');
@@ -148,8 +168,33 @@ Route::middleware(['auth'])->group(function () {
     // Endpoint API untuk data transaksi
     Route::get('admin/transactions/data', [TransactionController::class, 'data'])->name('admin.transactions.data');
 
+    // Endpoint API untuk statistik transaksi
+    Route::get('admin/transactions/stats', [TransactionController::class, 'stats'])->name('admin.transactions.stats');
+
+    // Endpoint API untuk detail transaksi
+    Route::get('admin/transactions/{id}/detail', [TransactionController::class, 'detail'])->name('admin.transactions.detail');
+
+    // Endpoint untuk export transaksi ke Excel
+    Route::get('admin/transactions/export', [TransactionController::class, 'export'])->name('admin.transactions.export');
+
     // Endpoint API untuk testing transaksi
     Route::get('admin/transactions/test', [TransactionController::class, 'test'])->name('admin.transactions.test');
+
+    // Halaman profit margin
+    Route::get('admin/profit-margin', \App\Livewire\Admin\ProfitMargin::class)->name('admin.profit-margin');
+
+    // Endpoint API untuk data profit margin
+    Route::get('admin/profit-margin/data', [ProfitMarginController::class, 'data'])->name('admin.profit-margin.data');
+
+    // Endpoint API untuk statistik profit margin
+    Route::get('admin/profit-margin/stats', [ProfitMarginController::class, 'stats'])->name('admin.profit-margin.stats');
+
+    // Endpoint untuk export profit margin ke Excel
+    Route::get('admin/profit-margin/export', [ProfitMarginController::class, 'export'])->name('admin.profit-margin.export');
+
+    // Check endpoint to validate customer transactions against date filters
+    Route::get('admin/profit-margin/check-customer', [ProfitMarginController::class, 'checkCustomer'])->name('admin.profit-margin.check');
+    Route::get('admin/profit-margin/customers', [ProfitMarginController::class, 'customers'])->name('admin.profit-margin.customers');
 
     // Halaman daftar kartu stok
     Route::get('stock-card', StockCardIndex::class)->name('stock-card.index');

@@ -1,0 +1,181 @@
+/* Styles for purchases Livewire component */
+/* Moved from resources/views/livewire/admin/purchases.blade.php */
+/* .purchases-wrapper {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+} */
+.card .card-header h3.card-title {
+  font-weight: 600;
+}
+.form-group {
+  margin-bottom: 0.75rem;
+}
+.form-group label {
+  font-weight: 600;
+}
+.form-control,
+.form-control-sm {
+  height: 40px;
+}
+textarea.form-control {
+  height: auto;
+  min-height: 80px;
+}
+.table-sm td,
+.table-sm th {
+  padding: 0.35rem 0.5rem;
+}
+#purchaseItemsTable .form-control {
+  height: 34px;
+  padding: 0.35rem 0.5rem;
+}
+.btn-sm {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.875rem;
+}
+.btn-success {
+  min-width: 140px;
+}
+.card-footer .btn {
+  margin-right: 0.5rem;
+}
+/* compact header spacing */
+.card .card-body {
+  padding-top: 0.85rem;
+}
+/* align table totals to right */
+tfoot.bg-light td {
+  vertical-align: middle;
+}
+/* responsive tweaks for small screens */
+@media (max-width: 576px) {
+  .form-control,
+  .form-control-sm {
+    height: 44px;
+  }
+  .btn-success {
+    min-width: 100%;
+  }
+}
+
+/* Ensure purchases list fits content area and aligns with page container */
+.purchases-list-wrapper {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  /* align with page title: add same left padding as header */
+  padding-left: 15px;
+  padding-right: 0;
+  box-sizing: border-box;
+}
+.purchases-list-wrapper .card {
+  width: 100%;
+  border-radius: 6px;
+  margin: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+@media (max-width: 768px) {
+  .purchases-list-wrapper {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* Simple panel styling replacing card */
+.purchases-panel {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.purchases-panel-header {
+  padding: 10px 18px;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 3px solid #007bff; /* accent line as before */
+}
+.purchases-panel-header .card-title {
+  margin: 0;
+  font-weight: 600;
+}
+.purchases-panel-body {
+  padding: 18px;
+}
+
+/* Force full-width layout for the purchases list and table. */
+/* These rules use higher specificity and a safe debug !important to ensure they apply. */
+.purchases-list-wrapper {
+  max-width: none !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding-left: 15px !important;
+  padding-right: 15px !important;
+  box-sizing: border-box !important;
+}
+.purchases-list-wrapper .card {
+  width: 100% !important;
+  margin: 0 !important;
+  border-radius: 6px !important;
+}
+.purchases-list-wrapper .card .card-body {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+.purchases-list-wrapper .card .card-body > .row,
+.purchases-list-wrapper .card .card-body > .container,
+.purchases-list-wrapper .card .card-body .container-fluid {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.purchases-list-wrapper .table-responsive {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.purchases-list-wrapper table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Narrow gap between page title and card if container adds extra left padding */
+.content-wrapper .purchases-list-wrapper {
+  padding-left: 15px !important;
+}
+
+/* If other CSS still overrides, these debug helpers can be toggled by the user in the browser */
+.purchases-list-wrapper.debug-force-full {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+}
+
+/* Fix for inline purchase items table: prevent header text from collapsing
+   on narrow containers and allow horizontal scrolling for many columns. */
+#purchaseItemsTable {
+  table-layout: auto !important;
+  white-space: nowrap;
+}
+
+#purchaseItemsTable thead th,
+#purchaseItemsTable tbody td {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* Ensure form controls inside the items table occupy reasonable width */
+#purchaseItemsTable .form-control,
+#purchaseItemsTable .form-control-sm {
+  min-width: 56px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Allow the items table to scroll horizontally on small screens */
+#purchaseItemsTable_wrapper .dataTables_scroll,
+.table-responsive > #purchaseItemsTable {
+  overflow-x: auto;
+}

@@ -21,6 +21,7 @@ class StockBatch extends Model
         'nama_tumpukan',
         'qty',
         'note',
+        'status',
         'created_at',
         'updated_at',
     ];
@@ -59,6 +60,22 @@ class StockBatch extends Model
     public function scopeActive($query)
     {
         return $query->where('qty', '>', 0);
+    }
+
+    /**
+     * Scope: Filter hanya batch AKTUAL (tidak hold)
+     */
+    public function scopeAktual($query)
+    {
+        return $query->where('status', 'aktual');
+    }
+
+    /**
+     * Scope: Filter hanya batch HOLD
+     */
+    public function scopeHold($query)
+    {
+        return $query->where('status', 'hold');
     }
 
     /**
@@ -109,13 +126,19 @@ class StockBatch extends Model
      */
     public static function getTotalQtyAllTumpukan($locationType = null)
     {
-        $query = self::active();
+        // Total available = sum of aktual batches (qty>0) minus sum of hold batches
+        $actualQuery = self::where('status', 'aktual')->where('qty', '>', 0);
+        $holdQuery = self::where('status', 'hold')->where('qty', '>', 0);
 
         if ($locationType) {
-            $query->where('location_type', $locationType);
+            $actualQuery->where('location_type', $locationType);
+            $holdQuery->where('location_type', $locationType);
         }
 
-        return $query->sum('qty');
+        $actual = $actualQuery->sum('qty');
+        $hold = $holdQuery->sum('qty');
+
+        return $actual - $hold;
     }
 
     /**

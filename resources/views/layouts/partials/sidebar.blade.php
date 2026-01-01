@@ -151,8 +151,17 @@
         </li>
 
         <!-- Penjualan Section -->
-        <li class="nav-item @if(request()->routeIs('admin.sales')) menu-open @endif">
-          <a href="#" class="nav-link @if(request()->routeIs('admin.sales')) active @endif">
+        @php
+          $salesRoutes = ['admin.sales', 'admin.hold-orders'];
+        @endphp
+
+        <li
+          class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($salesRoutes)) menu-open @endif"
+        >
+          <a
+            href="#"
+            class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($salesRoutes)) active @endif"
+          >
             <i class="nav-icon fas fa-dollar-sign"></i>
             <p>
               Penjualan
@@ -167,6 +176,15 @@
               >
                 <i class="far fa-circle nav-icon"></i>
                 <p>Daftar Penjualan</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
+                href="{{ route('admin.hold-orders') }}"
+                class="nav-link @if(request()->routeIs('admin.hold-orders')) active @endif"
+              >
+                <i class="far fa-hand-paper nav-icon"></i>
+                <p>Hold / Keep Orders</p>
               </a>
             </li>
           </ul>
@@ -222,8 +240,17 @@
         </li>
 
         <!-- Reports & Analytics Section -->
-        <li class="nav-item @if(request()->routeIs('admin.transactions')) menu-open @endif">
-          <a href="#" class="nav-link @if(request()->routeIs('admin.transactions')) active @endif">
+        @php
+          $reportRoutes = ['admin.transactions', 'admin.profit-margin'];
+        @endphp
+
+        <li
+          class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($reportRoutes)) menu-open @endif"
+        >
+          <a
+            href="#"
+            class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($reportRoutes)) active @endif"
+          >
             <i class="nav-icon fas fa-chart-line"></i>
             <p>
               Laporan & Analitik
@@ -244,6 +271,15 @@
               >
                 <i class="far fa-circle nav-icon"></i>
                 <p>Historis Transaksi</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
+                href="{{ route('admin.profit-margin') }}"
+                class="nav-link @if(request()->routeIs('admin.profit-margin')) active @endif"
+              >
+                <i class="fas fa-hand-holding-usd nav-icon"></i>
+                <p>Margin Profit</p>
               </a>
             </li>
           </ul>

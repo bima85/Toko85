@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Computed;
+use Illuminate\Support\Str;
 
 #[Layout('layouts.admin')]
 class Purchases extends Component
@@ -27,6 +29,18 @@ class Purchases extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+    public $ownerFilter = null;
+    public $suppliers;
+    public $showOwnerModal = false;
+    public $new_owner_name = '';
+    // Supplier modal state and fields
+    public $showSupplierModal = false;
+    public $kode_supplier;
+    public $nama_supplier;
+    public $telepon;
+    public $email;
+    public $alamat;
+    public $supplier_keterangan;
     public $no_invoice;
     public $tanggal_pembelian;
     public $supplier_id;
@@ -42,14 +56,25 @@ class Purchases extends Component
     // Purchase items
     public $purchaseItems = [];
 
-    // Supplier form modal
-    public $showSupplierModal = false;
-    public $kode_supplier = '';
-    public $nama_supplier = '';
-    public $telepon = '';
-    public $email = '';
-    public $alamat = '';
-    public $editingSupplier = null;
+    // Modal states and fields for inline add
+    public $showCategoryModal = false;
+    public $new_category_name = '';
+    public $category_modal_row = null;
+
+    public $showSubcategoryModal = false;
+    public $new_subcategory_name = '';
+    public $subcategory_modal_row = null;
+    public $subcategory_modal_category_id = null;
+
+    public $showProductModal = false;
+    public $new_product_name = '';
+    public $product_modal_row = null;
+    public $product_modal_category_id = null;
+    public $product_modal_subcategory_id = null;
+
+    protected $listeners = ['addCategory', 'addSubcategory', 'addProduct', 'openCategoryModal', 'openSubcategoryModal', 'openProductModal'];
+
+
 
     protected $rules = [
         'no_invoice' => 'required|string|max:50|unique:purchases,no_invoice',
@@ -73,6 +98,8 @@ class Purchases extends Component
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
         abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+
+        $this->suppliers = collect();
     }
 
     public function updatingSearch()
@@ -80,9 +107,103 @@ class Purchases extends Component
         $this->resetPage();
     }
 
+    public function updatedOwnerFilter($value)
+    {
+        // set the ownerFilter from the incoming $value and normalize it
+        $this->ownerFilter = is_string($value) ? trim($value) : $value;
+
+        // saat owner dipilih dalam form pembuatan, reset supplier_id agar user memilih ulang dari daftar yang terfilter
+        $this->supplier_id = null;
+        // update suppliers list (support multiple owner names separated by comma)
+        // we update suppliers regardless of whether the form is shown so data is ready
+        $query = Supplier::orderBy('nama_supplier');
+        if (!empty($this->ownerFilter)) {
+            // if ownerFilter contains commas, split into array and filter by partial match (orWhere like)
+            if (str_contains($this->ownerFilter, ',')) {
+                $owners = array_map('trim', explode(',', $this->ownerFilter));
+                $query->where(function ($q2) use ($owners) {
+                    foreach ($owners as $o) {
+                        if ($o !== '') {
+                            $q2->orWhere('owner', 'like', '%' . $o . '%');
+                        }
+                    }
+                });
+            } else {
+                // use partial match as well so exact formatting doesn't block matches
+                $query->where('owner', 'like', '%' . $this->ownerFilter . '%');
+            }
+        }
+        $this->suppliers = $query->get();
+
+
+
+        // if form is shown and only one supplier matches, auto-select it
+        if ($this->showCreateForm) {
+            if ($this->suppliers instanceof \Illuminate\Support\Collection && $this->suppliers->count() === 1) {
+                $this->supplier_id = $this->suppliers->first()->id;
+                // generate invoice when supplier auto-selected here
+                $this->generateInvoiceNumber($this->supplier_id);
+            } else {
+                $this->supplier_id = null;
+            }
+        }
+        // force re-render
+        $this->dispatch('$refresh');
+    }
+
+    public function openOwnerModal()
+    {
+        $this->showOwnerModal = true;
+        $this->new_owner_name = '';
+    }
+
+    public function ownerChanged($value)
+    {
+        // helper invoked from frontend change event to ensure update occurs
+        $this->updatedOwnerFilter($value);
+        // if updatedOwnerFilter resulted in a single supplier, generate invoice
+        if (!empty($this->supplier_id)) {
+            $this->generateInvoiceNumber($this->supplier_id);
+        }
+    }
+
+    public function closeOwnerModal()
+    {
+        $this->showOwnerModal = false;
+        $this->new_owner_name = '';
+    }
+
+    public function saveOwner()
+    {
+        $this->validate([
+            'new_owner_name' => 'required|string|max:255',
+        ]);
+
+        try {
+            // create a minimal supplier entry to persist owner value so it appears in owners list
+            $supplier = Supplier::create([
+                'kode_supplier' => 'SUP-' . \Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(6)),
+                'nama_supplier' => $this->new_owner_name,
+                'owner' => $this->new_owner_name,
+                'keterangan' => 'Owner: ' . $this->new_owner_name,
+            ]);
+
+            // set filter to new owner and reset supplier selection
+            $this->ownerFilter = $this->new_owner_name;
+            $this->supplier_id = null;
+            $this->closeOwnerModal();
+            session()->flash('message', 'Owner berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to create owner supplier: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menambahkan owner: ' . $e->getMessage());
+        }
+    }
+
     public function create()
     {
         $this->resetForm();
+        // reset owner filter to start fresh
+        $this->ownerFilter = null;
         // set default store to the first store if available (warehouse kosong)
         $firstStore = Store::orderBy('nama_toko')->first();
         $this->store_id = $firstStore ? $firstStore->id : null;
@@ -92,6 +213,16 @@ class Purchases extends Component
         $this->tanggal_pembelian = date('Y-m-d');
         $this->editingPurchaseId = null;
         $this->showCreateForm = true;
+        // set suppliers
+        $this->suppliers = Supplier::when($this->ownerFilter, fn($q) => $q->where('owner', $this->ownerFilter))
+            ->orderBy('nama_supplier')->get();
+        // jika hanya ada satu perusahaan, pilih otomatis
+        if ($this->suppliers instanceof \Illuminate\Support\Collection && $this->suppliers->count() === 1) {
+            $this->supplier_id = $this->suppliers->first()->id;
+            $this->generateInvoiceNumber($this->supplier_id);
+        }
+        // tambahkan satu baris item kosong agar form tidak tampak kosong
+        $this->addItem();
     }
 
     public function edit($id)
@@ -101,6 +232,9 @@ class Purchases extends Component
         $this->no_invoice = $purchase->no_invoice;
         $this->tanggal_pembelian = $purchase->tanggal_pembelian->format('Y-m-d');
         $this->supplier_id = $purchase->supplier_id;
+        // set owner filter based on the supplier's owner
+        $supplier = Supplier::find($purchase->supplier_id);
+        $this->ownerFilter = $supplier ? $supplier->owner : null;
         $this->store_id = $purchase->store_id;
         $this->warehouse_id = $purchase->warehouse_id;
         $this->status = $purchase->status;
@@ -128,12 +262,36 @@ class Purchases extends Component
             ];
         })->toArray();
         $this->showCreateForm = true;
+        // set suppliers
+        $this->suppliers = Supplier::when($this->ownerFilter, fn($q) => $q->where('owner', $this->ownerFilter))
+            ->orderBy('nama_supplier')->get();
+        // jika hanya ada satu perusahaan dan belum ada supplier terpilih, pilih otomatis
+        if ($this->suppliers instanceof \Illuminate\Support\Collection && $this->suppliers->count() === 1 && empty($this->supplier_id)) {
+            $this->supplier_id = $this->suppliers->first()->id;
+        }
     }
 
     public function show($id)
     {
         $this->selectedPurchase = Purchase::with('supplier', 'purchaseItems.product', 'purchaseItems.category', 'purchaseItems.subcategory', 'purchaseItems.unit')->findOrFail($id);
         $this->showModal = true;
+    }
+
+    private function generateInvoiceNumber($supplierId)
+    {
+        // Create invoice number in format PB/YYYY/MM/DD-XXX where XXX increments per supplier per day
+        $date = date('Y/m/d');
+        $lastPurchase = Purchase::where('supplier_id', $supplierId)
+            ->whereDate('tanggal_pembelian', date('Y/m/d'))
+            ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '-', -1) AS UNSIGNED) DESC")
+            ->first();
+        if ($lastPurchase) {
+            $parts = explode('-', $lastPurchase->no_invoice);
+            $num = isset($parts[1]) ? intval($parts[1]) + 1 : 1;
+        } else {
+            $num = 1;
+        }
+        $this->no_invoice = 'PB/' . $date . '-' . str_pad($num, 3, '0', STR_PAD_LEFT);
     }
 
     public function closeModal()
@@ -409,18 +567,7 @@ class Purchases extends Component
     public function updatedSupplierId($value)
     {
         if ($value) {
-            $date = date('Y/m/d');
-            $lastPurchase = Purchase::where('supplier_id', $value)
-                ->whereDate('tanggal_pembelian', date('Y-m/d'))
-                ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '-', -1) AS UNSIGNED) DESC")
-                ->first();
-            if ($lastPurchase) {
-                $parts = explode('-', $lastPurchase->no_invoice);
-                $num = intval($parts[1]) + 1;
-            } else {
-                $num = 1;
-            }
-            $this->no_invoice = 'PB/' . $date . '-' . str_pad($num, 3, '0', STR_PAD_LEFT);
+            $this->generateInvoiceNumber($value);
         }
     }
 
@@ -505,9 +652,6 @@ class Purchases extends Component
             }
             // ensure total is stored as numeric (float)
             $this->purchaseItems[$index]['total'] = (float) (($qty * $conv) * $harga);
-
-            // Log after calculation so we can confirm what's stored server-side
-            Log::debug('Livewire updatedPurchaseItems computed', ['index' => $index, 'item' => $this->purchaseItems[$index]]);
 
             // recompute all totals to ensure consistency and force Livewire to sync the updated values
             $this->computeAllTotals();
@@ -627,18 +771,302 @@ class Purchases extends Component
     public function updateCategoryFilter($index)
     {
         // Clear subcategory and product when category changes
-        if (isset($this->purchaseItems[$index])) {
-            $this->purchaseItems[$index]['subcategory_id'] = null;
-            $this->purchaseItems[$index]['product_id'] = null;
+        if (!isset($this->purchaseItems[$index])) {
+            return;
         }
+
+        $val = $this->purchaseItems[$index]['category_id'] ?? null;
+        // If the special magic value was set (from the CTA option), do nothing here
+        if ($val === '__add_category__') {
+            return;
+        }
+
+        $this->purchaseItems[$index]['subcategory_id'] = null;
+        $this->purchaseItems[$index]['product_id'] = null;
+    }
+
+    /**
+     * Handle combined location selection from UI.
+     * Expected format: "store:{id}" or "warehouse:{id}" or empty string.
+     */
+    public function selectLocation($value)
+    {
+        if (empty($value)) {
+            $this->store_id = null;
+            $this->warehouse_id = null;
+            return;
+        }
+
+        if (str_starts_with($value, 'store:')) {
+            $id = (int) substr($value, strlen('store:'));
+            $this->store_id = $id ?: null;
+            $this->warehouse_id = null;
+            return;
+        }
+
+        if (str_starts_with($value, 'warehouse:')) {
+            $id = (int) substr($value, strlen('warehouse:'));
+            $this->warehouse_id = $id ?: null;
+            $this->store_id = null;
+            return;
+        }
+
+        // Fallback: clear both
+        $this->store_id = null;
+        $this->warehouse_id = null;
+    }
+
+    // Open/close modal helpers
+    public function openCategoryModal($row = null)
+    {
+        $this->category_modal_row = is_numeric($row) ? (int) $row : null;
+        $this->new_category_name = '';
+        $this->showCategoryModal = true;
+    }
+
+    public function closeCategoryModal()
+    {
+        $this->showCategoryModal = false;
+        $this->new_category_name = '';
+        $this->category_modal_row = null;
+    }
+
+    public function saveCategoryModal()
+    {
+        $name = trim($this->new_category_name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama kategori tidak boleh kosong.');
+            return;
+        }
+        $this->addCategory($name, $this->category_modal_row);
+        $this->closeCategoryModal();
     }
 
     public function updateSubcategoryFilter($index)
     {
         // Clear product when subcategory changes
-        if (isset($this->purchaseItems[$index])) {
-            $this->purchaseItems[$index]['product_id'] = null;
+        if (!isset($this->purchaseItems[$index])) {
+            return;
         }
+
+        $val = $this->purchaseItems[$index]['subcategory_id'] ?? null;
+        if ($val === '__add_subcategory__') {
+            return;
+        }
+
+        $this->purchaseItems[$index]['product_id'] = null;
+    }
+
+    /**
+     * Create a new category from the purchases UI and assign it to the row.
+     */
+    public function addCategory($name, $index = null)
+    {
+        $name = trim($name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama kategori tidak boleh kosong.');
+            return;
+        }
+
+        $category = Category::create([
+            'kode_kategori' => 'CAT-' . Str::upper(Str::random(6)),
+            'nama_kategori' => $name,
+            'description' => null,
+        ]);
+
+        // assign to the item row if index provided
+        if (is_numeric($index) && isset($this->purchaseItems[$index])) {
+            $this->purchaseItems[$index]['category_id'] = $category->id;
+            $this->purchaseItems[$index]['subcategory_id'] = null;
+            $this->purchaseItems[$index]['product_id'] = null;
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+        }
+
+        session()->flash('message', 'Kategori "' . $category->nama_kategori . '" berhasil dibuat.');
+    }
+
+    /**
+     * Create a new subcategory under the selected category for the given row.
+     */
+    public function addSubcategory($name, $index = null)
+    {
+        $name = trim($name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama subkategori tidak boleh kosong.');
+            return;
+        }
+
+        if (!is_numeric($index) || !isset($this->purchaseItems[$index])) {
+            session()->flash('error', 'Baris item tidak valid.');
+            return;
+        }
+
+        $categoryId = $this->purchaseItems[$index]['category_id'] ?? null;
+        if (empty($categoryId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+            return;
+        }
+
+        $sub = Subcategory::create([
+            'kode_subkategori' => 'SUB-' . Str::upper(Str::random(6)),
+            'nama_subkategori' => $name,
+            'description' => null,
+            'category_id' => $categoryId,
+        ]);
+
+        $this->purchaseItems[$index]['subcategory_id'] = $sub->id;
+        $this->purchaseItems[$index]['product_id'] = null;
+        $this->purchaseItems = array_merge([], $this->purchaseItems);
+
+        session()->flash('message', 'Subkategori "' . $sub->nama_subkategori . '" berhasil dibuat.');
+    }
+
+    public function openSubcategoryModal($row = null)
+    {
+        $this->subcategory_modal_row = is_numeric($row) ? (int) $row : null;
+        // try to prefill category id from row if available
+        if (is_numeric($row) && isset($this->purchaseItems[$row]) && !empty($this->purchaseItems[$row]['category_id'])) {
+            $this->subcategory_modal_category_id = $this->purchaseItems[$row]['category_id'];
+        } else {
+            $this->subcategory_modal_category_id = null;
+        }
+        $this->new_subcategory_name = '';
+        $this->showSubcategoryModal = true;
+    }
+
+    public function closeSubcategoryModal()
+    {
+        $this->showSubcategoryModal = false;
+        $this->new_subcategory_name = '';
+        $this->subcategory_modal_row = null;
+        $this->subcategory_modal_category_id = null;
+    }
+
+    public function saveSubcategoryModal()
+    {
+        $name = trim($this->new_subcategory_name ?? '');
+        $catId = $this->subcategory_modal_category_id ?? null;
+        if ($name === '') {
+            session()->flash('error', 'Nama subkategori tidak boleh kosong.');
+            return;
+        }
+        if (empty($catId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+            return;
+        }
+
+        // create and assign
+        $sub = Subcategory::create([
+            'kode_subkategori' => 'SUB-' . Str::upper(Str::random(6)),
+            'nama_subkategori' => $name,
+            'description' => null,
+            'category_id' => $catId,
+        ]);
+
+        if (is_numeric($this->subcategory_modal_row) && isset($this->purchaseItems[$this->subcategory_modal_row])) {
+            $this->purchaseItems[$this->subcategory_modal_row]['subcategory_id'] = $sub->id;
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+        }
+
+        session()->flash('message', 'Subkategori "' . $sub->nama_subkategori . '" berhasil dibuat.');
+        $this->closeSubcategoryModal();
+    }
+
+    /**
+     * Create a new product under the selected category/subcategory for the given row.
+     */
+    public function addProduct($name, $index = null)
+    {
+        $name = trim($name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama produk tidak boleh kosong.');
+            return;
+        }
+
+        if (!is_numeric($index) || !isset($this->purchaseItems[$index])) {
+            session()->flash('error', 'Baris item tidak valid.');
+            return;
+        }
+
+        $categoryId = $this->purchaseItems[$index]['category_id'] ?? null;
+        if (empty($categoryId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+            return;
+        }
+
+        $subcategoryId = $this->purchaseItems[$index]['subcategory_id'] ?? null;
+
+        $product = Product::create([
+            'kode_produk' => 'PRD-' . Str::upper(Str::random(6)),
+            'nama_produk' => $name,
+            'description' => null,
+            'satuan' => null,
+            'supplier_id' => null,
+            'category_id' => $categoryId,
+            'subcategory_id' => $subcategoryId,
+        ]);
+
+        $this->purchaseItems[$index]['product_id'] = $product->id;
+        $this->purchaseItems[$index]['product_search'] = $product->nama_produk;
+        $this->purchaseItems = array_merge([], $this->purchaseItems);
+
+        session()->flash('message', 'Produk "' . $product->nama_produk . '" berhasil dibuat.');
+    }
+
+    public function openProductModal($row = null)
+    {
+        $this->product_modal_row = is_numeric($row) ? (int) $row : null;
+        if (is_numeric($row) && isset($this->purchaseItems[$row])) {
+            $this->product_modal_category_id = $this->purchaseItems[$row]['category_id'] ?? null;
+            $this->product_modal_subcategory_id = $this->purchaseItems[$row]['subcategory_id'] ?? null;
+        } else {
+            $this->product_modal_category_id = null;
+            $this->product_modal_subcategory_id = null;
+        }
+        $this->new_product_name = '';
+        $this->showProductModal = true;
+    }
+
+    public function closeProductModal()
+    {
+        $this->showProductModal = false;
+        $this->new_product_name = '';
+        $this->product_modal_row = null;
+        $this->product_modal_category_id = null;
+        $this->product_modal_subcategory_id = null;
+    }
+
+    public function saveProductModal()
+    {
+        $name = trim($this->new_product_name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama produk tidak boleh kosong.');
+            return;
+        }
+        $categoryId = $this->product_modal_category_id ?? null;
+        if (empty($categoryId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+            return;
+        }
+
+        $product = Product::create([
+            'kode_produk' => 'PRD-' . Str::upper(Str::random(6)),
+            'nama_produk' => $name,
+            'description' => null,
+            'satuan' => null,
+            'supplier_id' => null,
+            'category_id' => $categoryId,
+            'subcategory_id' => $this->product_modal_subcategory_id,
+        ]);
+
+        if (is_numeric($this->product_modal_row) && isset($this->purchaseItems[$this->product_modal_row])) {
+            $this->purchaseItems[$this->product_modal_row]['product_id'] = $product->id;
+            $this->purchaseItems[$this->product_modal_row]['product_search'] = $product->nama_produk;
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+        }
+
+        session()->flash('message', 'Produk "' . $product->nama_produk . '" berhasil dibuat.');
+        $this->closeProductModal();
     }
 
     public function updateTotal($index)
@@ -674,64 +1102,50 @@ class Purchases extends Component
     public function openSupplierModal()
     {
         $this->showSupplierModal = true;
-        $this->resetSupplierForm();
+        $this->kode_supplier = null;
+        $this->nama_supplier = null;
+        $this->telepon = null;
+        $this->email = null;
+        $this->alamat = null;
+        $this->supplier_keterangan = null;
     }
 
     public function closeSupplierModal()
     {
         $this->showSupplierModal = false;
-        $this->resetSupplierForm();
-    }
-
-    public function resetSupplierForm()
-    {
-        $this->kode_supplier = '';
-        $this->nama_supplier = '';
-        $this->telepon = '';
-        $this->email = '';
-        $this->alamat = '';
-        $this->editingSupplier = null;
+        $this->kode_supplier = null;
+        $this->nama_supplier = null;
+        $this->telepon = null;
+        $this->email = null;
+        $this->alamat = null;
+        $this->supplier_keterangan = null;
     }
 
     public function saveSupplier()
     {
-        $rules = [
-            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier' . ($this->editingSupplier ? (',' . $this->editingSupplier) : ''),
-            'nama_supplier' => 'required|string|max:100|unique:suppliers,nama_supplier' . ($this->editingSupplier ? (',' . $this->editingSupplier) : ''),
-            'telepon' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:100',
-            'alamat' => 'nullable|string',
-        ];
-
-        $this->validate($rules);
+        $this->validate([
+            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier',
+            'nama_supplier' => 'required|string|max:255',
+        ]);
 
         try {
-            if ($this->editingSupplier) {
-                $supplier = Supplier::findOrFail($this->editingSupplier);
-                $supplier->update([
-                    'kode_supplier' => $this->kode_supplier,
-                    'nama_supplier' => $this->nama_supplier,
-                    'telepon' => $this->telepon,
-                    'email' => $this->email,
-                    'alamat' => $this->alamat,
-                    'keterangan' => $this->keterangan,
-                ]);
-                session()->flash('message', 'Pemasok berhasil diperbarui.');
-            } else {
-                Supplier::create([
-                    'kode_supplier' => $this->kode_supplier,
-                    'nama_supplier' => $this->nama_supplier,
-                    'telepon' => $this->telepon,
-                    'email' => $this->email,
-                    'alamat' => $this->alamat,
-                    'keterangan' => $this->keterangan,
-                ]);
-                session()->flash('message', 'Pemasok berhasil ditambahkan.');
-            }
+            $supplier = Supplier::create([
+                'kode_supplier' => $this->kode_supplier,
+                'nama_supplier' => $this->nama_supplier,
+                'telepon' => $this->telepon ?? null,
+                'email' => $this->email ?? null,
+                'alamat' => $this->alamat ?? null,
+                'keterangan' => $this->supplier_keterangan ?? null,
+            ]);
+
+            // Refresh suppliers list and select the newly created supplier
+            $this->suppliers = Supplier::orderBy('nama_supplier')->get();
+            $this->supplier_id = $supplier->id;
             $this->closeSupplierModal();
+            session()->flash('message', 'Supplier berhasil disimpan.');
         } catch (\Exception $e) {
-            Log::error('Save supplier error: ' . $e->getMessage());
-            session()->flash('error', 'Gagal menyimpan pemasok: ' . $e->getMessage());
+            \Log::error('Failed to save supplier: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan supplier: ' . $e->getMessage());
         }
     }
 
@@ -749,15 +1163,40 @@ class Purchases extends Component
 
         // Only load form data if form is shown
         if ($this->showCreateForm) {
-            $suppliers = Supplier::orderBy('nama_supplier')->get();
             $categories = Category::orderBy('nama_kategori')->get();
             $subcategories = Subcategory::orderBy('nama_subkategori')->get();
             $products = Product::orderBy('nama_produk')->get();
             $units = Unit::orderBy('nama_unit')->get();
             $stores = Store::orderBy('nama_toko')->get();
             $warehouses = \App\Models\Warehouse::orderBy('nama_gudang')->get();
+
+            // Ensure suppliers are computed on render so UI reflects current ownerFilter reliably
+            $query = Supplier::orderBy('nama_supplier');
+            if (!empty($this->ownerFilter)) {
+                if (str_contains($this->ownerFilter, ',')) {
+                    $owners = array_map('trim', explode(',', $this->ownerFilter));
+                    $query->where(function ($q2) use ($owners) {
+                        foreach ($owners as $o) {
+                            if ($o !== '') {
+                                $q2->orWhere('owner', 'like', '%' . $o . '%');
+                            }
+                        }
+                    });
+                } else {
+                    $query->where('owner', 'like', '%' . $this->ownerFilter . '%');
+                }
+            }
+            $this->suppliers = $query->get();
+            $this->ownerTokens = !empty($this->ownerFilter) ? (str_contains($this->ownerFilter, ',') ? array_map('trim', explode(',', $this->ownerFilter)) : [$this->ownerFilter]) : [];
+            // Auto-select if single result and none selected
+            if (empty($this->supplier_id) && $this->suppliers->count() === 1) {
+                $this->supplier_id = $this->suppliers->first()->id;
+                // generate invoice number immediately when supplier auto-selected
+                $this->generateInvoiceNumber($this->supplier_id);
+                // generate invoice number immediately when supplier auto-selected
+                $this->generateInvoiceNumber($this->supplier_id);
+            }
         } else {
-            $suppliers = [];
             $categories = [];
             $subcategories = [];
             $products = [];
@@ -768,7 +1207,7 @@ class Purchases extends Component
 
         return view('livewire.admin.purchases', [
             'purchases' => $purchases,
-            'suppliers' => $suppliers,
+            'owners' => Supplier::select('owner')->whereNotNull('owner')->where('owner', '<>', '')->distinct()->orderBy('owner')->pluck('owner'),
             'categories' => $categories,
             'subcategories' => $subcategories,
             'products' => $products,

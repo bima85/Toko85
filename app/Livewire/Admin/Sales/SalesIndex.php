@@ -14,7 +14,13 @@ class SalesIndex extends Component
 
     public function render()
     {
-        $sales = Sale::with('user')->latest()->paginate(10);
+        $sales = Sale::with([
+            'user',
+            'customer',
+            'store',
+            'warehouse',
+            'saleItems.product.supplier',
+        ])->latest()->paginate(10);
         return view('livewire.admin.sales.sales-index', [
             'sales' => $sales,
         ]);

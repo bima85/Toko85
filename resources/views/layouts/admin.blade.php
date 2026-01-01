@@ -2,6 +2,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
   <head>
     <meta charset="utf-8" />
+    <meta name="csrf-token" content="{{ csrf_token() }}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ \App\Helpers\PageTitleHelper::getTitle() }} - Admin</title>
 
@@ -36,10 +37,39 @@
     />
     <link rel="stylesheet" href="/css/adminlte.min.css" />
 
+    <!-- PWA Manifest & Icons -->
+    <link rel="manifest" href="{{ asset('manifest.json') }}" />
+    <meta name="theme-color" content="#007bff" />
+    <meta
+      name="description"
+      content="Sistem Manajemen Toko - Kelola stok, penjualan, dan pembelian dengan mudah"
+    />
+    <!-- FAVICON FIX (STABLE) -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/images/icon-192.png" />
+
+    @stack('styles')
+
     <script src="/js/jquery.min.js"></script>
 
     @stack('styles')
     @livewireStyles
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .register('/service-worker.js')
+          .then((registration) => {
+            console.log('Service Worker registered:', registration);
+          })
+          .catch((error) => {
+            console.log('Service Worker registration failed:', error);
+          });
+      }
+    </script>
   </head>
   <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">
@@ -74,6 +104,8 @@
     <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
     <script src="/js/adminlte.min.js"></script>
 
     @stack('scripts')

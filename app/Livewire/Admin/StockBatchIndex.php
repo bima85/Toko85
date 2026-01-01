@@ -7,10 +7,12 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Warehouse;
 use App\Models\StockBatch;
+use App\Models\StockCard;
 use App\Models\Subcategory;
 use App\Models\Unit;
 use App\Services\StockBatchService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Url;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
@@ -44,8 +46,18 @@ class StockBatchIndex extends Component
     public bool $isCreatingBatch = false; // Flag untuk prevent double submission
     public ?int $createProductId = null;
     public string $createProductSearch = '';
-    public ?int $createCategoryId = null;
-    public ?int $createSubcategoryId = null;
+    // Use untyped properties so a sentinel value like '__add__' can be selected in the dropdown
+    public $createCategoryId = null;
+    public $createSubcategoryId = null;
+
+    // Inline create category/subcategory support
+    public bool $showCreateCategoryInline = false;
+    public bool $showCreateSubcategoryInline = false;
+    public string $newCreateCategoryName = '';
+    public string $newCreateSubcategoryName = '';
+    public string $newCreateCategoryCode = '';
+    public string $newCreateSubcategoryCode = '';
+
     public string $createLocationType = 'store';
     public ?int $createLocationId = null;
     public string $createNamaTumpukan = '';
@@ -87,11 +99,29 @@ class StockBatchIndex extends Component
     public string $summaryDateFrom = '';
     public string $summaryDateTo = '';
 
+    // Hold batch properties
+    public bool $showCreateHoldForm = false;
+    public bool $isCreatingHoldBatch = false;
+    public ?int $holdProductId = null;
+    public string $holdProductSearch = '';
+    public $holdCategoryId = null;
+    public $holdSubcategoryId = null;
+    public string $holdLocationType = 'store';
+    public ?int $holdLocationId = null;
+    public string $holdNamaTumpukan = '';
+    public float $holdQty = 0;
+    public string $holdNote = '';
+    public string $holdSatuan = '';
+    public string $holdReason = '';
+
     // Selection properties
     public array $selectedBatches = [];
     public bool $selectAll = false;
 
-    public function mount() {}
+    public function mount()
+    {
+        $this->holdProducts = [];
+    }
 
     public function updatingSearch()
     {
@@ -155,8 +185,15 @@ class StockBatchIndex extends Component
     }
 
 
-    public function updatedCreateCategoryId()
+    public function updatedCreateCategoryId($value)
     {
+        // If user selected the special add option, open inline add and clear selection
+        if ($value === '__add__') {
+            $this->showCreateCategoryInline = true;
+            $this->createCategoryId = null;
+            return;
+        }
+
         // Reset subcategory and product when category changes
         $this->createSubcategoryId = null;
         $this->createProductId = null;
@@ -164,8 +201,15 @@ class StockBatchIndex extends Component
         $this->createSatuan = '';
     }
 
-    public function updatedCreateSubcategoryId()
+    public function updatedCreateSubcategoryId($value)
     {
+        // If user selected the special add option, open inline add and clear selection
+        if ($value === '__add__') {
+            $this->showCreateSubcategoryInline = true;
+            $this->createSubcategoryId = null;
+            return;
+        }
+
         // Reset product when subcategory changes
         $this->createProductId = null;
         $this->createProductSearch = '';
@@ -246,7 +290,8 @@ class StockBatchIndex extends Component
     #[Computed]
     public function totalPerProduct()
     {
-        $query = StockBatch::active();
+        // Only include aktual stock, not hold batches
+        $query = StockBatch::where('qty', '>', 0)->where('status', 'aktual');
 
         // Filter berdasarkan lokasi
         if ($this->location) {
@@ -262,7 +307,7 @@ class StockBatchIndex extends Component
             $query->whereDate('created_at', '<=', $this->summaryDateTo);
         }
 
-        // Group by product_id dan hitung total qty
+        // Group by product_id dan hitung total qty (aktual)
         $totals = $query->with('product')
             ->get()
             ->groupBy('product_id')
@@ -284,7 +329,27 @@ class StockBatchIndex extends Component
             ->sortBy(fn($item) => $item->product->nama_produk)
             ->values();
 
-        return $totals;
+        // Kurangi dengan jumlah HOLD untuk tiap produk (agar menampilkan stok tersedia)
+        $holdQuery = StockBatch::where('status', 'hold')->where('qty', '>', 0);
+        if ($this->location) {
+            $holdQuery->byLocation($this->location);
+        }
+        if ($this->summaryDateFrom) {
+            $holdQuery->whereDate('created_at', '>=', $this->summaryDateFrom);
+        }
+        if ($this->summaryDateTo) {
+            $holdQuery->whereDate('created_at', '<=', $this->summaryDateTo);
+        }
+
+        $holdSums = $holdQuery->get()->groupBy('product_id')->map(fn($g) => $g->sum('qty'));
+
+        $available = $totals->map(function ($item) use ($holdSums) {
+            $hold = $holdSums[$item->product_id] ?? 0;
+            $item->available_qty = (float) $item->total_qty - (float) $hold;
+            return $item;
+        });
+
+        return $available;
     }
 
     public function getTotalPerProductPaginatedProperty()
@@ -315,10 +380,99 @@ class StockBatchIndex extends Component
         $this->stockSummaryTab = $tab;
     }
 
+    // Computed properties for hold form
+    #[Computed]
+    public function categories()
+    {
+        return \App\Models\Category::orderBy('nama_kategori')->get();
+    }
+
+    #[Computed]
+    public function subcategories()
+    {
+        return \App\Models\Subcategory::with('category')->orderBy('nama_subkategori')->get();
+    }
+
+    #[Computed]
+    public function holdBatchOptions()
+    {
+        if (!$this->holdProductId) {
+            return [];
+        }
+
+        // Ambil semua nama_tumpukan untuk produk ini, lalu normalisasi
+        // (trim whitespace, hilangkan string kosong, dan unique secara case-insensitive)
+        $names = StockBatch::where('product_id', $this->holdProductId)
+            ->orderBy('nama_tumpukan')
+            ->pluck('nama_tumpukan');
+
+        $normalized = $names->map(function ($n) {
+            return is_string($n) ? trim($n) : $n;
+        })
+            ->filter(function ($n) {
+                return $n !== null && $n !== '';
+            })
+            // unique case-insensitive
+            ->unique(function ($n) {
+                return mb_strtolower($n);
+            })
+            ->values()
+            ->sort()
+            ->toArray();
+
+        return $normalized;
+    }
+
+    public $holdProducts = [];
+
+    public function updatedHoldProductSearch()
+    {
+        $this->updateHoldProducts();
+    }
+
+    private function updateHoldProducts()
+    {
+        $query = \App\Models\Product::query();
+
+        if (!empty($this->holdProductSearch)) {
+            $search = trim($this->holdProductSearch);
+            $query->where(function ($q) use ($search) {
+                $q->where('nama_produk', 'LIKE', '%' . $search . '%')
+                    ->orWhere('kode_produk', 'LIKE', '%' . $search . '%');
+            });
+        }
+
+        $this->holdProducts = $query->orderBy('nama_produk')
+            ->limit(100)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'kode_produk' => $product->kode_produk,
+                    'nama_produk' => $product->nama_produk,
+                    'satuan' => $product->satuan,
+                ];
+            })
+            ->toArray();
+    }
+
+    #[Computed]
+    public function stores()
+    {
+        return \App\Models\Store::orderBy('nama_toko')->get();
+    }
+
+    #[Computed]
+    public function warehouses()
+    {
+        return \App\Models\Warehouse::orderBy('nama_gudang')->get();
+    }
+
     #[Computed]
     public function totalPerLocation()
     {
-        $query = StockBatch::active();
+        // Only include aktual stock, not hold batches
+        $query = StockBatch::where('qty', '>', 0)->where('status', 'aktual');
 
         // Filter berdasarkan tanggal ringkasan
         if ($this->summaryDateFrom) {
@@ -389,12 +543,16 @@ class StockBatchIndex extends Component
 
     public function render()
     {
-        // Urutkan berdasarkan product_id terlebih dahulu, lalu updated_at
-        // Ini memastikan batch dengan produk yang sama selalu bersebelahan
-        $query = StockBatch::active()
+        // Urutkan berdasarkan nama produk (A-Z), lalu created_at terbaru
+        // Ini memastikan produk terurut alfabetis dan tumpukan terbaru di atas dalam setiap produk
+        // EXCLUDE hold batches - hanya tampilkan stok aktual yang tersedia
+        $query = StockBatch::where('qty', '>', 0)
+            ->where('status', 'aktual') // Only show actual stock, not hold
             ->with(['product', 'product.category', 'product.subcategory'])
-            ->orderBy('product_id')
-            ->orderBy('updated_at', 'desc');
+            ->join('products', 'stock_batches.product_id', '=', 'products.id')
+            ->orderBy('products.nama_produk', 'asc')
+            ->orderBy('stock_batches.created_at', 'desc')
+            ->select('stock_batches.*');
 
         // Filter berdasarkan search (nama produk)
         if ($this->search) {
@@ -433,6 +591,53 @@ class StockBatchIndex extends Component
             $batches = $query->paginate($this->per_page);
         }
 
+        // Buat query terpisah untuk mendapatkan urutan produk yang konsisten di semua halaman
+        // Ambil product_id unik dengan ordering yang sama
+        // Only include aktual stock, not hold batches
+        $productNumberQuery = StockBatch::where('qty', '>', 0)
+            ->where('status', 'aktual')
+            ->join('products', 'stock_batches.product_id', '=', 'products.id')
+            ->select('stock_batches.product_id', 'products.nama_produk')
+            ->groupBy('stock_batches.product_id', 'products.nama_produk')
+            ->orderBy('products.nama_produk', 'asc');
+
+        // Terapkan filter yang sama seperti query utama
+        if ($this->search) {
+            $productNumberQuery->where(function ($q) {
+                $q->where('products.nama_produk', 'like', '%' . $this->search . '%')
+                    ->orWhere('products.kode_produk', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        if ($this->location) {
+            if (method_exists(StockBatch::class, 'byLocation')) {
+                $productNumberQuery->where(function ($q) {
+                    (new StockBatch)->scopeByLocation($q, $this->location);
+                });
+            }
+        }
+
+        if ($this->satuan) {
+            $productNumberQuery->where('products.satuan', $this->satuan);
+        }
+
+        if ($this->dateFrom) {
+            $productNumberQuery->whereDate('stock_batches.created_at', '>=', $this->dateFrom);
+        }
+
+        if ($this->dateTo) {
+            $productNumberQuery->whereDate('stock_batches.created_at', '<=', $this->dateTo);
+        }
+
+        // Ambil semua product_id yang sudah difilter dan diurutkan
+        $orderedProductIds = $productNumberQuery->pluck('stock_batches.product_id')->toArray();
+
+        // Buat mapping nomor urut untuk setiap product_id
+        $productNumbers = [];
+        foreach ($orderedProductIds as $index => $productId) {
+            $productNumbers[$productId] = $index + 1;
+        }
+
         $products = Product::select('id', 'kode_produk', 'nama_produk', 'satuan', 'category_id', 'subcategory_id')
             ->orderBy('nama_produk')
             ->get();
@@ -464,6 +669,7 @@ class StockBatchIndex extends Component
 
         return view('livewire.admin.stock-batch-index', [
             'batches' => $batches,
+            'productNumbers' => $productNumbers,
             'products' => $products,
             'productsJson' => $productsJson,
             'locations' => $locations,
@@ -473,6 +679,7 @@ class StockBatchIndex extends Component
             'stores' => $stores,
             'warehouses' => $warehouses,
             'totalPerProduct' => $this->totalPerProduct,
+            'holdBatchOptions' => $this->holdBatchOptions,
         ]);
     }
 
@@ -701,6 +908,120 @@ class StockBatchIndex extends Component
         }
     }
 
+    public function createHoldBatch()
+    {
+        // Prevent double submission
+        if ($this->isCreatingHoldBatch) {
+            return;
+        }
+        $this->isCreatingHoldBatch = true;
+
+        try {
+            $this->validate([
+                'holdCategoryId' => 'required|numeric|exists:categories,id',
+                'holdSubcategoryId' => 'required|numeric|exists:subcategories,id',
+                'holdProductId' => 'required|numeric|min:1|exists:products,id',
+                'holdLocationType' => 'required|in:store,warehouse',
+                'holdLocationId' => 'required|numeric|min:1',
+                'holdNamaTumpukan' => 'required|string|max:255',
+                'holdQty' => 'required|numeric|min:0.01',
+                'holdSatuan' => 'nullable|string|max:50',
+                'holdReason' => 'required|string|max:255',
+            ], [
+                'holdCategoryId.required' => 'Kategori harus dipilih',
+                'holdCategoryId.exists' => 'Kategori tidak ditemukan',
+                'holdSubcategoryId.required' => 'Subkategori harus dipilih',
+                'holdSubcategoryId.exists' => 'Subkategori tidak ditemukan',
+                'holdProductId.required' => 'Produk harus dipilih',
+                'holdProductId.exists' => 'Produk tidak ditemukan',
+                'holdLocationType.required' => 'Lokasi harus dipilih',
+                'holdLocationType.in' => 'Lokasi tidak valid',
+                'holdLocationId.required' => 'Toko/Gudang harus dipilih',
+                'holdLocationId.numeric' => 'Toko/Gudang tidak valid',
+                'holdNamaTumpukan.required' => 'Nama tumpukan tidak boleh kosong',
+                'holdNamaTumpukan.max' => 'Nama tumpukan maksimal 255 karakter',
+                'holdQty.required' => 'Kuantitas harus diisi',
+                'holdQty.min' => 'Kuantitas minimal 0.01',
+                'holdSatuan.max' => 'Satuan maksimal 50 karakter',
+                'holdReason.required' => 'Alasan hold harus diisi',
+                'holdReason.max' => 'Alasan hold maksimal 255 karakter',
+            ]);
+
+            // Update satuan product jika diisi
+            if ($this->holdSatuan) {
+                $product = Product::find($this->holdProductId);
+                if ($product && $product->satuan !== $this->holdSatuan) {
+                    $product->update(['satuan' => $this->holdSatuan]);
+                }
+            }
+
+            // Check if identical batch already exists (prevent duplicates)
+            $existingHold = StockBatch::where('product_id', $this->holdProductId)
+                ->where('nama_tumpukan', $this->holdNamaTumpukan)
+                ->where('location_type', $this->holdLocationType)
+                ->where('location_id', $this->holdLocationId)
+                ->where('status', 'hold')
+                ->where('qty', $this->holdQty)
+                ->first();
+
+            if ($existingHold) {
+                session()->flash('error', 'Hold batch yang sama sudah ada! Tidak perlu membuat duplikat.');
+                $this->isCreatingHoldBatch = false;
+                return;
+            }
+
+            // Buat batch hold baru dengan transaction
+            $batch = \DB::transaction(function () {
+                return StockBatch::create([
+                    'product_id' => $this->holdProductId,
+                    'location_type' => $this->holdLocationType,
+                    'location_id' => $this->holdLocationId,
+                    'nama_tumpukan' => $this->holdNamaTumpukan,
+                    'qty' => $this->holdQty,
+                    'status' => 'hold',
+                    'note' => $this->holdNote ?: "Hold: {$this->holdReason}",
+                ]);
+            });
+
+            // Catat di StockCard untuk history
+            StockCard::create([
+                'product_id' => $this->holdProductId,
+                'batch_id' => $batch->id,
+                'type' => 'hold',
+                'qty' => $this->holdQty,
+                'from_location' => null,
+                'to_location' => $this->holdLocationType === 'store' ? "Toko #{$this->holdLocationId}" : "Gudang #{$this->holdLocationId}",
+                'reference_type' => 'manual_hold',
+                'reference_id' => $batch->id,
+                'note' => "Tumpukan hold dibuat: {$this->holdReason}",
+            ]);
+
+            Log::info('Hold stock batch created successfully', [
+                'batch_id' => $batch->id,
+                'product_id' => $this->holdProductId,
+                'qty' => $this->holdQty,
+                'reason' => $this->holdReason,
+            ]);
+
+            session()->flash('message', 'Tumpukan hold berhasil dibuat!');
+
+            // Reset form
+            $this->resetHoldForm();
+            $this->showCreateHoldForm = false;
+
+            // Reset page to first page to show new data
+            $this->resetPage();
+
+            // Dispatch event ke frontend
+            $this->dispatch('hold-batch-created');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error: ' . $e->getMessage());
+        } finally {
+            // Always reset flag
+            $this->isCreatingHoldBatch = false;
+        }
+    }
+
     private function resetCreateForm()
     {
         // Hanya reset field yang perlu di-reset untuk input batch berikutnya
@@ -709,6 +1030,13 @@ class StockBatchIndex extends Component
             'createNamaTumpukan',
             'createQty',
             'createNote',
+            // Inline create helpers
+            'newCreateCategoryName',
+            'newCreateSubcategoryName',
+            'newCreateCategoryCode',
+            'newCreateSubcategoryCode',
+            'showCreateCategoryInline',
+            'showCreateSubcategoryInline',
         ]);
 
         // Reset validasi
@@ -716,6 +1044,133 @@ class StockBatchIndex extends Component
 
         // Re-initialize qty ke 0
         $this->createQty = 0;
+    }
+
+    // Inline add category for create batch form
+    public function createInlineCategory()
+    {
+        $this->validate([
+            'newCreateCategoryName' => 'required|string|max:255',
+            'newCreateCategoryCode' => 'nullable|string|max:50|unique:categories,kode_kategori',
+        ], [
+            'newCreateCategoryCode.unique' => 'Kode kategori sudah digunakan',
+        ]);
+
+        $kode = $this->newCreateCategoryCode ?: strtoupper(Str::slug($this->newCreateCategoryName, '_'));
+
+        $cat = Category::create([
+            'nama_kategori' => $this->newCreateCategoryName,
+            'kode_kategori' => $kode,
+        ]);
+
+        $this->createCategoryId = $cat->id;
+        $this->newCreateCategoryName = '';
+        $this->newCreateCategoryCode = '';
+        $this->showCreateCategoryInline = false;
+
+        session()->flash('message', "Kategori '{$cat->nama_kategori}' berhasil dibuat.");
+    }
+
+    // Inline add subcategory for create batch form
+    public function createInlineSubcategory()
+    {
+        $this->validate([
+            'newCreateSubcategoryName' => 'required|string|max:255',
+            'newCreateSubcategoryCode' => 'nullable|string|max:50|unique:subcategories,kode_subkategori',
+            'createCategoryId' => 'required|exists:categories,id',
+        ], [
+            'createCategoryId.required' => 'Pilih kategori terlebih dahulu.',
+            'newCreateSubcategoryCode.unique' => 'Kode subkategori sudah digunakan',
+        ]);
+
+        $kode = $this->newCreateSubcategoryCode ?: strtoupper(Str::slug($this->newCreateSubcategoryName, '_'));
+
+        $sub = Subcategory::create([
+            'nama_subkategori' => $this->newCreateSubcategoryName,
+            'kode_subkategori' => $kode,
+            'category_id' => $this->createCategoryId,
+        ]);
+
+        $this->createSubcategoryId = $sub->id;
+        $this->newCreateSubcategoryName = '';
+        $this->newCreateSubcategoryCode = '';
+        $this->showCreateSubcategoryInline = false;
+
+        session()->flash('message', "Subkategori '{$sub->nama_subkategori}' berhasil dibuat.");
+    }
+
+    // Hold batch methods
+    public function openCreateHoldForm()
+    {
+        $this->showCreateHoldForm = true;
+        $this->showCreateForm = false; // Close regular create form if open
+    }
+
+    public function closeCreateHoldForm()
+    {
+        $this->showCreateHoldForm = false;
+        $this->resetHoldForm();
+    }
+
+    public function updatedHoldProductId()
+    {
+        // Reset nama tumpukan when product changes
+        $this->holdNamaTumpukan = '';
+    }
+
+    public function selectHoldProduct($value)
+    {
+        $product = Product::find($value);
+        if ($product) {
+            $this->holdProductId = $product->id;
+            $this->holdProductSearch = "[{$product->kode_produk}] {$product->nama_produk}";
+            $this->holdCategoryId = $product->category_id;
+            $this->holdSubcategoryId = $product->subcategory_id;
+            $this->holdSatuan = $product->satuan ?? '';
+
+            // Reset nama tumpukan - user will select from dropdown
+            $this->holdNamaTumpukan = '';
+
+            // Get the latest existing batch for this product to pre-fill other fields
+            $existingBatch = StockBatch::where('product_id', $product->id)
+                ->where('status', 'aktual')
+                ->where('qty', '>', 0)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($existingBatch) {
+                // Pre-fill location and qty from existing batch
+                $this->holdQty = $existingBatch->qty;
+                $this->holdLocationType = $existingBatch->location_type;
+                $this->holdLocationId = $existingBatch->location_id;
+            } else {
+                // Reset if no existing batch
+                $this->holdQty = 0;
+            }
+        }
+    }
+
+    private function resetHoldForm()
+    {
+        $this->reset([
+            'holdProductId',
+            'holdProductSearch',
+            'holdCategoryId',
+            'holdSubcategoryId',
+            'holdLocationType',
+            'holdLocationId',
+            'holdNamaTumpukan',
+            'holdQty',
+            'holdNote',
+            'holdSatuan',
+            'holdReason',
+        ]);
+
+        // Reset validasi
+        $this->clearValidation();
+
+        // Re-initialize qty ke 0
+        $this->holdQty = 0;
     }
 
     // Selection methods

@@ -13,6 +13,7 @@ class Product extends Model
         'nama_produk',
         'description',
         'satuan',
+        'supplier_id',
         'category_id',
         'subcategory_id'
     ];
@@ -24,6 +25,11 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function subcategory(): BelongsTo

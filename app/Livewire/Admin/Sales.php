@@ -34,11 +34,18 @@ class Sales extends Component
     public $customer_id;
     public $store_id;
     public $warehouse_id;
+    public $location_source = 'toko'; // 'toko' or 'gudang'
     public $status = 'completed';
     public $keterangan;
     public $editingSaleId = null;
     public $showCreateForm = false;
 
+    // Modal to create customer inline
+    public $showCreateCustomerModal = false;
+    public $new_customer_nama = '';
+    public $new_customer_telepon = '';
+    public $new_customer_email = '';
+    public $new_customer_alamat = '';
     // Sale items
     public $saleItems = [];
 
@@ -58,12 +65,12 @@ class Sales extends Component
     public $useWarehouseStock = false;
 
     protected $rules = [
-        'no_invoice' => 'required|string|max:50|unique:sales,no_invoice',
+        'no_invoice' => 'nullable|string|max:50|unique:sales,no_invoice',
         'tanggal_penjualan' => 'required|date',
         'customer_id' => 'required|exists:customers,id',
         'store_id' => 'nullable|exists:stores,id',
         'warehouse_id' => 'nullable|exists:warehouses,id',
-        'status' => 'required|in:pending,completed,cancelled',
+        'status' => 'required|in:pending,completed,cancelled,hold',
         'keterangan' => 'nullable|string',
         'saleItems' => 'required|array|min:1',
         'saleItems.*.category_id' => 'required|exists:categories,id',
@@ -99,12 +106,22 @@ class Sales extends Component
         $this->tanggal_penjualan = date('Y-m-d');
         $this->deliveryDate = date('Y-m-d');
 
+        // Invoice will be auto-generated when customer is selected
+        // or before save if still empty
+
         // Generate nomor surat jalan
         $this->generateDeliveryNoteNumber();
 
         $this->editingSaleId = null;
         $this->showCreateForm = true;
         $this->deliveryApproved = false;
+
+        // Reset inline customer form values
+        $this->showCreateCustomerModal = false;
+        $this->new_customer_nama = '';
+        $this->new_customer_telepon = '';
+        $this->new_customer_email = '';
+        $this->new_customer_alamat = '';
     }
 
     public function edit($id)
@@ -181,21 +198,21 @@ class Sales extends Component
 
         $query = StockBatch::where('product_id', $productId)
             ->where('qty', '>', 0)
+            ->where('status', 'aktual') // Only show aktual batches, not hold
             ->orderBy('created_at', 'asc');
 
-        // Filter by location (Store or Warehouse) ONLY jika sudah dipilih
-        if ($this->store_id) {
+        // Filter based on location_source choice
+        if ($this->location_source === 'toko' && $this->store_id) {
             $query->where('location_type', 'store')
                 ->where('location_id', $this->store_id);
-        } elseif ($this->warehouse_id) {
+        } elseif ($this->location_source === 'gudang' && $this->warehouse_id) {
             $query->where('location_type', 'warehouse')
                 ->where('location_id', $this->warehouse_id);
         }
-        // Jika keduanya NULL, tampilkan semua batch untuk product (no filter)
 
         $batches = $query->get();
 
-        \Log::info("getAvailableBatches: product=$productId, store={$this->store_id}, warehouse={$this->warehouse_id}, count={$batches->count()}");
+        \Log::info("getAvailableBatches: product=$productId, source={$this->location_source}, store={$this->store_id}, warehouse={$this->warehouse_id}, count={$batches->count()}");
 
         return $batches;
     }
@@ -389,25 +406,49 @@ class Sales extends Component
 
     public function generateInvoiceNumber()
     {
+        \Log::info('=== generateInvoiceNumber called ===', [
+            'customer_id' => $this->customer_id,
+            'current_no_invoice' => $this->no_invoice,
+        ]);
+
         if (!$this->customer_id) {
-            $this->no_invoice = '';
+            // Generate default invoice without customer code
+            $today = date('Ymd');
+            $prefix = 'INV/PJ/' . $today;
+
+            $lastSale = Sale::where('no_invoice', 'LIKE', $prefix . '/%')
+                ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '/', -1) AS UNSIGNED) DESC")
+                ->first();
+
+            $sequence = 1;
+            if ($lastSale) {
+                $parts = explode('/', $lastSale->no_invoice);
+                if (count($parts) >= 4) {
+                    $sequence = (int)$parts[3] + 1;
+                }
+            }
+
+            $this->no_invoice = sprintf('INV/PJ/%s/%03d', $today, $sequence);
+
+            \Log::info('Generated invoice (no customer):', ['no_invoice' => $this->no_invoice]);
             return;
         }
 
         $customer = Customer::find($this->customer_id);
         if (!$customer) {
             $this->no_invoice = '';
+            \Log::warning('Customer not found, no_invoice set to empty');
             return;
         }
 
         // Format: [CUSTOMER_CODE]/PJ/[YYYYMMDD]/[SEQUENCE]
         // Contoh: CUST001/PJ/20251107/001
         $today = date('Ymd');
+        $prefix = $customer->kode_pelanggan . '/PJ/' . $today;
 
-        // Cari jumlah invoice untuk pelanggan ini hari ini
-        $lastInvoice = Sale::where('customer_id', $this->customer_id)
-            ->whereDate('tanggal_penjualan', date('Y-m-d'))
-            ->latest('id')
+        // Cari invoice terakhir dengan pattern yang sama (by invoice prefix, not by customer_id)
+        $lastInvoice = Sale::where('no_invoice', 'LIKE', $prefix . '/%')
+            ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '/', -1) AS UNSIGNED) DESC")
             ->first();
 
         $sequence = 1;
@@ -425,6 +466,11 @@ class Sales extends Component
             $today,
             $sequence
         );
+
+        \Log::info('Generated invoice (with customer):', [
+            'customer_code' => $customer->kode_pelanggan,
+            'no_invoice' => $this->no_invoice,
+        ]);
     }
 
     public function generateDeliveryNoteNumber()
@@ -715,6 +761,13 @@ class Sales extends Component
     public function save()
     {
         try {
+            \Log::info('=== SAVE METHOD CALLED ===', [
+                'editingSaleId' => $this->editingSaleId,
+                'no_invoice' => $this->no_invoice,
+                'customer_id' => $this->customer_id,
+                'status' => $this->status,
+            ]);
+
             // Step 1: Cek stok availability (hanya untuk penjualan baru, bukan edit)
             if (!$this->editingSaleId && !$this->deliveryApproved) {
                 if (!$this->checkStockAvailability()) {
@@ -734,6 +787,13 @@ class Sales extends Component
             if ($this->editingSaleId) {
                 // Update validation: no_invoice unique except current record
                 $this->rules['no_invoice'] = 'required|string|max:50|unique:sales,no_invoice,' . $this->editingSaleId;
+            } else {
+                // For new sale, auto-generate invoice if empty
+                if (empty($this->no_invoice)) {
+                    $this->generateInvoiceNumber();
+                }
+                // Make no_invoice required for new records
+                $this->rules['no_invoice'] = 'required|string|max:50|unique:sales,no_invoice';
             }
 
             // Validate batch qty availability
@@ -759,6 +819,15 @@ class Sales extends Component
             $this->validate();
 
             DB::transaction(function () {
+                // Calculate total amount dari sale items (menggunakan total yang sudah dihitung per item)
+                // Total per item sudah dihitung dengan formula: Qty × Unit Conversion × Harga Jual
+                $totalAmount = collect($this->saleItems)->sum(function ($item) {
+                    return (float) ($item['total'] ?? 0);
+                });
+
+                // Add kuli (delivery cost) to total
+                $totalAmount += (float) ($this->kuli ?? 0);
+
                 if ($this->editingSaleId) {
                     // Update existing sale
                     $sale = Sale::findOrFail($this->editingSaleId);
@@ -768,6 +837,7 @@ class Sales extends Component
                         'customer_id' => $this->customer_id,
                         'store_id' => $this->store_id,
                         'warehouse_id' => $this->warehouse_id,
+                        'total_amount' => $totalAmount,
                         'status' => $this->status,
                         'keterangan' => $this->keterangan,
                     ]);
@@ -785,6 +855,7 @@ class Sales extends Component
                         'customer_id' => $this->customer_id,
                         'store_id' => $this->store_id,
                         'warehouse_id' => $this->warehouse_id,
+                        'total_amount' => $totalAmount,
                         'status' => $this->status,
                         'keterangan' => $this->keterangan,
                         'user_id' => Auth::id(),
@@ -800,6 +871,16 @@ class Sales extends Component
                         'harga_jual' => $item['harga_jual'],
                         'batch_id' => $item['batch_id'] ?? null,
                     ]);
+
+                    // HOLD LOGIC: If status is 'hold', use HoldStockService
+                    if ($this->status === 'hold') {
+                        $batch = StockBatch::find($item['batch_id']);
+                        if ($batch) {
+                            $holdService = app(\App\Services\HoldStockService::class);
+                            $holdService->moveToHold($sale, $batch, $item['qty']);
+                        }
+                        continue; // Skip normal stock reduction
+                    }
 
                     // PENTING: Prioritas TOKO dulu, jika tidak ada baru GUDANG
                     // Hanya satu yang aktif untuk menghindari pengurangan stok ganda
@@ -868,20 +949,16 @@ class Sales extends Component
 
                 // Create transaction history entry
                 try {
-                    $totalAmount = collect($this->saleItems)->sum(function ($item) {
-                        return ($item['qty'] ?? 0) * ($item['harga_jual'] ?? 0);
-                    });
-
                     \App\Models\TransactionHistory::create([
                         'transaction_code' => $sale->no_invoice,
                         'transaction_type' => 'penjualan',
                         'reference_type' => 'sale',
                         'reference_id' => $sale->id,
-                        'transaction_date' => now(),
-                        'amount' => $totalAmount,
+                        'transaction_date' => $this->tanggal_penjualan, // Use actual sale date
+                        'amount' => $totalAmount, // Use calculated total from above
                         'currency' => 'IDR',
                         'description' => 'Penjualan - ' . $sale->no_invoice . ($sale->customer_id ? ' ke ' . optional($sale->customer)->nama_customer : ''),
-                        'status' => 'completed',
+                        'status' => $this->status === 'hold' ? 'pending' : 'completed',
                         'user_id' => Auth::id(),
                         'notes' => $sale->keterangan,
                     ]);
@@ -928,6 +1005,7 @@ class Sales extends Component
         $this->customer_id = null;
         $this->store_id = null;
         $this->warehouse_id = null;
+        $this->location_source = 'toko'; // Reset to default
         $this->status = 'completed';
         $this->keterangan = '';
         $this->saleItems = [];
@@ -978,5 +1056,37 @@ class Sales extends Component
             'stores' => $stores,
             'warehouses' => $warehouses,
         ]);
+    }
+
+    /**
+     * Save a new customer created inline from sales form
+     */
+    public function saveNewCustomer()
+    {
+        $this->validate([
+            'new_customer_nama' => 'required|string|max:255',
+            'new_customer_telepon' => 'nullable|string|max:50',
+            'new_customer_email' => 'nullable|email|max:255',
+        ]);
+
+        $customer = Customer::create([
+            'kode_pelanggan' => strtoupper(str_replace(' ', '', substr($this->new_customer_nama, 0, 6))) . rand(10, 99),
+            'nama_pelanggan' => $this->new_customer_nama,
+            'telepon' => $this->new_customer_telepon,
+            'email' => $this->new_customer_email,
+            'alamat' => $this->new_customer_alamat,
+        ]);
+
+        // Select created customer in form
+        $this->customer_id = $customer->id;
+
+        // Hide modal and clear inputs
+        $this->showCreateCustomerModal = false;
+        $this->new_customer_nama = '';
+        $this->new_customer_telepon = '';
+        $this->new_customer_email = '';
+        $this->new_customer_alamat = '';
+
+        session()->flash('success', 'Pelanggan baru berhasil dibuat dan dipilih.');
     }
 }
