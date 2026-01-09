@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 class PopulateUsernames extends Command
 {
     protected $signature = 'users:populate-usernames {--dry-run}';
+
     protected $description = 'Populate missing usernames for users who do not have one yet (ensures uniqueness)';
 
     public function handle()
@@ -16,6 +17,7 @@ class PopulateUsernames extends Command
         $users = User::whereNull('username')->orWhere('username', '')->get();
         if ($users->isEmpty()) {
             $this->info('No users without username found.');
+
             return 0;
         }
 
@@ -24,18 +26,19 @@ class PopulateUsernames extends Command
             $username = $base;
             $i = 1;
             while (User::where('username', $username)->exists()) {
-                $username = $base . $i;
+                $username = $base.$i;
                 $i++;
             }
 
             $this->line("User {$user->email} -> username: $username");
-            if (!$this->option('dry-run')) {
+            if (! $this->option('dry-run')) {
                 $user->username = $username;
                 $user->save();
             }
         }
 
         $this->info('Done.');
+
         return 0;
     }
 }

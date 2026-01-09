@@ -20,7 +20,7 @@ return new class extends Migration
             }
 
             // Add new columns after stock_batch_id
-            if (!Schema::hasColumn('stock_cards', 'product_id')) {
+            if (! Schema::hasColumn('stock_cards', 'product_id')) {
                 $table->foreignId('product_id')
                     ->nullable()
                     ->after('stock_batch_id')
@@ -28,7 +28,7 @@ return new class extends Migration
                     ->onDelete('cascade');
             }
 
-            if (!Schema::hasColumn('stock_cards', 'batch_id')) {
+            if (! Schema::hasColumn('stock_cards', 'batch_id')) {
                 $table->foreignId('batch_id')
                     ->nullable()
                     ->after('product_id')
@@ -36,28 +36,28 @@ return new class extends Migration
                     ->onDelete('set null');
             }
 
-            if (!Schema::hasColumn('stock_cards', 'from_location')) {
+            if (! Schema::hasColumn('stock_cards', 'from_location')) {
                 $table->string('from_location')
                     ->nullable()
                     ->after('qty')
                     ->comment('Lokasi asal (Supplier, Toko, Gudang, Customer)');
             }
 
-            if (!Schema::hasColumn('stock_cards', 'to_location')) {
+            if (! Schema::hasColumn('stock_cards', 'to_location')) {
                 $table->string('to_location')
                     ->nullable()
                     ->after('from_location')
                     ->comment('Lokasi tujuan (Toko, Gudang, Customer)');
             }
 
-            if (!Schema::hasColumn('stock_cards', 'reference_type')) {
+            if (! Schema::hasColumn('stock_cards', 'reference_type')) {
                 $table->string('reference_type')
                     ->nullable()
                     ->after('reference')
                     ->comment('Tipe referensi: purchase, sale, adjustment');
             }
 
-            if (!Schema::hasColumn('stock_cards', 'reference_id')) {
+            if (! Schema::hasColumn('stock_cards', 'reference_id')) {
                 $table->unsignedBigInteger('reference_id')
                     ->nullable()
                     ->after('reference_type')
@@ -65,7 +65,7 @@ return new class extends Migration
             }
 
             // Rename 'notes' to 'note' if it exists
-            if (Schema::hasColumn('stock_cards', 'notes') && !Schema::hasColumn('stock_cards', 'note')) {
+            if (Schema::hasColumn('stock_cards', 'notes') && ! Schema::hasColumn('stock_cards', 'note')) {
                 $table->renameColumn('notes', 'note');
             }
 
@@ -106,7 +106,7 @@ return new class extends Migration
             }
 
             // Rename back 'note' to 'notes'
-            if (Schema::hasColumn('stock_cards', 'note') && !Schema::hasColumn('stock_cards', 'notes')) {
+            if (Schema::hasColumn('stock_cards', 'note') && ! Schema::hasColumn('stock_cards', 'notes')) {
                 $table->renameColumn('note', 'notes');
             }
         });

@@ -1,4 +1,5 @@
 <div>
+  {{-- CSS Inlined - eliminasi 404 errors di production --}}
   <style>
     /* Table Styling */
     .stock-table thead th {
@@ -39,6 +40,10 @@
       padding: 0.6rem;
       vertical-align: middle;
       white-space: nowrap;
+    }
+
+    .stock-table tbody td:nth-child(4) {
+      white-space: normal !important;
     }
     .stock-table tbody tr:hover {
       background-color: rgba(0, 123, 255, 0.08) !important;
@@ -176,7 +181,7 @@
       }
 
       .stock-table tbody td:nth-child(3)::after {
-        content: 'Kategori: ' attr(data-kategori) ' | Sub: ' attr(data-subkategori);
+        /* content: 'Kategori: ' attr(data-kategori) ' | Sub: ' attr(data-subkategori); */
         display: block;
         margin-top: 0.35rem;
         font-size: 0.85rem;
@@ -231,8 +236,6 @@
         margin-top: 0.25rem;
       }
 
-      .card-warning .stock-table th:nth-child(4),
-      .card-warning .stock-table td:nth-child(4),
       .card-warning .stock-table th:nth-child(5),
       .card-warning .stock-table td:nth-child(5) {
         display: none !important;
@@ -255,6 +258,33 @@
       .card-warning .stock-table td:nth-child(11) {
         width: 90px;
       }
+
+      /* Mobile: Lokasi column */
+      .card-warning .stock-table th:nth-child(4) {
+        display: none !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4) {
+        display: block !important;
+        width: 100%;
+        margin-top: 0.25rem;
+        font-size: 0.9rem;
+        background: #fff3cd;
+        padding: 0.4rem 0.5rem;
+        border-top: 1px dashed #ffe082;
+        text-align: left !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4) .badge {
+        display: inline-block !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4)::before {
+        content: 'Lokasi: ';
+        font-weight: 600;
+        color: #856404;
+        margin-right: 0.25rem;
+      }
     }
 
     @media (max-width: 420px) {
@@ -263,7 +293,431 @@
         font-size: 0.9rem;
       }
     }
+
+    /* ================================================= */
+    /* DESKTOP MODE OVERRIDES (> 768px) */
+    /* ================================================= */
+    @media (min-width: 769px) {
+      .card-warning .stock-table td:nth-child(4) {
+        display: table-cell !important;
+        width: auto !important;
+        margin-top: 0 !important;
+        background: transparent !important;
+        padding: 0.6rem !important;
+        border-top: none !important;
+        text-align: center !important;
+        white-space: normal !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4)::before {
+        content: '' !important;
+        display: none !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4) .badge {
+        display: inline-block !important;
+        margin: 0.25rem 0 !important;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.9rem !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4) .badge-primary {
+        background-color: #007bff !important;
+        color: white !important;
+      }
+
+      .card-warning .stock-table td:nth-child(4) .badge-success {
+        background-color: #28a745 !important;
+        color: white !important;
+      }
+
+      /* Header styling untuk desktop */
+      .card-warning .stock-table thead th {
+        padding: 0.6rem 0.5rem !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        background-color: #ffc107 !important;
+        color: #333 !important;
+        border-bottom: 2px solid #e6b800 !important;
+      }
+
+      .card-warning .stock-table tbody td {
+        padding: 0.6rem 0.5rem !important;
+        font-size: 0.95rem !important;
+        border: 1px solid #e9ecef !important;
+      }
+    }
+
+    /* ================================================= */
+    /* MOBILE: RIWAYAT PENYESUAIAN STOK TABLE (card-warning) */
+    /* ================================================= */
+    @media (max-width: 768px) {
+      .card-warning .stock-table {
+        table-layout: auto !important;
+        width: 100% !important;
+      }
+
+      /* ===== KOLOM YANG HARUS DISEMBUNYIKAN ===== */
+      /* Kolom 4: Lokasi */
+      .card-warning .stock-table thead th:nth-child(4),
+      .card-warning .stock-table tbody td:nth-child(4) {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        visibility: collapse !important;
+      }
+
+      /* Kolom 5: Tipe */
+      .card-warning .stock-table thead th:nth-child(5),
+      .card-warning .stock-table tbody td:nth-child(5) {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        visibility: collapse !important;
+      }
+
+      /* Kolom 9: Jam */
+      .card-warning .stock-table thead th:nth-child(9),
+      .card-warning .stock-table tbody td:nth-child(9) {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        visibility: collapse !important;
+      }
+
+      /* Kolom 10: User */
+      .card-warning .stock-table thead th:nth-child(10),
+      .card-warning .stock-table tbody td:nth-child(10) {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        visibility: collapse !important;
+      }
+
+      /* ===== KOLOM YANG DITAMPILKAN ===== */
+
+      /* 1 = Checkbox */
+      .card-warning .stock-table thead th:nth-child(1),
+      .card-warning .stock-table tbody td:nth-child(1) {
+        display: table-cell !important;
+        width: 35px !important;
+        min-width: 35px !important;
+        max-width: 35px !important;
+        padding: 0.35rem 0.2rem !important;
+        text-align: center !important;
+      }
+
+      /* 2 = No */
+      .card-warning .stock-table thead th:nth-child(2),
+      .card-warning .stock-table tbody td:nth-child(2) {
+        display: table-cell !important;
+        width: 45px !important;
+        min-width: 45px !important;
+        max-width: 45px !important;
+        padding: 0.35rem 0.25rem !important;
+        text-align: center !important;
+        font-size: 0.9rem;
+      }
+
+      /* 3 = Produk */
+      .card-warning .stock-table thead th:nth-child(3),
+      .card-warning .stock-table tbody td:nth-child(3) {
+        display: table-cell !important;
+        min-width: 140px !important;
+        padding: 0.4rem 0.5rem !important;
+        white-space: normal !important;
+        font-size: 0.9rem;
+      }
+
+      /* 6 = Qty */
+      .card-warning .stock-table thead th:nth-child(6),
+      .card-warning .stock-table tbody td:nth-child(6) {
+        display: table-cell !important;
+        width: 70px !important;
+        min-width: 70px !important;
+        max-width: 70px !important;
+        padding: 0.4rem !important;
+        text-align: center !important;
+        font-weight: bold !important;
+        font-size: 1rem !important;
+      }
+
+      /* 7 = Alasan */
+      .card-warning .stock-table thead th:nth-child(7),
+      .card-warning .stock-table tbody td:nth-child(7) {
+        display: table-cell !important;
+        min-width: 130px !important;
+        padding: 0.4rem 0.5rem !important;
+        white-space: normal !important;
+        font-size: 0.9rem;
+      }
+
+      /* 8 = Tanggal */
+      .card-warning .stock-table thead th:nth-child(8),
+      .card-warning .stock-table tbody td:nth-child(8) {
+        display: table-cell !important;
+        width: 85px !important;
+        min-width: 85px !important;
+        max-width: 85px !important;
+        padding: 0.4rem 0.35rem !important;
+        text-align: center !important;
+        font-size: 0.9rem;
+      }
+
+      /* 11 = Aksi */
+      .card-warning .stock-table thead th:nth-child(11),
+      .card-warning .stock-table tbody td:nth-child(11) {
+        display: table-cell !important;
+        width: 60px !important;
+        min-width: 60px !important;
+        max-width: 60px !important;
+        padding: 0.35rem 0.25rem !important;
+        text-align: center !important;
+      }
+
+      .card-warning .stock-table tbody td:nth-child(11) .btn-group {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.2rem;
+      }
+
+      .card-warning .stock-table tbody td:nth-child(11) .btn-group-sm > .btn {
+        display: block !important;
+        padding: 0.2rem 0.3rem !important;
+        font-size: 0.75rem;
+      }
+
+      .card-warning .stock-table tbody td:nth-child(11) .btn-group-sm > .btn i {
+        font-size: 0.7rem;
+      }
+
+      /* Header */
+      .card-warning .stock-table thead th {
+        padding: 0.5rem 0.35rem !important;
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        line-height: 1.3 !important;
+        text-align: center !important;
+        white-space: normal !important;
+        background-color: #ffc107 !important;
+        color: #333 !important;
+        border: 1px solid #e6b800 !important;
+      }
+
+      /* Produk & Alasan - left align */
+      .card-warning .stock-table thead th:nth-child(3),
+      .card-warning .stock-table thead th:nth-child(7) {
+        text-align: left !important;
+        padding-left: 0.5rem !important;
+      }
+
+      /* Body */
+      .card-warning .stock-table tbody td {
+        padding: 0.5rem 0.35rem !important;
+        font-size: 0.9rem !important;
+        border: 1px solid #e9ecef !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .card-warning .stock-table thead th {
+        padding: 0.4rem 0.25rem !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+      }
+
+      .card-warning .stock-table tbody td {
+        padding: 0.4rem 0.25rem !important;
+        font-size: 0.85rem;
+        border: 1px solid #e9ecef !important;
+      }
+
+      .card-warning .stock-table thead th:nth-child(1),
+      .card-warning .stock-table tbody td:nth-child(1) {
+        width: 32px !important;
+        min-width: 32px !important;
+        max-width: 32px !important;
+      }
+
+      .card-warning .stock-table thead th:nth-child(2),
+      .card-warning .stock-table tbody td:nth-child(2) {
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+        font-size: 0.8rem;
+      }
+
+      .card-warning .stock-table tbody td:nth-child(11) .btn-group-sm > .btn {
+        padding: 0.15rem 0.25rem !important;
+        font-size: 0.65rem;
+      }
+    }
+
+    /* Adjustment Filter Controls - Side by Side Layout */
+    .adjustment-filters {
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      flex-wrap: nowrap !important;
+      margin-bottom: 0 !important;
+    }
+
+    .adjustment-filters .input-group {
+      flex: 1 1 200px !important;
+      min-width: 200px !important;
+      max-width: 400px !important;
+    }
+
+    .adjustment-filters select {
+      flex: 0 0 auto !important;
+      width: 100px !important;
+      min-width: 100px !important;
+    }
+
+    /* Responsive Adjustment Controls */
+    @media (max-width: 768px) {
+      .adjustment-filters {
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        flex-wrap: nowrap !important;
+        width: auto !important;
+      }
+
+      .adjustment-filters .input-group {
+        flex: 1 1 auto !important;
+        min-width: 150px !important;
+        max-width: none !important;
+      }
+
+      .adjustment-filters select {
+        flex: 0 0 auto !important;
+        width: 90px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .adjustment-filters {
+        display: flex !important;
+        align-items: stretch !important;
+        gap: 0.4rem !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+      }
+
+      .adjustment-filters .input-group {
+        flex: 1 1 auto !important;
+        min-width: 150px !important;
+      }
+
+      .adjustment-filters select {
+        flex: 0 0 80px !important;
+        width: 80px !important;
+        padding: 0.375rem 0.25rem !important;
+      }
+    }
   </style>
+
+  {{-- JavaScript Inlined - eliminasi 404 errors di production --}}
+  <script>
+    /**
+     * Stock Reports Page - JavaScript Functions
+     * Handles modal interactions and calculator functionality
+     */
+
+    /**
+     * Alpine.js component untuk kalkulasi stok
+     * @returns {Object} Stok calculator object
+     */
+    function stokCalculator() {
+      return {
+        stokAwal: 0,
+        stokMasuk: 0,
+        totalStok: 0,
+        /**
+         * Hitung total stok dari input stok awal dan stok masuk
+         */
+        calculateTotal() {
+          const awal = parseFloat(this.$refs.stokAwal?.value || 0) || 0;
+          const masuk = parseFloat(this.$refs.stokMasuk?.value || 0) || 0;
+          this.stokAwal = awal;
+          this.stokMasuk = masuk;
+          this.totalStok = awal + masuk;
+
+          if (window.$wire) {
+            $wire.set('adjustment_total_stok', this.totalStok);
+          }
+        },
+      };
+    }
+
+    /**
+     * Export function ke global window agar Alpine bisa mengaksesnya
+     */
+    window.stokCalculator = stokCalculator;
+
+    /**
+     * Event listener untuk modal penyesuaian stok - tampilkan
+     */
+    window.addEventListener('show-adjustment-modal', () => {
+      $('#adjustmentModal').modal('show');
+    });
+
+    /**
+     * Event listener untuk modal penyesuaian stok - sembunyikan
+     */
+    window.addEventListener('hide-adjustment-modal', () => {
+      $('#adjustmentModal').modal('hide');
+    });
+
+    /**
+     * Event listeners untuk lokasi toko dan gudang
+     * Pastikan hanya satu lokasi yang dipilih
+     */
+    function setupLocationHandlers() {
+      const storeLocation = document.getElementById('store_location');
+      const warehouseLocation = document.getElementById('warehouse_location');
+
+      if (storeLocation) {
+        storeLocation.addEventListener('change', function () {
+          if (this.checked && window.$wire) {
+            $wire.set('adjustment_warehouse_id', null);
+          }
+        });
+      }
+
+      if (warehouseLocation) {
+        warehouseLocation.addEventListener('change', function () {
+          if (this.checked && window.$wire) {
+            $wire.set('adjustment_store_id', null);
+          }
+        });
+      }
+    }
+
+    // Setup handlers saat document ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setupLocationHandlers);
+    } else {
+      setupLocationHandlers();
+    }
+
+    // Juga setup ulang saat livewire load
+    window.addEventListener('livewire:load', setupLocationHandlers);
+  </script>
 
   @if (session()->has('message'))
     <div class="alert alert-success alert-dismissible">
@@ -286,7 +740,7 @@
           </ol>
         </div>
         <div class="col-sm-6 text-right">
-          <a href="{{ route('stock-batches.index') }}" class="btn btn-sm btn-primary mr-2">
+          <a href="{{ route('admin.stock-batches.index') }}" class="btn btn-sm btn-primary mr-2">
             <i class="fas fa-layer-group"></i>
             Kelola Tumpukan Stok
           </a>
@@ -330,6 +784,178 @@
               <span class="info-box-number">
                 {{ number_format($this->getTotalStokToko() + $this->getTotalStokGudang(), 0) }}
               </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detail Breakdown by Category and Subcategory -->
+      <div class="row mb-4">
+        <div class="col-md-12">
+          <div class="card card-outline card-secondary elevation-1">
+            <div class="card-header">
+              <h3 class="card-title">
+                <i class="fas fa-sitemap mr-2"></i>
+                Detail Stok Berdasarkan Kategori & Subkategori
+              </h3>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <!-- Kategori Breakdown -->
+                <div class="col-md-6">
+                  <h5 class="text-muted mb-3">
+                    <i class="fas fa-list mr-2"></i>
+                    Per Kategori
+                  </h5>
+                  @if ($stokByCategory->count() > 0)
+                    <div class="table-responsive">
+                      <table class="table table-sm table-hover table-striped">
+                        <thead class="bg-secondary text-white">
+                          <tr>
+                            <th style="width: 50%">Kategori</th>
+                            <th class="text-center" style="width: 15%">Produk</th>
+                            <th class="text-center" style="width: 15%">Total Qty</th>
+                            <th style="width: 20%">Daftar Produk</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @foreach ($stokByCategory as $cat)
+                            <tr>
+                              <td>
+                                <span class="badge badge-secondary">
+                                  {{ $cat['category_name'] }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <span class="badge badge-info">{{ $cat['product_count'] }}</span>
+                              </td>
+                              <td class="text-center">
+                                <strong class="text-success">
+                                  {{ number_format($cat['total_qty'], 0) }}
+                                </strong>
+                              </td>
+                              <td>
+                                <small
+                                  class="text-muted d-block"
+                                  title="{{ $cat['products'] }}"
+                                  style="
+                                    overflow: hidden;
+                                    text-overflow: ellipsis;
+                                    white-space: nowrap;
+                                    max-width: 200px;
+                                  "
+                                >
+                                  {{ $cat['products'] }}
+                                </small>
+                              </td>
+                            </tr>
+                          @endforeach
+
+                          <tr class="font-weight-bold bg-light">
+                            <td>Total Keseluruhan</td>
+                            <td class="text-center">
+                              <span class="badge badge-primary">
+                                {{ $stokByCategory->sum('product_count') }}
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <span class="badge badge-success" style="font-size: 1rem">
+                                {{ number_format($stokByCategory->sum('total_qty'), 0) }}
+                              </span>
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  @else
+                    <div class="alert alert-info text-center">
+                      <i class="fas fa-info-circle mr-2"></i>
+                      Tidak ada data kategori
+                    </div>
+                  @endif
+                </div>
+
+                <!-- Subkategori Breakdown -->
+                <div class="col-md-6">
+                  <h5 class="text-muted mb-3">
+                    <i class="fas fa-layer-group mr-2"></i>
+                    Per Subkategori
+                  </h5>
+                  @if ($stokBySubCategory->count() > 0)
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto">
+                      <table class="table table-sm table-hover table-striped">
+                        <thead class="bg-secondary text-white" style="position: sticky; top: 0">
+                          <tr>
+                            <th style="width: 40%">Subkategori</th>
+                            <th class="text-center" style="width: 12%">Produk</th>
+                            <th class="text-center" style="width: 15%">Total Qty</th>
+                            <th style="width: 33%">Daftar Produk</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @foreach ($stokBySubCategory as $subcat)
+                            <tr>
+                              <td>
+                                <small class="text-muted d-block">
+                                  {{ $subcat['category_name'] }}
+                                </small>
+                                <span class="badge badge-light text-dark">
+                                  {{ $subcat['subcategory_name'] }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <span class="badge badge-info">
+                                  {{ $subcat['product_count'] }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <strong class="text-success">
+                                  {{ number_format($subcat['total_qty'], 0) }}
+                                </strong>
+                              </td>
+                              <td>
+                                <small
+                                  class="text-muted d-block"
+                                  title="{{ $subcat['products'] }}"
+                                  style="
+                                    overflow: hidden;
+                                    text-overflow: ellipsis;
+                                    white-space: nowrap;
+                                    max-width: 280px;
+                                  "
+                                >
+                                  {{ $subcat['products'] }}
+                                </small>
+                              </td>
+                            </tr>
+                          @endforeach
+
+                          <tr class="font-weight-bold bg-light">
+                            <td>Total Keseluruhan</td>
+                            <td class="text-center">
+                              <span class="badge badge-primary">
+                                {{ $stokBySubCategory->sum('product_count') }}
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <span class="badge badge-success" style="font-size: 1rem">
+                                {{ number_format($stokBySubCategory->sum('total_qty'), 0) }}
+                              </span>
+                            </td>
+                            <td></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  @else
+                    <div class="alert alert-info text-center">
+                      <i class="fas fa-info-circle mr-2"></i>
+                      Tidak ada data subkategori
+                    </div>
+                  @endif
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -738,39 +1364,41 @@
             Riwayat Penyesuaian Stok
           </h3>
           <div class="card-tools d-flex align-items-center">
-            <div class="input-group input-group-sm" style="width: 250px; margin-right: 10px">
-              <input
-                type="text"
-                wire:model.live.debounce.300ms="searchAdjustments"
-                class="form-control"
-                placeholder="Cari produk, kode, alasan..."
-              />
-              <div class="input-group-append">
-                @if ($searchAdjustments)
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    wire:click="clearSearchAdjustments"
-                    title="Reset"
-                  >
-                    <i class="fas fa-times"></i>
-                  </button>
-                @endif
+            <div class="adjustment-filters d-flex gap-2 align-items-center flex-wrap">
+              <div class="input-group input-group-sm" style="width: auto; min-width: 250px">
+                <input
+                  type="text"
+                  wire:model.live.debounce.300ms="searchAdjustments"
+                  class="form-control"
+                  placeholder="Cari produk, kode, alasan..."
+                />
+                <div class="input-group-append">
+                  @if ($searchAdjustments)
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      wire:click="clearSearchAdjustments"
+                      title="Reset"
+                    >
+                      <i class="fas fa-times"></i>
+                    </button>
+                  @endif
 
-                <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                  <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                </div>
               </div>
+              <select
+                wire:model.live="perPageAdjustments"
+                class="form-control form-control-sm"
+                style="width: auto; min-width: 120px"
+              >
+                <option value="10">10 baris</option>
+                <option value="15">15 baris</option>
+                <option value="25">25 baris</option>
+                <option value="50">50 baris</option>
+                <option value="100">100 baris</option>
+              </select>
             </div>
-            <select
-              wire:model.live="perPageAdjustments"
-              class="form-control form-control-sm"
-              style="width: 120px; margin-right: 10px"
-            >
-              <option value="10">10 baris</option>
-              <option value="15">15 baris</option>
-              <option value="25">25 baris</option>
-              <option value="50">50 baris</option>
-              <option value="100">100 baris</option>
-            </select>
             @if (count($this->selectedAdjustments) > 0)
               <button
                 class="btn btn-sm btn-danger mr-2"
@@ -785,8 +1413,6 @@
                 Batal
               </button>
             @endif
-
-            <span class="ml-2 text-danger font-weight-bold">{{ $adjustments->count() }}</span>
           </div>
         </div>
 
@@ -834,8 +1460,36 @@
                         <code class="text-warning">{{ $adjustment->product->kode_produk }}</code>
                         <br />
                         <small class="text-muted">{{ $adjustment->product->nama_produk }}</small>
+                        <br />
+                        <small style="color: #28a745">
+                          Kategori:
+                          <strong>
+                            {{ $adjustment->product->category?->nama_kategori ?? '-' }}
+                          </strong>
+                        </small>
+                        <br />
+                        <small style="color: #28a745">
+                          Sub:
+                          <strong>
+                            {{ $adjustment->product->subcategory?->nama_subkategori ?? '-' }}
+                          </strong>
+                        </small>
                       </td>
-                      <td><small class="text-muted">{{ $adjustment->location }}</small></td>
+                      <td>
+                        @if ($adjustment->location === 'Toko')
+                          <span class="badge badge-primary">
+                            <i class="fas fa-store fa-xs mr-1"></i>
+                            Toko
+                          </span>
+                        @elseif ($adjustment->location === 'Gudang')
+                          <span class="badge badge-success">
+                            <i class="fas fa-warehouse fa-xs mr-1"></i>
+                            Gudang
+                          </span>
+                        @else
+                          <small class="text-muted">{{ $adjustment->location ?? '-' }}</small>
+                        @endif
+                      </td>
                       <td class="text-center">
                         @if ($adjustment->adjustment_type === 'add')
                           <span class="badge badge-success">
@@ -1151,43 +1805,4 @@
       </div>
     </div>
   </div>
-
-  <script>
-    function stokCalculator() {
-      return {
-        stokAwal: 0,
-        stokMasuk: 0,
-        totalStok: 0,
-        calculateTotal() {
-          const awal = parseFloat(this.$refs.stokAwal?.value || 0) || 0;
-          const masuk = parseFloat(this.$refs.stokMasuk?.value || 0) || 0;
-          this.stokAwal = awal;
-          this.stokMasuk = masuk;
-          this.totalStok = awal + masuk;
-
-          if (window.$wire) {
-            $wire.set('adjustment_total_stok', this.totalStok);
-          }
-        },
-      };
-    }
-
-    window.addEventListener('show-adjustment-modal', () => {
-      $('#adjustmentModal').modal('show');
-    });
-
-    window.addEventListener('hide-adjustment-modal', () => {
-      $('#adjustmentModal').modal('hide');
-    });
-
-    document.addEventListener('livewire:load', function () {
-      document.getElementById('store_location')?.addEventListener('change', function () {
-        if (this.checked) $wire.set('adjustment_warehouse_id', null);
-      });
-
-      document.getElementById('warehouse_location')?.addEventListener('change', function () {
-        if (this.checked) $wire.set('adjustment_store_id', null);
-      });
-    });
-  </script>
 </div>

@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
         // to use that path so compiled views aren't written under project storage.
         try {
             $envPath = env('VIEW_COMPILED_PATH', null);
-            $compiledPath = $envPath ?: (sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'shop85_views');
+            $compiledPath = $envPath ?: (sys_get_temp_dir().DIRECTORY_SEPARATOR.'shop85_views');
 
             if ($compiledPath) {
                 if (! is_dir($compiledPath)) {

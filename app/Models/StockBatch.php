@@ -14,6 +14,8 @@ class StockBatch extends Model
 
     protected $fillable = [
         'product_id',
+        'category_id',
+        'subcategory_id',
         'location_type',
         'location_id',
         'locationable_id',
@@ -36,6 +38,22 @@ class StockBatch extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Relasi ke Category
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Relasi ke Subcategory
+     */
+    public function subcategory(): BelongsTo
+    {
+        return $this->belongsTo(Subcategory::class);
     }
 
     /**

@@ -14,12 +14,19 @@ class Categories extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_kategori;
+
     public $nama_kategori;
+
     public $description;
+
     public $editingCategoryId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedCategory = null;
 
     protected $rules = [
@@ -75,7 +82,7 @@ class Categories extends Component
         $rules = [
             'nama_kategori' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'kode_kategori' => 'required|string|max:50|unique:categories,kode_kategori' . ($this->editingCategoryId ? (',' . $this->editingCategoryId) : ''),
+            'kode_kategori' => 'required|string|max:50|unique:categories,kode_kategori'.($this->editingCategoryId ? (','.$this->editingCategoryId) : ''),
         ];
 
         $this->validate($rules);
@@ -121,9 +128,9 @@ class Categories extends Component
         $query = Category::query();
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('kode_kategori', 'like', '%' . $this->search . '%')
-                    ->orWhere('nama_kategori', 'like', '%' . $this->search . '%')
-                    ->orWhere('description', 'like', '%' . $this->search . '%');
+                $q->where('kode_kategori', 'like', '%'.$this->search.'%')
+                    ->orWhere('nama_kategori', 'like', '%'.$this->search.'%')
+                    ->orWhere('description', 'like', '%'.$this->search.'%');
             });
         }
 

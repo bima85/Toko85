@@ -15,12 +15,19 @@ class Users extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $name;
+
     public $username;
+
     public $email;
+
     public $password;
+
     public $roles = [];
+
     public $editingUserId = null;
+
     public $showForm = false;
 
     protected $rules = [
@@ -28,7 +35,7 @@ class Users extends Component
         'username' => 'nullable|string|max:50',
         'email' => 'required|email|max:255',
         'password' => 'nullable|string|min:6',
-        'roles' => 'array'
+        'roles' => 'array',
     ];
 
     public function mount()
@@ -67,9 +74,9 @@ class Users extends Component
         // dynamic validation rules (email unique, password required on create)
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255' . ($this->editingUserId ? (',users,email,' . $this->editingUserId) : ''),
+            'email' => 'required|email|max:255'.($this->editingUserId ? (',users,email,'.$this->editingUserId) : ''),
             'password' => $this->editingUserId ? 'nullable|string|min:6' : 'required|string|min:6',
-            'roles' => 'array'
+            'roles' => 'array',
         ];
 
         $this->validate($rules);
@@ -96,14 +103,14 @@ class Users extends Component
                 $username = $this->username;
                 $i = 1;
                 while (User::where('username', $username)->exists()) {
-                    $username = $this->username . $i;
+                    $username = $this->username.$i;
                     $i++;
                 }
             } else {
                 $username = $base;
                 $i = 1;
                 while (User::where('username', $username)->exists()) {
-                    $username = $base . $i;
+                    $username = $base.$i;
                     $i++;
                 }
             }
@@ -114,7 +121,7 @@ class Users extends Component
                 'email' => $this->email,
                 'password' => $this->password ?: Str::random(10),
             ]);
-            if (!empty($this->roles)) {
+            if (! empty($this->roles)) {
                 $u->assignRole($this->roles);
             }
             session()->flash('message', 'User created.');
@@ -130,6 +137,7 @@ class Users extends Component
         // Prevent deleting yourself
         if (Auth::id() === $u->id) {
             session()->flash('message', 'You cannot delete yourself.');
+
             return;
         }
         $u->delete();
@@ -151,8 +159,8 @@ class Users extends Component
         $query = User::query();
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('email', 'like', '%' . $this->search . '%');
+                $q->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('email', 'like', '%'.$this->search.'%');
             });
         }
 

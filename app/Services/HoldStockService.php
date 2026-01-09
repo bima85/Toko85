@@ -86,8 +86,8 @@ class HoldStockService
                 "%HOLD #{$sale->id}%"
             )->first();
 
-            if (!$holdBatch) {
-                throw new \Exception("Tidak ada stok yang ditahan untuk order ini");
+            if (! $holdBatch) {
+                throw new \Exception('Tidak ada stok yang ditahan untuk order ini');
             }
 
             $qty = $holdBatch->qty;
@@ -154,8 +154,8 @@ class HoldStockService
                 "%HOLD #{$sale->id}%"
             )->first();
 
-            if (!$holdBatch) {
-                throw new \Exception("Tidak ada stok yang ditahan untuk order ini");
+            if (! $holdBatch) {
+                throw new \Exception('Tidak ada stok yang ditahan untuk order ini');
             }
 
             $qty = $holdBatch->qty;

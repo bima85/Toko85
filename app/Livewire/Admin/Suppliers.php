@@ -14,15 +14,25 @@ class Suppliers extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_supplier;
+
     public $nama_supplier;
+
     public $alamat;
+
     public $telepon;
+
     public $email;
+
     public $keterangan;
+
     public $editingSupplierId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedSupplier = null;
 
     protected $rules = [
@@ -85,7 +95,7 @@ class Suppliers extends Component
             'telepon' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'keterangan' => 'nullable|string',
-            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier' . ($this->editingSupplierId ? (',' . $this->editingSupplierId) : ''),
+            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier'.($this->editingSupplierId ? (','.$this->editingSupplierId) : ''),
         ];
 
         $this->validate($rules);
@@ -137,9 +147,9 @@ class Suppliers extends Component
 
     public function render()
     {
-        $suppliers = Supplier::where('nama_supplier', 'like', '%' . $this->search . '%')
-            ->orWhere('kode_supplier', 'like', '%' . $this->search . '%')
-            ->orWhere('email', 'like', '%' . $this->search . '%')
+        $suppliers = Supplier::where('nama_supplier', 'like', '%'.$this->search.'%')
+            ->orWhere('kode_supplier', 'like', '%'.$this->search.'%')
+            ->orWhere('email', 'like', '%'.$this->search.'%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

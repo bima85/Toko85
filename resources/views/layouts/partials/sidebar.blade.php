@@ -220,8 +220,8 @@
             </li>
             <li class="nav-item">
               <a
-                href="{{ route('stock-batches.index') }}"
-                class="nav-link @if(request()->routeIs('stock-batches.index')) active @endif"
+                href="{{ route('admin.stock-batches.index') }}"
+                class="nav-link @if(request()->routeIs('admin.stock-batches.index')) active @endif"
               >
                 <i class="far fa-circle nav-icon"></i>
                 <p>Stok Tumpukan</p>

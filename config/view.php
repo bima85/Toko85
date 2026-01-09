@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Arr;
-
 return [
     /*
     |--------------------------------------------------------------------------
@@ -27,5 +25,5 @@ return [
     | to avoid filling the project `storage` folder when desired.
     |
     */
-    'compiled' => env('VIEW_COMPILED_PATH') ?: (sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'shop85_views'),
+    'compiled' => env('VIEW_COMPILED_PATH') ?: (sys_get_temp_dir().DIRECTORY_SEPARATOR.'shop85_views'),
 ];

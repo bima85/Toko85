@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Product;
-use App\Models\StockBatch;
 use App\Models\StockAdjustment;
+use App\Models\StockBatch;
 use App\Models\StockCard;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -128,7 +128,7 @@ class StockBatchService
             'to_location' => null,
             'reference_type' => 'stock_batch',
             'reference_id' => $batch->id,
-            'note' => $note ?? "Pengurangan stok dari tumpukan",
+            'note' => $note ?? 'Pengurangan stok dari tumpukan',
         ]);
 
         // Jika qty <= 0, batch akan otomatis dihapus via boot method
@@ -189,7 +189,7 @@ class StockBatchService
             'to_location' => $toLocationLabel,
             'reference_type' => 'stock_batch',
             'reference_id' => $fromBatch->id,
-            'note' => $note ?? "Pemindahan stok ke tumpukan",
+            'note' => $note ?? 'Pemindahan stok ke tumpukan',
         ]);
 
         // Buat batch baru di lokasi tujuan
@@ -234,7 +234,7 @@ class StockBatchService
             'to_location' => $toLocationLabel,
             'reference_type' => 'stock_batch',
             'reference_id' => $toBatch->id,
-            'note' => $note ?? "Penerimaan stok dari pemindahan",
+            'note' => $note ?? 'Penerimaan stok dari pemindahan',
         ]);
 
         return [

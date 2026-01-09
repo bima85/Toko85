@@ -4,7 +4,8 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-lock mr-2"></i>{{ __('Update Password') }}
+          <i class="fas fa-lock mr-2"></i>
+          {{ __('Update Password') }}
         </h3>
       </div>
 
@@ -28,7 +29,10 @@
         <!-- Current Password Field -->
         <div class="form-group">
           <label for="current_password">
-            <strong>{{ __('Current Password') }} <span class="text-danger">*</span></strong>
+            <strong>
+              {{ __('Current Password') }}
+              <span class="text-danger">*</span>
+            </strong>
           </label>
           <input
             wire:model="current_password"
@@ -47,7 +51,10 @@
         <!-- New Password Field -->
         <div class="form-group">
           <label for="password">
-            <strong>{{ __('New Password') }} <span class="text-danger">*</span></strong>
+            <strong>
+              {{ __('New Password') }}
+              <span class="text-danger">*</span>
+            </strong>
           </label>
           <input
             wire:model="password"
@@ -66,7 +73,10 @@
         <!-- Confirm Password Field -->
         <div class="form-group">
           <label for="password_confirmation">
-            <strong>{{ __('Confirm Password') }} <span class="text-danger">*</span></strong>
+            <strong>
+              {{ __('Confirm Password') }}
+              <span class="text-danger">*</span>
+            </strong>
           </label>
           <input
             wire:model="password_confirmation"
@@ -93,11 +103,13 @@
             <i class="fas fa-save mr-2" wire:loading.remove></i>
             <span wire:loading.remove>{{ __('Update Password') }}</span>
             <span wire:loading>
-              <i class="fas fa-spinner fa-spin mr-2"></i>{{ __('Updating...') }}
+              <i class="fas fa-spinner fa-spin mr-2"></i>
+              {{ __('Updating...') }}
             </span>
           </button>
           <button type="reset" class="btn btn-secondary ml-2">
-            <i class="fas fa-redo mr-2"></i>{{ __('Reset') }}
+            <i class="fas fa-redo mr-2"></i>
+            {{ __('Reset') }}
           </button>
         </div>
       </form>
@@ -109,7 +121,8 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-shield-alt mr-2"></i>{{ __('Password Tips') }}
+          <i class="fas fa-shield-alt mr-2"></i>
+          {{ __('Password Tips') }}
         </h3>
       </div>
       <div class="card-body">

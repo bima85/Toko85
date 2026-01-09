@@ -114,7 +114,7 @@
                   <tr>
                     <td>
                       <strong>{{ $item->no_invoice }}</strong>
-                      <br>
+                      <br />
                       <small class="badge bg-info">Order</small>
                     </td>
                     <td>{{ $item->customer->nama_customer }}</td>
@@ -190,12 +190,12 @@
                   <tr class="table-light">
                     <td>
                       <strong>{{ $item->nama_tumpukan }}</strong>
-                      <br>
+                      <br />
                       <small class="badge bg-success">Stock Batch</small>
                     </td>
                     <td>
                       {{ $item->product->nama_produk }}
-                      <br>
+                      <br />
                       <small class="text-muted">{{ $item->product->kode_produk }}</small>
                     </td>
                     <td>
@@ -209,10 +209,10 @@
                         Hold
                       </span>
                       @if ($item->location_type === 'store')
-                        <br>
+                        <br />
                         <small class="badge bg-primary">Toko</small>
                       @else
-                        <br>
+                        <br />
                         <small class="badge bg-info">Gudang</small>
                       @endif
                     </td>
@@ -238,7 +238,10 @@
                           Batalkan
                         </button>
                       @else
-                        <a href="{{ route('stock-batches.index') }}" class="btn btn-sm btn-primary">
+                        <a
+                          href="{{ route('stock-batches.index') }}"
+                          class="btn btn-sm btn-primary"
+                        >
                           <i class="fas fa-edit"></i>
                           Kelola
                         </a>

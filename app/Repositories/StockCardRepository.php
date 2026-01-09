@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use App\Models\StockCard;
-use Illuminate\Pagination\Paginator;
 
 class StockCardRepository
 {
@@ -14,30 +13,30 @@ class StockCardRepository
     {
         $query = StockCard::with(['product', 'batch'])->latest();
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->whereHas('product', function ($q) {
                 $q->where('nama_produk', 'like', "%{$filters['search']}%")
                     ->orWhere('kode_produk', 'like', "%{$filters['search']}%");
             })->orWhere('note', 'like', "%{$filters['search']}%");
         }
 
-        if (!empty($filters['type'])) {
+        if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
-        if (!empty($filters['product_id'])) {
+        if (! empty($filters['product_id'])) {
             $query->where('product_id', $filters['product_id']);
         }
 
-        if (!empty($filters['batch_id'])) {
+        if (! empty($filters['batch_id'])) {
             $query->where('batch_id', $filters['batch_id']);
         }
 
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->whereDate('created_at', '>=', $filters['date_from']);
         }
 
-        if (!empty($filters['date_to'])) {
+        if (! empty($filters['date_to'])) {
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 
@@ -68,8 +67,10 @@ class StockCardRepository
         $stockCard = $this->getById($id);
         if ($stockCard) {
             $stockCard->update($data);
+
             return $stockCard;
         }
+
         return null;
     }
 
@@ -136,21 +137,21 @@ class StockCardRepository
     {
         $query = StockCard::with(['product', 'batch']);
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->whereHas('product', function ($q) {
                 $q->where('name', 'like', "%{$filters['search']}%");
             });
         }
 
-        if (!empty($filters['type'])) {
+        if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);
         }
 
-        if (!empty($filters['date_from'])) {
+        if (! empty($filters['date_from'])) {
             $query->whereDate('created_at', '>=', $filters['date_from']);
         }
 
-        if (!empty($filters['date_to'])) {
+        if (! empty($filters['date_to'])) {
             $query->whereDate('created_at', '<=', $filters['date_to']);
         }
 

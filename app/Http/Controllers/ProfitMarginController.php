@@ -2,14 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sale;
-use App\Models\SaleItem;
-use App\Models\Customer;
-use Illuminate\Http\Request;
-use Yajra\DataTables\Facades\DataTables;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProfitMarginExport;
-use Illuminate\Support\Facades\DB;
+use App\Models\Customer;
+use App\Models\Sale;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Yajra\DataTables\Facades\DataTables;
 
 class ProfitMarginController extends Controller
 {
@@ -64,6 +62,7 @@ class ProfitMarginController extends Controller
                         'margin_persen' => 100,
                         'user' => $sale->user->name ?? '-',
                     ];
+
                     continue;
                 }
 
@@ -130,24 +129,26 @@ class ProfitMarginController extends Controller
                     return $row['unit'];
                 })
                 ->addColumn('harga_beli_formatted', function ($row) {
-                    return 'Rp ' . number_format($row['harga_beli'], 0, ',', '.');
+                    return 'Rp '.number_format($row['harga_beli'], 0, ',', '.');
                 })
                 ->addColumn('harga_jual_formatted', function ($row) {
-                    return 'Rp ' . number_format($row['harga_jual'], 0, ',', '.');
+                    return 'Rp '.number_format($row['harga_jual'], 0, ',', '.');
                 })
                 ->addColumn('total_beli_formatted', function ($row) {
-                    return 'Rp ' . number_format($row['total_beli'], 0, ',', '.');
+                    return 'Rp '.number_format($row['total_beli'], 0, ',', '.');
                 })
                 ->addColumn('total_jual_formatted', function ($row) {
-                    return 'Rp ' . number_format($row['total_jual'], 0, ',', '.');
+                    return 'Rp '.number_format($row['total_jual'], 0, ',', '.');
                 })
                 ->addColumn('profit_formatted', function ($row) {
                     $color = $row['profit'] >= 0 ? 'success' : 'danger';
-                    return '<strong class="text-' . $color . '">Rp ' . number_format($row['profit'], 0, ',', '.') . '</strong>';
+
+                    return '<strong class="text-'.$color.'">Rp '.number_format($row['profit'], 0, ',', '.').'</strong>';
                 })
                 ->addColumn('margin_persen_formatted', function ($row) {
                     $color = $row['margin_persen'] >= 30 ? 'success' : ($row['margin_persen'] >= 15 ? 'warning' : 'danger');
-                    return '<span class="badge badge-' . $color . '">' . number_format($row['margin_persen'], 2) . '%</span>';
+
+                    return '<span class="badge badge-'.$color.'">'.number_format($row['margin_persen'], 2).'%</span>';
                 })
                 ->addColumn('user', function ($row) {
                     return $row['user'];
@@ -164,7 +165,8 @@ class ProfitMarginController extends Controller
                 ->rawColumns(['profit_formatted', 'margin_persen_formatted'])
                 ->make(true);
         } catch (\Exception $e) {
-            \Log::error('Error in ProfitMarginController.data: ' . $e->getMessage());
+            \Log::error('Error in ProfitMarginController.data: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -178,7 +180,7 @@ class ProfitMarginController extends Controller
         try {
             $customerId = $request->filterCustomer;
 
-            if (!$customerId) {
+            if (! $customerId) {
                 return response()->json(['error' => 'filterCustomer is required'], 400);
             }
 
@@ -201,7 +203,8 @@ class ProfitMarginController extends Controller
                 'countAll' => $countAll,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in ProfitMarginController.checkCustomer: ' . $e->getMessage());
+            \Log::error('Error in ProfitMarginController.checkCustomer: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -227,7 +230,8 @@ class ProfitMarginController extends Controller
 
             return response()->json(['customers' => $customers]);
         } catch (\Exception $e) {
-            \Log::error('Error in ProfitMarginController.customers: ' . $e->getMessage());
+            \Log::error('Error in ProfitMarginController.customers: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -280,18 +284,19 @@ class ProfitMarginController extends Controller
 
             return response()->json([
                 'total_penjualan' => $totalPenjualan,
-                'total_penjualan_formatted' => 'Rp ' . number_format($totalPenjualan, 0, ',', '.'),
+                'total_penjualan_formatted' => 'Rp '.number_format($totalPenjualan, 0, ',', '.'),
                 'total_modal' => $totalModal,
-                'total_modal_formatted' => 'Rp ' . number_format($totalModal, 0, ',', '.'),
+                'total_modal_formatted' => 'Rp '.number_format($totalModal, 0, ',', '.'),
                 'total_profit' => $totalProfit,
-                'total_profit_formatted' => 'Rp ' . number_format($totalProfit, 0, ',', '.'),
+                'total_profit_formatted' => 'Rp '.number_format($totalProfit, 0, ',', '.'),
                 'avg_margin' => $avgMargin,
-                'avg_margin_formatted' => number_format($avgMargin, 2) . '%',
+                'avg_margin_formatted' => number_format($avgMargin, 2).'%',
                 'item_count' => $itemCount,
                 'transaction_count' => $sales->count(),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in ProfitMarginController.stats: ' . $e->getMessage());
+            \Log::error('Error in ProfitMarginController.stats: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -341,13 +346,14 @@ class ProfitMarginController extends Controller
                         'Rp 0',
                         'Rp 0',
                         'Rp 0',
-                        'Rp ' . number_format($saleTotal, 0, ',', '.'),
-                        'Rp ' . number_format($saleTotal, 0, ',', '.'),
+                        'Rp '.number_format($saleTotal, 0, ',', '.'),
+                        'Rp '.number_format($saleTotal, 0, ',', '.'),
                         '100.00%',
                         $sale->user->name ?? '-',
                     ];
                     $grandTotalJual += $saleTotal;
                     $grandProfit += $saleTotal;
+
                     continue;
                 }
 
@@ -381,12 +387,12 @@ class ProfitMarginController extends Controller
                         $item->product->nama_produk ?? '-',
                         $qty,
                         $item->unit->nama_unit ?? '-',
-                        'Rp ' . number_format($hargaBeli, 0, ',', '.'),
-                        'Rp ' . number_format($hargaJual, 0, ',', '.'),
-                        'Rp ' . number_format($totalBeli, 0, ',', '.'),
-                        'Rp ' . number_format($totalJual, 0, ',', '.'),
-                        'Rp ' . number_format($profit, 0, ',', '.'),
-                        number_format($marginPersen, 2) . '%',
+                        'Rp '.number_format($hargaBeli, 0, ',', '.'),
+                        'Rp '.number_format($hargaJual, 0, ',', '.'),
+                        'Rp '.number_format($totalBeli, 0, ',', '.'),
+                        'Rp '.number_format($totalJual, 0, ',', '.'),
+                        'Rp '.number_format($profit, 0, ',', '.'),
+                        number_format($marginPersen, 2).'%',
                         $sale->user->name ?? '-',
                     ];
 
@@ -407,17 +413,19 @@ class ProfitMarginController extends Controller
                 '',
                 '',
                 'GRAND TOTAL:',
-                'Rp ' . number_format($grandTotalBeli, 0, ',', '.'),
-                'Rp ' . number_format($grandTotalJual, 0, ',', '.'),
-                'Rp ' . number_format($grandProfit, 0, ',', '.'),
-                number_format($grandMargin, 2) . '%',
+                'Rp '.number_format($grandTotalBeli, 0, ',', '.'),
+                'Rp '.number_format($grandTotalJual, 0, ',', '.'),
+                'Rp '.number_format($grandProfit, 0, ',', '.'),
+                number_format($grandMargin, 2).'%',
                 '',
             ];
 
-            $fileName = 'Profit_Margin_' . date('Y-m-d_His') . '.xlsx';
+            $fileName = 'Profit_Margin_'.date('Y-m-d_His').'.xlsx';
+
             return Excel::download(new ProfitMarginExport($rows), $fileName);
         } catch (\Exception $e) {
-            \Log::error('Error exporting profit margin: ' . $e->getMessage());
+            \Log::error('Error exporting profit margin: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

@@ -4,7 +4,8 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-palette mr-2"></i>{{ __('Appearance Settings') }}
+          <i class="fas fa-palette mr-2"></i>
+          {{ __('Appearance Settings') }}
         </h3>
       </div>
 
@@ -21,7 +22,12 @@
         @endif
 
         <div class="form-group">
-          <label><strong>{{ __('Theme') }} <span class="text-danger">*</span></strong></label>
+          <label>
+            <strong>
+              {{ __('Theme') }}
+              <span class="text-danger">*</span>
+            </strong>
+          </label>
           <div class="custom-control custom-radio">
             <input
               type="radio"
@@ -31,7 +37,8 @@
               x-model="$flux.appearance"
             />
             <label class="custom-control-label" for="themeLight">
-              <i class="fas fa-sun mr-2 text-warning"></i>{{ __('Light Theme') }}
+              <i class="fas fa-sun mr-2 text-warning"></i>
+              {{ __('Light Theme') }}
             </label>
           </div>
 
@@ -44,7 +51,8 @@
               x-model="$flux.appearance"
             />
             <label class="custom-control-label" for="themeDark">
-              <i class="fas fa-moon mr-2 text-info"></i>{{ __('Dark Theme') }}
+              <i class="fas fa-moon mr-2 text-info"></i>
+              {{ __('Dark Theme') }}
             </label>
           </div>
 
@@ -57,7 +65,8 @@
               x-model="$flux.appearance"
             />
             <label class="custom-control-label" for="themeSystem">
-              <i class="fas fa-desktop mr-2 text-secondary"></i>{{ __('System (Auto)') }}
+              <i class="fas fa-desktop mr-2 text-secondary"></i>
+              {{ __('System (Auto)') }}
             </label>
           </div>
         </div>
@@ -70,21 +79,28 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-eye mr-2"></i>{{ __('Preview') }}
+          <i class="fas fa-eye mr-2"></i>
+          {{ __('Preview') }}
         </h3>
       </div>
       <div class="card-body">
         <div class="mb-3">
           <h6 class="mb-2"><strong>{{ __('Light Theme:') }}</strong></h6>
-          <p class="text-muted text-sm">{{ __('Clean and bright interface with light colors. Perfect for day usage.') }}</p>
+          <p class="text-muted text-sm">
+            {{ __('Clean and bright interface with light colors. Perfect for day usage.') }}
+          </p>
         </div>
         <div class="mb-3">
           <h6 class="mb-2"><strong>{{ __('Dark Theme:') }}</strong></h6>
-          <p class="text-muted text-sm">{{ __('Dark interface with comfortable contrast. Great for low-light environments.') }}</p>
+          <p class="text-muted text-sm">
+            {{ __('Dark interface with comfortable contrast. Great for low-light environments.') }}
+          </p>
         </div>
         <div>
           <h6 class="mb-2"><strong>{{ __('System Theme:') }}</strong></h6>
-          <p class="text-muted text-sm">{{ __('Automatically matches your device or OS appearance settings.') }}</p>
+          <p class="text-muted text-sm">
+            {{ __('Automatically matches your device or OS appearance settings.') }}
+          </p>
         </div>
       </div>
     </div>

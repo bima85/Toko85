@@ -2,50 +2,71 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Product;
-use App\Models\Store;
-use App\Models\Warehouse;
-use App\Models\Unit;
 use App\Models\Category;
-use App\Models\Subcategory;
+use App\Models\Product;
 use App\Models\StockAdjustment;
+use App\Models\Store;
+use App\Models\Subcategory;
+use App\Models\Unit;
+use App\Models\Warehouse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Livewire\Component;
 use Livewire\Attributes\Layout;
+use Livewire\Component;
 
 #[Layout('layouts.admin')]
 class Adjustments extends Component
 {
     public $adjustment_items = [];
+
     public $adjustment_location; // 'store' or 'warehouse'
+
     public $adjustment_store_id;
+
     public $adjustment_warehouse_id;
+
     public $adjustment_type = 'add'; // 'add' or 'remove'
+
     public $adjustment_reason;
+
     public $adjustment_date;
 
     public $products = [];
+
     public $units = [];
+
     public $stores = [];
+
     public $warehouses = [];
+
     public $categories = [];
+
     public $subcategories = [];
 
     // Modal properties
     public $showModalCreateCategory = false;
+
     public $showModalCreateSubcategory = false;
+
     public $showModalCreateProduct = false;
+
     public $showModalCreateUnit = false;
 
     // Form fields
     public $newCategoryName = '';
+
     public $newCategoryCode = '';
+
     public $newSubcategoryName = '';
+
     public $newSubcategoryCategory = '';
+
     public $newProductCode = '';
+
     public $newProductName = '';
+
     public $newProductSubcategory = '';
+
     public $newUnitName = '';
 
     protected $rules = [
@@ -83,6 +104,7 @@ class Adjustments extends Component
     protected $rulesCreateUnit = [
         'newUnitName' => 'required|string|min:1',
     ];
+
     public function mount()
     {
         $this->loadAllData();
@@ -125,7 +147,7 @@ class Adjustments extends Component
             $this->closeModalCreateCategory();
             $this->loadAllData();
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menambahkan kategori: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menambahkan kategori: '.$e->getMessage());
         }
     }
 
@@ -155,7 +177,7 @@ class Adjustments extends Component
             $this->closeModalCreateSubcategory();
             $this->loadAllData();
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menambahkan subkategori: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menambahkan subkategori: '.$e->getMessage());
         }
     }
 
@@ -175,7 +197,7 @@ class Adjustments extends Component
                 $prefix = strtoupper(substr($subcategory->category->nama_kategori, 0, 3));
                 $count = Product::where('category_id', $subcategory->category_id)->count();
                 $namaShort = strtoupper(str_replace([' ', '-'], '', $value));
-                $this->newProductCode = $prefix . '_' . str_pad($count + 1, 3, '0', STR_PAD_LEFT) . '_' . substr($namaShort, 0, 10);
+                $this->newProductCode = $prefix.'_'.str_pad($count + 1, 3, '0', STR_PAD_LEFT).'_'.substr($namaShort, 0, 10);
             }
         }
     }
@@ -214,7 +236,7 @@ class Adjustments extends Component
             $this->closeModalCreateProduct();
             $this->loadAllData();
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menambahkan produk: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menambahkan produk: '.$e->getMessage());
         }
     }
 
@@ -242,7 +264,7 @@ class Adjustments extends Component
             $this->closeModalCreateUnit();
             $this->loadAllData();
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal menambahkan unit: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menambahkan unit: '.$e->getMessage());
         }
     }
 
@@ -262,6 +284,7 @@ class Adjustments extends Component
             'stok_akhir' => 0,
         ];
     }
+
     public function removeItem($index)
     {
         unset($this->adjustment_items[$index]);
@@ -320,7 +343,7 @@ class Adjustments extends Component
             $this->adjustment_items[$index]['category_id'] = null;
             // Open modal
             $this->openModalCreateCategory();
-        } else if ($categoryId) {
+        } elseif ($categoryId) {
             // Normal category selection
             $this->updateCategoryFilter($index);
         }
@@ -333,7 +356,7 @@ class Adjustments extends Component
             $this->adjustment_items[$index]['subcategory_id'] = null;
             // Open modal
             $this->openModalCreateSubcategory();
-        } else if ($value) {
+        } elseif ($value) {
             $this->adjustment_items[$index]['subcategory_id'] = $value;
             // Normal subcategory selection
             $this->updateSubcategoryFilter($index);
@@ -347,7 +370,7 @@ class Adjustments extends Component
             $this->adjustment_items[$index]['product_id'] = null;
             // Open modal
             $this->openModalCreateProduct();
-        } else if ($value) {
+        } elseif ($value) {
             $this->adjustment_items[$index]['product_id'] = $value;
             // Normal product selection
             $this->updateStokAwalForItem($index, $value);
@@ -361,7 +384,7 @@ class Adjustments extends Component
             $this->adjustment_items[$index]['unit_id'] = null;
             // Open modal
             $this->openModalCreateUnit();
-        } else if ($value) {
+        } elseif ($value) {
             $this->adjustment_items[$index]['unit_id'] = $value;
         }
     }
@@ -448,7 +471,7 @@ class Adjustments extends Component
     {
         \Log::info('refreshStokAwalForAllItems called');
         foreach ($this->adjustment_items as $index => $item) {
-            if (!empty($item['product_id'])) {
+            if (! empty($item['product_id'])) {
                 $this->updateStokAwalForItem($index, $item['product_id']);
             }
         }
@@ -465,9 +488,9 @@ class Adjustments extends Component
                 ->first();
             if ($adjustment) {
                 if ($adjustment->adjustment_type === 'add') {
-                    $stokAwal = (int)$adjustment->stok_awal + (int)$adjustment->quantity;
+                    $stokAwal = (int) $adjustment->stok_awal + (int) $adjustment->quantity;
                 } else {
-                    $stokAwal = (int)$adjustment->stok_awal - (int)$adjustment->quantity;
+                    $stokAwal = (int) $adjustment->stok_awal - (int) $adjustment->quantity;
                 }
             }
         } elseif ($this->adjustment_location === 'warehouse' && $this->adjustment_warehouse_id) {
@@ -477,20 +500,21 @@ class Adjustments extends Component
                 ->first();
             if ($adjustment) {
                 if ($adjustment->adjustment_type === 'add') {
-                    $stokAwal = (int)$adjustment->stok_awal + (int)$adjustment->quantity;
+                    $stokAwal = (int) $adjustment->stok_awal + (int) $adjustment->quantity;
                 } else {
-                    $stokAwal = (int)$adjustment->stok_awal - (int)$adjustment->quantity;
+                    $stokAwal = (int) $adjustment->stok_awal - (int) $adjustment->quantity;
                 }
             }
         }
 
         $this->adjustment_items[$index]['stok_awal'] = $stokAwal;
     }
+
     public function calculateTotal($index)
     {
         if (isset($this->adjustment_items[$index])) {
-            $stok_awal = (int)($this->adjustment_items[$index]['stok_awal'] ?? 0);
-            $quantity = (int)($this->adjustment_items[$index]['quantity'] ?? 0);
+            $stok_awal = (int) ($this->adjustment_items[$index]['stok_awal'] ?? 0);
+            $quantity = (int) ($this->adjustment_items[$index]['quantity'] ?? 0);
 
             // Berbeda perhitungan berdasarkan tipe penyesuaian
             if ($this->adjustment_type === 'add') {
@@ -510,6 +534,7 @@ class Adjustments extends Component
             // Total stok menggunakan stok_akhir yang sudah dihitung
             $total += ($item['stok_akhir'] ?? 0);
         }
+
         return $total;
     }
 
@@ -518,13 +543,15 @@ class Adjustments extends Component
         $this->validate();
 
         // Validate location selection
-        if ($this->adjustment_location === 'store' && !$this->adjustment_store_id) {
+        if ($this->adjustment_location === 'store' && ! $this->adjustment_store_id) {
             $this->addError('adjustment_store_id', 'Pilih lokasi toko terlebih dahulu');
+
             return;
         }
 
-        if ($this->adjustment_location === 'warehouse' && !$this->adjustment_warehouse_id) {
+        if ($this->adjustment_location === 'warehouse' && ! $this->adjustment_warehouse_id) {
             $this->addError('adjustment_warehouse_id', 'Pilih gudang terlebih dahulu');
+
             return;
         }
 
@@ -551,10 +578,11 @@ class Adjustments extends Component
             session()->flash('message', 'Penyesuaian stok berhasil disimpan!');
             $this->reset();
             $this->adjustment_date = date('Y-m-d');
+
             return redirect()->route('admin.stock-reports');
         } catch (\Exception $e) {
             DB::rollBack();
-            session()->flash('error', 'Gagal menyimpan penyesuaian stok: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan penyesuaian stok: '.$e->getMessage());
         }
     }
 
@@ -566,17 +594,17 @@ class Adjustments extends Component
     public function render()
     {
         $filteredSubcategories = [];
-        if (!empty($this->adjustment_items)) {
+        if (! empty($this->adjustment_items)) {
             $categoryIds = array_filter(array_unique(array_column($this->adjustment_items, 'category_id')));
-            if (!empty($categoryIds)) {
+            if (! empty($categoryIds)) {
                 $filteredSubcategories = Subcategory::whereIn('category_id', $categoryIds)->get();
             }
         }
 
         $filteredProducts = [];
-        if (!empty($this->adjustment_items)) {
+        if (! empty($this->adjustment_items)) {
             $subcategoryIds = array_filter(array_unique(array_column($this->adjustment_items, 'subcategory_id')));
-            if (!empty($subcategoryIds)) {
+            if (! empty($subcategoryIds)) {
                 $filteredProducts = Product::whereIn('subcategory_id', $subcategoryIds)->get();
             }
         }

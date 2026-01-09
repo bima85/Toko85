@@ -11,8 +11,11 @@ class StockCardTable extends Component
     use WithPagination;
 
     public $search = '';
+
     public $sortBy = 'created_at';
+
     public $sortDirection = 'desc';
+
     public $perPage = 10;
 
     protected $queryString = ['search', 'sortBy', 'sortDirection'];
@@ -38,8 +41,8 @@ class StockCardTable extends Component
 
         if ($this->search) {
             $query->whereHas('product', function ($q) {
-                $q->where('name', 'like', "%{$this->search}%")
-                    ->orWhere('sku', 'like', "%{$this->search}%");
+                $q->where('nama_produk', 'like', "%{$this->search}%")
+                    ->orWhere('kode_produk', 'like', "%{$this->search}%");
             });
         }
 
@@ -55,7 +58,7 @@ class StockCardTable extends Component
             $stockCard->delete();
             $this->dispatch('toast', [
                 'message' => 'Kartu stok berhasil dihapus',
-                'type' => 'success'
+                'type' => 'success',
             ]);
         }
     }

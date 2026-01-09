@@ -4,9 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\TransactionHistory;
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use Faker\Factory as Faker;
+use Illuminate\Database\Seeder;
 
 class TransactionHistorySeeder extends Seeder
 {
@@ -28,7 +27,7 @@ class TransactionHistorySeeder extends Seeder
 
         for ($i = 0; $i < 100; $i++) {
             TransactionHistory::create([
-                'transaction_code' => 'TRX-' . strtoupper($faker->unique()->bothify('??###??')) . '-' . date('Y'),
+                'transaction_code' => 'TRX-'.strtoupper($faker->unique()->bothify('??###??')).'-'.date('Y'),
                 'transaction_type' => $faker->randomElement($transactionTypes),
                 'reference_id' => $faker->numberBetween(1, 50),
                 'reference_type' => $faker->randomElement(['Sale', 'Purchase', 'StockAdjustment', 'Return']),

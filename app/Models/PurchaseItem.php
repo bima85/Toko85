@@ -17,6 +17,7 @@ class PurchaseItem extends Model
         'unit_id',
         'harga_beli',
         'total',
+        'batches',
     ];
 
     protected $casts = [
@@ -24,6 +25,7 @@ class PurchaseItem extends Model
         'qty_gudang' => 'integer',
         'harga_beli' => 'decimal:2',
         'total' => 'decimal:2',
+        'batches' => 'json',
     ];
 
     public function purchase(): BelongsTo

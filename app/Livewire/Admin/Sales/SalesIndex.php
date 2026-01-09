@@ -21,6 +21,7 @@ class SalesIndex extends Component
             'warehouse',
             'saleItems.product.supplier',
         ])->latest()->paginate(10);
+
         return view('livewire.admin.sales.sales-index', [
             'sales' => $sales,
         ]);

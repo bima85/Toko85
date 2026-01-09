@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use App\Models\Category;
-use App\Models\Subcategory;
 use App\Models\Product;
+use App\Models\Subcategory;
 use Illuminate\Database\Seeder;
 
 class BerasC4Seeder extends Seeder
@@ -16,7 +16,7 @@ class BerasC4Seeder extends Seeder
     {
         // Get or create Category: BERAS
         $category = Category::firstOrCreate([
-            'nama_kategori' => 'BERAS'
+            'nama_kategori' => 'BERAS',
         ], [
             'kode_kategori' => 'BERAS',
             'description' => 'Kategori produk beras',
@@ -25,7 +25,7 @@ class BerasC4Seeder extends Seeder
         // Get or create Subcategory: C4
         $subcategory = Subcategory::firstOrCreate([
             'nama_subkategori' => 'C4',
-            'category_id' => $category->id
+            'category_id' => $category->id,
         ], [
             'kode_subkategori' => 'C4',
             'description' => 'Subkategori C4 untuk beras',
@@ -124,8 +124,8 @@ class BerasC4Seeder extends Seeder
                 'nama_produk' => $productName,
                 'subcategory_id' => $subcategory->id,
             ], [
-                'kode_produk' => 'BRS_' . str_pad($index, 3, '0', STR_PAD_LEFT) . '_' . strtoupper(str_replace([' ', '-'], '', $productName)),
-                'description' => 'Produk beras ' . $productName,
+                'kode_produk' => 'BRS_'.str_pad($index, 3, '0', STR_PAD_LEFT).'_'.strtoupper(str_replace([' ', '-'], '', $productName)),
+                'description' => 'Produk beras '.$productName,
                 'category_id' => $category->id,
                 'satuan' => 'kg',
             ]);

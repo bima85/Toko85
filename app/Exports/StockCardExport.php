@@ -4,23 +4,27 @@ namespace App\Exports;
 
 use App\Models\StockCard;
 use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithStyles;
+use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Color;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class StockCardExport implements FromArray, WithStyles, WithColumnWidths, WithTitle, WithEvents
+class StockCardExport implements FromArray, WithColumnWidths, WithEvents, WithStyles, WithTitle
 {
     protected $search;
+
     protected $filterType;
+
     protected $groupByProduct;
+
     protected $headerRows = [];
+
     protected $tableHeaderRows = [];
 
     public function __construct($search = '', $filterType = '', $groupByProduct = false)
@@ -92,15 +96,15 @@ class StockCardExport implements FromArray, WithStyles, WithColumnWidths, WithTi
                 // Product header row
                 $this->headerRows[] = $currentRow;
                 $result[] = [
-                    'PRODUK: ' . ($product->nama_produk ?? '-'),
+                    'PRODUK: '.($product->nama_produk ?? '-'),
                     '',
-                    'Kode: ' . ($product->kode_produk ?? '-'),
+                    'Kode: '.($product->kode_produk ?? '-'),
                     '',
-                    'Masuk: ' . number_format($totalIn, 2, ',', '.'),
-                    'Keluar: ' . number_format($totalOut, 2, ',', '.'),
-                    'Saldo: ' . number_format($balance, 2, ',', '.'),
+                    'Masuk: '.number_format($totalIn, 2, ',', '.'),
+                    'Keluar: '.number_format($totalOut, 2, ',', '.'),
+                    'Saldo: '.number_format($balance, 2, ',', '.'),
                     '',
-                    ''
+                    '',
                 ];
                 $currentRow++;
 
@@ -116,11 +120,11 @@ class StockCardExport implements FromArray, WithStyles, WithColumnWidths, WithTi
                         $transactionTypes[$card->type] ?? $card->type,
                         $card->type === 'out' ? -$card->qty : $card->qty,
                         $card->product->satuan ?? 'unit',
-                        $card->batch ? ($card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id) : '-',
+                        $card->batch ? ($card->batch->nama_tumpukan ?? 'Batch #'.$card->batch->id) : '-',
                         $card->created_at->format('d/m/Y'),
                         $card->created_at->format('H:i'),
                         $card->note ?? '-',
-                        ''
+                        '',
                     ];
                     $currentRow++;
                 }
@@ -144,7 +148,7 @@ class StockCardExport implements FromArray, WithStyles, WithColumnWidths, WithTi
                     $transactionTypes[$card->type] ?? $card->type,
                     $card->type === 'out' ? -$card->qty : $card->qty,
                     $card->product->satuan ?? 'unit',
-                    $card->batch ? ($card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id) : '-',
+                    $card->batch ? ($card->batch->nama_tumpukan ?? 'Batch #'.$card->batch->id) : '-',
                     $card->created_at->format('d/m/Y'),
                     $card->note ?? '-',
                 ];
@@ -326,7 +330,7 @@ class StockCardExport implements FromArray, WithStyles, WithColumnWidths, WithTi
                     $dataRow = $row + 1;
                     while ($dataRow <= $lastRow) {
                         $cellValue = $sheet->getCell("A{$dataRow}")->getValue();
-                        if (empty($cellValue) || !is_numeric($cellValue)) {
+                        if (empty($cellValue) || ! is_numeric($cellValue)) {
                             break;
                         }
 

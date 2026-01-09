@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\StockCard;
 use App\Models\Product;
 use App\Models\StockBatch;
+use App\Models\StockCard;
 use Illuminate\Database\Seeder;
 
 class StockCardSeeder extends Seeder
@@ -20,6 +20,7 @@ class StockCardSeeder extends Seeder
 
         if ($products->isEmpty()) {
             $this->command->warn('Tidak ada produk ditemukan. Jalankan ProductSeeder terlebih dahulu.');
+
             return;
         }
 

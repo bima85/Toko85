@@ -61,7 +61,7 @@ class TransactionHistory extends Model
     // Accessors
     public function getFormattedAmountAttribute()
     {
-        return 'Rp ' . number_format($this->amount, 0, ',', '.');
+        return 'Rp '.number_format($this->amount, 0, ',', '.');
     }
 
     public function getFormattedDateAttribute()

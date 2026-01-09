@@ -55,10 +55,11 @@ class StockAdjustment extends Model
     public function getLocationAttribute()
     {
         if ($this->store_id) {
-            return 'Toko: ' . $this->store->nama_toko;
+            return 'Toko: '.$this->store->nama_toko;
         } elseif ($this->warehouse_id) {
-            return 'Gudang: ' . $this->warehouse->nama_gudang;
+            return 'Gudang: '.$this->warehouse->nama_gudang;
         }
+
         return 'Tidak diketahui';
     }
 

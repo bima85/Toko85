@@ -15,7 +15,7 @@ class Product extends Model
         'satuan',
         'supplier_id',
         'category_id',
-        'subcategory_id'
+        'subcategory_id',
     ];
 
     protected $casts = [

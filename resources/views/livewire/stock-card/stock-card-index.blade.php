@@ -48,7 +48,7 @@
   <!-- Quick Links -->
   <div class="row mb-3">
     <div class="col-lg-3 col-md-6 col-sm-6 mb-2">
-      <a href="{{ route('stock-batches.index') }}" class="text-decoration-none">
+      <a href="{{ route('admin.stock-batches.index') }}" class="text-decoration-none">
         <div class="info-box bg-primary mb-0">
           <span class="info-box-icon"><i class="fas fa-cubes"></i></span>
           <div class="info-box-content">
@@ -157,21 +157,29 @@
     </div>
   </div>
 
-  @if(abs($net - $currentStock) > 0.01)
+  @if (abs($net - $currentStock) > 0.01)
     <div class="alert alert-warning alert-dismissible">
       <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-      <h5><i class="icon fas fa-exclamation-triangle"></i> Perbedaan Stok Terdeteksi!</h5>
+      <h5>
+        <i class="icon fas fa-exclamation-triangle"></i>
+        Perbedaan Stok Terdeteksi!
+      </h5>
       <p>
-        Terdapat perbedaan antara perhitungan dari history transaksi ({{ number_format($net, 2, ',', '.') }} {{ $commonUnit }}) 
-        dengan stok aktual di batch ({{ number_format($currentStock, 2, ',', '.') }} {{ $commonUnit }}).
-        <br>
-        <strong>Selisih: {{ number_format(abs($net - $currentStock), 2, ',', '.') }} {{ $commonUnit }}</strong>
+        Terdapat perbedaan antara perhitungan dari history transaksi
+        ({{ number_format($net, 2, ',', '.') }} {{ $commonUnit }}) dengan stok aktual di batch
+        ({{ number_format($currentStock, 2, ',', '.') }} {{ $commonUnit }}).
+        <br />
+        <strong>
+          Selisih: {{ number_format(abs($net - $currentStock), 2, ',', '.') }} {{ $commonUnit }}
+        </strong>
       </p>
       <p class="mb-0">
         <small>
           <i class="fas fa-info-circle mr-1"></i>
-          Stok aktual dari <strong>Stok Batch</strong> adalah sumber data yang paling akurat. 
-          Perbedaan ini mungkin terjadi karena ada transaksi manual atau penyesuaian yang belum tercatat di kartu stok.
+          Stok aktual dari
+          <strong>Stok Batch</strong>
+          adalah sumber data yang paling akurat. Perbedaan ini mungkin terjadi karena ada transaksi
+          manual atau penyesuaian yang belum tercatat di kartu stok.
         </small>
       </p>
     </div>
@@ -330,7 +338,7 @@
           </div>
 
           @php
-            $grouped = $stockCards->groupBy('product_id');
+            $grouped = $groupedStockCards ?? $stockCards->groupBy('product_id');
           @endphp
 
           @foreach ($grouped as $productId => $cards)
@@ -350,7 +358,9 @@
                 style="cursor: pointer"
                 wire:click="toggleGroup({{ $productId }})"
               >
-                <div class="d-flex justify-content-between align-items-center">
+                <div
+                  class="d-flex justify-content-between align-items-center flex-wrap stock-card-header"
+                >
                   <div class="d-flex align-items-center">
                     <i
                       class="fas {{ $isExpanded ? 'fa-chevron-down' : 'fa-chevron-right' }} mr-2 text-muted"
@@ -366,12 +376,13 @@
                     <span class="badge badge-pill badge-secondary mr-2">
                       {{ $cards->count() }} transaksi
                     </span>
-                    @if(!empty($holdTotals[$productId] ?? 0) && ($holdTotals[$productId] ?? 0) > 0)
+                    @if (! empty($holdTotals[$productId] ?? 0) && ($holdTotals[$productId] ?? 0) > 0)
                       <span class="badge badge-pill badge-warning mr-1" title="Jumlah yang di-hold">
                         <i class="fas fa-lock mr-1"></i>
                         Hold: {{ number_format($holdTotals[$productId] ?? 0, 2, ',', '.') }}
                       </span>
                     @endif
+
                     <span class="badge badge-pill badge-success mr-1" title="Total Masuk">
                       <i class="fas fa-arrow-down"></i>
                       {{ number_format($totalIn, 2, ',', '.') }}
@@ -450,13 +461,13 @@
                             </td>
                             <td class="align-middle">
                               @if ($card->batch)
-                                  <span class="badge badge-info">
-                                    <i class="fas fa-cube mr-1"></i>
-                                    {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
-                                  </span>
-                                  @if(isset($card->batch->status) && $card->batch->status === 'hold')
-                                    <small class="badge badge-warning ml-1">HOLD</small>
-                                  @endif
+                                <span class="badge badge-info">
+                                  <i class="fas fa-cube mr-1"></i>
+                                  {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
+                                </span>
+                                @if (isset($card->batch->status) && $card->batch->status === 'hold')
+                                  <small class="badge badge-warning ml-1">HOLD</small>
+                                @endif
                               @else
                                 <span class="text-muted">-</span>
                               @endif
@@ -598,7 +609,7 @@
                           <i class="fas fa-cube mr-1"></i>
                           {{ $card->batch->nama_tumpukan ?? 'Batch #' . $card->batch->id }}
                         </span>
-                        @if(isset($card->batch->status) && $card->batch->status === 'hold')
+                        @if (isset($card->batch->status) && $card->batch->status === 'hold')
                           <small class="badge badge-warning ml-1">HOLD</small>
                         @endif
                       @else
@@ -664,8 +675,8 @@
         <!-- Pagination -->
         <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap">
           <div class="text-muted mb-2">
-            Menampilkan {{ $stockCards->firstItem() }} - {{ $stockCards->lastItem() }} dari
-            {{ $stockCards->total() }} data
+            Menampilkan {{ $stockCards->firstItem() ?? 0 }} - {{ $stockCards->lastItem() ?? 0 }}
+            dari {{ $stockCards->total() ?? 0 }} data
           </div>
           <div>
             {{ $stockCards->onEachSide(1)->links('pagination::bootstrap-4') }}

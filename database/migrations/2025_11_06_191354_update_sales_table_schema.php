@@ -24,25 +24,25 @@ return new class extends Migration
             }
 
             // Add new columns
-            if (!Schema::hasColumn('sales', 'no_invoice')) {
+            if (! Schema::hasColumn('sales', 'no_invoice')) {
                 $table->string('no_invoice', 50)->unique()->after('id');
             }
-            if (!Schema::hasColumn('sales', 'tanggal_penjualan')) {
+            if (! Schema::hasColumn('sales', 'tanggal_penjualan')) {
                 $table->dateTime('tanggal_penjualan')->nullable()->after('no_invoice');
             }
-            if (!Schema::hasColumn('sales', 'customer_id')) {
+            if (! Schema::hasColumn('sales', 'customer_id')) {
                 $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('cascade')->after('tanggal_penjualan');
             }
-            if (!Schema::hasColumn('sales', 'store_id')) {
+            if (! Schema::hasColumn('sales', 'store_id')) {
                 $table->foreignId('store_id')->nullable()->constrained('stores')->onDelete('set null')->after('customer_id');
             }
-            if (!Schema::hasColumn('sales', 'warehouse_id')) {
+            if (! Schema::hasColumn('sales', 'warehouse_id')) {
                 $table->foreignId('warehouse_id')->nullable()->constrained('warehouses')->onDelete('set null')->after('store_id');
             }
-            if (!Schema::hasColumn('sales', 'status')) {
+            if (! Schema::hasColumn('sales', 'status')) {
                 $table->enum('status', ['pending', 'completed', 'cancelled'])->default('completed')->after('warehouse_id');
             }
-            if (!Schema::hasColumn('sales', 'keterangan')) {
+            if (! Schema::hasColumn('sales', 'keterangan')) {
                 $table->text('keterangan')->nullable()->after('status');
             }
         });

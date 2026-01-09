@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.keep-alive.60s>
   <!-- Page Header -->
   <div class="content-header">
     <div class="container-fluid">

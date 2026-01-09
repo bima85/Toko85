@@ -26,7 +26,7 @@
         {{ auth()->user()?->name ?? 'User' }}
       </a>
       <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
-        <a class="dropdown-item" href="{{ route('profile.edit') }}">Profile</a>
+        <a class="dropdown-item" href="{{ route('settings.profile') }}">Profile</a>
         <a
           class="dropdown-item"
           href="#"

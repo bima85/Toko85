@@ -3,15 +3,15 @@
 namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ProfitMarginExport implements FromArray, WithHeadings, WithStyles, WithColumnWidths
+class ProfitMarginExport implements FromArray, WithColumnWidths, WithHeadings, WithStyles
 {
     protected array $rows;
 
@@ -72,7 +72,7 @@ class ProfitMarginExport implements FromArray, WithHeadings, WithStyles, WithCol
         ]);
 
         // Style untuk semua data (borders)
-        $sheet->getStyle('A1:M' . $lastRow)->applyFromArray([
+        $sheet->getStyle('A1:M'.$lastRow)->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
@@ -83,7 +83,7 @@ class ProfitMarginExport implements FromArray, WithHeadings, WithStyles, WithCol
 
         // Style untuk baris Grand Total
         if ($lastRow > 1) {
-            $sheet->getStyle('A' . $lastRow . ':M' . $lastRow)->applyFromArray([
+            $sheet->getStyle('A'.$lastRow.':M'.$lastRow)->applyFromArray([
                 'font' => [
                     'bold' => true,
                     'size' => 11,
@@ -102,9 +102,9 @@ class ProfitMarginExport implements FromArray, WithHeadings, WithStyles, WithCol
         }
 
         // Alignment untuk kolom angka (right align)
-        $sheet->getStyle('E2:E' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('G2:L' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        $sheet->getStyle('L2:L' . $lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('E2:E'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('G2:L'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+        $sheet->getStyle('L2:L'.$lastRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
 
         return [];
     }

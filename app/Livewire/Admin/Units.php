@@ -14,17 +14,29 @@ class Units extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_unit;
+
     public $nama_unit;
+
     public $description;
+
     public $parent_unit_id;
+
     public $conversion_value;
+
     public $is_base_unit = false;
+
     public $editingUnitId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedUnit = null;
+
     public $confirmingDelete = false;
+
     public $unitToDelete = null;
 
     protected $rules = [
@@ -89,7 +101,7 @@ class Units extends Component
             'parent_unit_id' => 'nullable|exists:units,id',
             'conversion_value' => 'nullable|numeric|min:0',
             'is_base_unit' => 'boolean',
-            'kode_unit' => 'required|string|max:50|unique:units,kode_unit' . ($this->editingUnitId ? (',' . $this->editingUnitId) : ''),
+            'kode_unit' => 'required|string|max:50|unique:units,kode_unit'.($this->editingUnitId ? (','.$this->editingUnitId) : ''),
         ];
 
         $this->validate($rules);
@@ -162,8 +174,8 @@ class Units extends Component
 
     public function render()
     {
-        $units = Unit::where('nama_unit', 'like', '%' . $this->search . '%')
-            ->orWhere('kode_unit', 'like', '%' . $this->search . '%')
+        $units = Unit::where('nama_unit', 'like', '%'.$this->search.'%')
+            ->orWhere('kode_unit', 'like', '%'.$this->search.'%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

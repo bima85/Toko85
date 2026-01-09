@@ -14,16 +14,27 @@ class Stores extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_toko;
+
     public $nama_toko;
+
     public $alamat;
+
     public $telepon;
+
     public $pic;
+
     public $tipe_toko = 'retail';
+
     public $keterangan;
+
     public $editingStoreId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedStore = null;
 
     protected $rules = [
@@ -89,7 +100,7 @@ class Stores extends Component
             'pic' => 'nullable|string|max:255',
             'tipe_toko' => 'required|in:retail,wholesale,online,outlet',
             'keterangan' => 'nullable|string',
-            'kode_toko' => 'required|string|max:50|unique:stores,kode_toko' . ($this->editingStoreId ? (',' . $this->editingStoreId) : ''),
+            'kode_toko' => 'required|string|max:50|unique:stores,kode_toko'.($this->editingStoreId ? (','.$this->editingStoreId) : ''),
         ];
 
         $this->validate($rules);
@@ -144,9 +155,9 @@ class Stores extends Component
 
     public function render()
     {
-        $stores = Store::where('nama_toko', 'like', '%' . $this->search . '%')
-            ->orWhere('kode_toko', 'like', '%' . $this->search . '%')
-            ->orWhere('pic', 'like', '%' . $this->search . '%')
+        $stores = Store::where('nama_toko', 'like', '%'.$this->search.'%')
+            ->orWhere('kode_toko', 'like', '%'.$this->search.'%')
+            ->orWhere('pic', 'like', '%'.$this->search.'%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

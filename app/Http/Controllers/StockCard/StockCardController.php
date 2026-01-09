@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\StockCard;
 
 use App\Services\StockCardService;
-use Illuminate\Http\Request;
 
 /**
  * Controller untuk API endpoint Stock Card
@@ -25,6 +24,7 @@ class StockCardController
     {
         try {
             $summary = $this->service->getSummary();
+
             return response()->json([
                 'success' => true,
                 'data' => $summary,
@@ -44,6 +44,7 @@ class StockCardController
     {
         try {
             $history = $this->service->getProductHistory($productId);
+
             return response()->json([
                 'success' => true,
                 'data' => $history,
@@ -63,6 +64,7 @@ class StockCardController
     {
         try {
             $balance = $this->service->calculateStockBalance($productId);
+
             return response()->json([
                 'success' => true,
                 'data' => [

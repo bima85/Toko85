@@ -197,4 +197,97 @@
     font-size: 12px;
     padding: 0.35rem 0.45rem;
   }
+  .stock-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem 0.5rem;
+    flex-wrap: wrap;
+  }
+
+  /* Ensure the first element (usually the product title) can shrink and truncate properly */
+  .stock-card-header > *:first-child {
+    flex: 1 1 auto;
+    min-width: 0; /* allow flex children to shrink below their content width */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .stock-card-header .badge {
+    white-space: normal; /* allow badge content to wrap when necessary */
+    margin-left: 0.25rem;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.45rem;
+  }
+
+  @media (max-width: 576px) {
+    .stock-card-header {
+      align-items: flex-start;
+    }
+
+    .stock-card-header > *:first-child {
+      /* Allow title to use up to 2 lines on very narrow screens */
+      white-space: normal;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .stock-card-header .badge {
+      font-size: 0.75rem;
+      padding: 0.2rem 0.35rem;
+    }
+  }
+
+  /* Make the left title container shrinkable and truncate long text */
+  .stock-card-header > .d-flex:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .stock-card-header > .d-flex:first-child > div {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Ensure the badges container stays its natural size and can wrap without pushing out */
+  .stock-card-header > .d-flex:last-child {
+    flex: 0 0 auto;
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .stock-card-header > .d-flex:last-child .badge {
+    margin-right: 0; /* spacing handled by gap on parent */
+  }
+}
+
+/* Stock card header: allow badges to wrap and keep badges readable on narrow widths */
+.stock-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  flex-wrap: wrap;
+}
+
+.stock-card-header .badge {
+  white-space: normal; /* allow wrapping */
+  margin-right: 0.25rem;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.45rem;
+}
+
+@media (max-width: 576px) {
+  .stock-card-header .badge {
+    font-size: 0.75rem;
+    padding: 0.2rem 0.35rem;
+  }
+  .stock-card-header {
+    align-items: flex-start;
+  }
 }

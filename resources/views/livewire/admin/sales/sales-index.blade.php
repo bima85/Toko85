@@ -1,4 +1,5 @@
 <div>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     /* Item Penjualan - Responsive Design */
     .sale-items-container {
@@ -164,19 +165,27 @@
   </style>
 
   @if (session()->has('success'))
-    <div class="alert alert-success alert-dismissible">
-      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-      <i class="icon fas fa-check"></i>
-      {{ session('success') }}
-    </div>
+    <script>
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: '{{ session('success') }}',
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'OK',
+      });
+    </script>
   @endif
 
   @if (session()->has('error'))
-    <div class="alert alert-danger alert-dismissible">
-      <button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>
-      <i class="icon fas fa-exclamation"></i>
-      {{ session('error') }}
-    </div>
+    <script>
+      Swal.fire({
+        icon: 'error',
+        title: 'Terjadi Kesalahan!',
+        text: '{{ session('error') }}',
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'OK',
+      });
+    </script>
   @endif
 
   <!-- Content Header -->
@@ -229,7 +238,7 @@
                     </strong>
                   </label>
                   <input
-                    wire:model="tanggal_penjualan"
+                    wire:model.live="tanggal_penjualan"
                     type="date"
                     class="form-control @error('tanggal_penjualan') is-invalid @enderror"
                   />
@@ -263,10 +272,10 @@
                       <button
                         type="button"
                         class="btn btn-outline-success"
-                        wire:click.prevent="showCreateCustomerModal = true"
+                        wire:click="$set('showCreateCustomerModal', true)"
                         title="Tambah Pelanggan"
                       >
-                        <i class="fas fa-plus"></i>
+                        <i class="fas fa-plus-circle"></i>
                       </button>
                     </div>
                   </div>
@@ -275,75 +284,6 @@
                   @enderror
                 </div>
               </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>
-                    <strong>
-                      Ambil Stok Dari
-                      <span class="text-danger">*</span>
-                    </strong>
-                  </label>
-                  <div class="d-flex gap-3 mb-2">
-                    <div class="form-check">
-                      <input
-                        class="form-check-input"
-                        type="radio"
-                        wire:model.live="location_source"
-                        value="toko"
-                        id="locationToko"
-                      />
-                      <label class="form-check-label" for="locationToko">
-                        <i class="fas fa-store text-info"></i>
-                        Toko
-                      </label>
-                    </div>
-                    <div class="form-check">
-                      <input
-                        class="form-check-input"
-                        type="radio"
-                        wire:model.live="location_source"
-                        value="gudang"
-                        id="locationGudang"
-                      />
-                      <label class="form-check-label" for="locationGudang">
-                        <i class="fas fa-warehouse text-success"></i>
-                        Gudang
-                      </label>
-                    </div>
-                  </div>
-
-                  @if ($location_source === 'toko')
-                    <select
-                      wire:model.live="store_id"
-                      class="form-control @error('store_id') is-invalid @enderror"
-                    >
-                      <option value="">-- Pilih Toko --</option>
-                      @foreach ($stores as $store)
-                        <option value="{{ $store->id }}">{{ $store->nama_toko }}</option>
-                      @endforeach
-                    </select>
-                    @error('store_id')
-                      <small class="text-danger d-block mt-1">{{ $message }}</small>
-                    @enderror
-                  @else
-                    <select
-                      wire:model.live="warehouse_id"
-                      class="form-control @error('warehouse_id') is-invalid @enderror"
-                    >
-                      <option value="">-- Pilih Gudang --</option>
-                      @foreach ($warehouses as $wh)
-                        <option value="{{ $wh->id }}">{{ $wh->nama_gudang }}</option>
-                      @endforeach
-                    </select>
-                    @error('warehouse_id')
-                      <small class="text-danger d-block mt-1">{{ $message }}</small>
-                    @enderror
-                  @endif
-                </div>
-              </div>
-            </div>
-
-            <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
                   <label>
@@ -403,7 +343,12 @@
                       </div>
                       <div class="form-group">
                         <label>Telepon</label>
-                        <input wire:model.defer="new_customer_telepon" class="form-control" />
+                        <input
+                          type="number"
+                          wire:model.defer="new_customer_telepon"
+                          class="form-control"
+                          placeholder="Nomor telepon..."
+                        />
                       </div>
                       <div class="form-group">
                         <label>Email</label>
@@ -435,12 +380,14 @@
             @endif
 
             <!-- Items Table/Cards -->
-            @if (count($saleItems) > 0)
-              <div class="sale-items-container">
-                <label class="sale-items-label">
-                  <strong>Item Penjualan</strong>
-                </label>
+            <div class="sale-items-container">
+              <label class="sale-items-label">
+                <strong>Item Penjualan</strong>
+              </label>
 
+              <!-- Per-barang menentukan sumber stok (override tersedia di kolom Batch) -->
+
+              @if (count($saleItems) > 0)
                 <!-- Desktop View -->
                 <div class="sale-items-desktop">
                   <div class="table-responsive">
@@ -450,6 +397,7 @@
                           <th style="width: 5%">#</th>
                           <th style="width: 10%">Kategori</th>
                           <th style="width: 10%">Subkategori</th>
+                          <th style="width: 6%">Sumber</th>
                           <th style="width: 12%">Produk</th>
                           <th style="width: 12%">Batch/Tumpukan</th>
                           <th style="width: 7%">Qty</th>
@@ -489,6 +437,44 @@
                                 @endforeach
                               </select>
                             </td>
+                            <td class="text-center">
+                              @php
+                                $rowSource = $saleItems[$index]['location_source'] ?? null;
+                                $effectiveSource = $rowSource ?: $location_source;
+                              @endphp
+
+                              <div
+                                class="btn-group btn-group-sm"
+                                role="group"
+                                aria-label="location-override"
+                              >
+                                <button
+                                  type="button"
+                                  wire:click="$set('saleItems.{{ $index }}.location_source', null)"
+                                  class="btn {{ $effectiveSource === null ? 'btn-primary' : 'btn-outline-secondary' }}"
+                                  title="Ikuti global"
+                                >
+                                  <i class="fas fa-globe"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  wire:click="$set('saleItems.{{ $index }}.location_source', 'toko')"
+                                  class="btn {{ $effectiveSource === 'toko' ? 'btn-primary' : 'btn-outline-secondary' }}"
+                                  title="Toko"
+                                >
+                                  <i class="fas fa-store"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  wire:click="$set('saleItems.{{ $index }}.location_source', 'gudang')"
+                                  class="btn {{ $effectiveSource === 'gudang' ? 'btn-primary' : 'btn-outline-secondary' }}"
+                                  title="Gudang"
+                                >
+                                  <i class="fas fa-warehouse"></i>
+                                </button>
+                              </div>
+                            </td>
+
                             <td>
                               <div class="input-group input-group-sm">
                                 <input
@@ -499,11 +485,16 @@
                                   class="form-control form-control-sm product-search-input"
                                   placeholder="Cari produk..."
                                   autocomplete="off"
+                                  oninput="(function(el){var opts=document.getElementById(el.getAttribute('list')); if(!opts)return; for(var i=0;i<opts.options.length;i++){ if(opts.options[i].value===el.value){ setTimeout(function(){el.blur();},50); break; } }})(this)"
                                 />
                                 <datalist id="productList{{ $index }}">
-                                  @foreach ($products as $prod)
+                                  @php
+                                    $rowProducts = $this->getProductsForRow($index);
+                                  @endphp
+
+                                  @foreach ($rowProducts as $prod)
                                     <option
-                                      value="[{{ $prod->kode_produk }}] {{ $prod->nama_produk }}"
+                                      value="{{ $prod->nama_produk }}"
                                       data-product-id="{{ $prod->id }}"
                                     ></option>
                                   @endforeach
@@ -670,6 +661,48 @@
                         </div>
                       </div>
 
+                      <!-- Sumber (mobile) -->
+                      <div class="sale-item-row">
+                        <div class="sale-item-label">Sumber</div>
+                        <div class="sale-item-value">
+                          @php
+                            $rowSource = $saleItems[$index]['location_source'] ?? null;
+                            $effectiveSource = $rowSource ?: $location_source;
+                          @endphp
+
+                          <div
+                            class="btn-group btn-group-sm"
+                            role="group"
+                            aria-label="location-override-mobile"
+                          >
+                            <button
+                              type="button"
+                              wire:click="$set('saleItems.{{ $index }}.location_source', null)"
+                              class="btn {{ $effectiveSource === null ? 'btn-primary' : 'btn-outline-secondary' }}"
+                              title="Ikuti global"
+                            >
+                              <i class="fas fa-globe"></i>
+                            </button>
+                            <button
+                              type="button"
+                              wire:click="$set('saleItems.{{ $index }}.location_source', 'toko')"
+                              class="btn {{ $effectiveSource === 'toko' ? 'btn-primary' : 'btn-outline-secondary' }}"
+                              title="Toko"
+                            >
+                              <i class="fas fa-store"></i>
+                            </button>
+                            <button
+                              type="button"
+                              wire:click="$set('saleItems.{{ $index }}.location_source', 'gudang')"
+                              class="btn {{ $effectiveSource === 'gudang' ? 'btn-primary' : 'btn-outline-secondary' }}"
+                              title="Gudang"
+                            >
+                              <i class="fas fa-warehouse"></i>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                       <!-- Produk -->
                       <div class="sale-item-row">
                         <div class="sale-item-label">Produk</div>
@@ -681,11 +714,12 @@
                             class="form-control form-control-sm"
                             placeholder="Cari produk..."
                             autocomplete="off"
+                            oninput="(function(el){var opts=document.getElementById(el.getAttribute('list')); if(!opts)return; for(var i=0;i<opts.options.length;i++){ if(opts.options[i].value===el.value){ setTimeout(function(){el.blur();},50); break; } }})(this)"
                           />
                           <datalist id="productListMobile{{ $index }}">
                             @foreach ($products as $prod)
                               <option
-                                value="[{{ $prod->kode_produk }}] {{ $prod->nama_produk }}"
+                                value="{{ $prod->nama_produk }}"
                                 data-product-id="{{ $prod->id }}"
                               ></option>
                             @endforeach
@@ -811,17 +845,18 @@
                 @error('saleItems')
                   <small class="text-danger">{{ $message }}</small>
                 @enderror
-              </div>
-            @else
-              <div class="alert alert-info">
-                <i class="fas fa-info-circle"></i>
-                Belum ada item. Klik "Tambah Item" untuk menambah item penjualan.
-              </div>
-            @endif
+              @else
+                <div class="alert alert-info">
+                  <i class="fas fa-plus-circle mr-2"></i>
+                  <strong>Belum ada item.</strong>
+                  Klik tombol "Tambah Item" di bawah untuk menambah item penjualan.
+                </div>
+              @endif
+            </div>
           </div>
           <div class="card-footer">
             <button wire:click="addItem" type="button" class="btn btn-info btn-sm mr-2">
-              <i class="fas fa-plus"></i>
+              <i class="fas fa-plus-circle mr-1"></i>
               Tambah Item
             </button>
             <div class="float-right">
@@ -829,9 +864,18 @@
                 <i class="fas fa-times"></i>
                 Batal
               </button>
-              <button wire:click="save" class="btn btn-success btn-sm">
+              <button wire:click="save" class="btn btn-success btn-sm mr-2">
                 <i class="fas fa-save"></i>
                 Simpan Penjualan
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                onclick="window.print()"
+                title="Cetak Transaksi"
+              >
+                <i class="fas fa-print"></i>
+                Cetak
               </button>
             </div>
           </div>

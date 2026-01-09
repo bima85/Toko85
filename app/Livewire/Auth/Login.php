@@ -8,8 +8,11 @@ use Livewire\Component;
 class Login extends Component
 {
     public $email;
+
     public $username;
+
     public $password;
+
     public $remember = false;
 
     protected $rules = [
@@ -36,6 +39,7 @@ class Login extends Component
         foreach ($attempts as $cred) {
             if (Auth::attempt($cred, $this->remember)) {
                 session()->regenerate();
+
                 return redirect()->intended('/dashboard');
             }
         }

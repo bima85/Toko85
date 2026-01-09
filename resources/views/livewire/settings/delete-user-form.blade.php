@@ -3,12 +3,14 @@
   <div class="card card-danger card-outline mt-3">
     <div class="card-header">
       <h3 class="card-title">
-        <i class="fas fa-trash-alt mr-2"></i>{{ __('Delete Account') }}
+        <i class="fas fa-trash-alt mr-2"></i>
+        {{ __('Delete Account') }}
       </h3>
     </div>
     <div class="card-body">
       <div class="alert alert-danger" role="alert">
-        <strong>{{ __('Danger Zone!') }}</strong><br />
+        <strong>{{ __('Danger Zone!') }}</strong>
+        <br />
         {{ __('Once your account is deleted, all of its resources and data will be permanently deleted.') }}
       </div>
       <p class="text-muted mb-4">
@@ -22,7 +24,8 @@
         data-toggle="modal"
         data-target="#deleteAccountModal"
       >
-        <i class="fas fa-trash-alt mr-2"></i>{{ __('Delete My Account') }}
+        <i class="fas fa-trash-alt mr-2"></i>
+        {{ __('Delete My Account') }}
       </button>
     </div>
   </div>
@@ -40,7 +43,8 @@
       <div class="modal-content border-danger">
         <div class="modal-header border-danger">
           <h5 class="modal-title text-danger" id="deleteAccountLabel">
-            <i class="fas fa-exclamation-triangle mr-2"></i>{{ __('Delete Account') }}
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            {{ __('Delete Account') }}
           </h5>
           <button type="button" class="close" data-dismiss="modal" aria-label="Close">
             <span aria-hidden="true">&times;</span>
@@ -49,13 +53,17 @@
 
         <form wire:submit="deleteUser" class="modal-body">
           <div class="alert alert-danger">
-            <strong>{{ __('Are you sure?') }}</strong><br />
+            <strong>{{ __('Are you sure?') }}</strong>
+            <br />
             {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
           </div>
 
           <div class="form-group">
             <label for="password">
-              <strong>{{ __('Password') }} <span class="text-danger">*</span></strong>
+              <strong>
+                {{ __('Password') }}
+                <span class="text-danger">*</span>
+              </strong>
             </label>
             <input
               wire:model="password"
@@ -83,7 +91,8 @@
               <i class="fas fa-trash-alt mr-2" wire:loading.remove></i>
               <span wire:loading.remove>{{ __('Delete Account') }}</span>
               <span wire:loading>
-                <i class="fas fa-spinner fa-spin mr-2"></i>{{ __('Deleting...') }}
+                <i class="fas fa-spinner fa-spin mr-2"></i>
+                {{ __('Deleting...') }}
               </span>
             </button>
           </div>

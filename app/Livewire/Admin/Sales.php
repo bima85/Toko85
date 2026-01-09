@@ -2,24 +2,23 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Sale;
-use App\Models\SaleItem;
-use App\Models\Customer;
 use App\Models\Category;
-use App\Models\Subcategory;
+use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Unit;
-use App\Models\Store;
+use App\Models\Sale;
 use App\Models\StockAdjustment;
 use App\Models\StockBatch;
+use App\Models\Store;
+use App\Models\Subcategory;
+use App\Models\Unit;
 use App\Services\StockCardService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Computed;
 
 #[Layout('layouts.admin')]
 class Sales extends Component
@@ -29,23 +28,38 @@ class Sales extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $no_invoice;
+
     public $tanggal_penjualan;
+
     public $customer_id;
+
     public $store_id;
+
     public $warehouse_id;
+
     public $location_source = 'toko'; // 'toko' or 'gudang'
+
     public $status = 'completed';
+
     public $keterangan;
+
     public $editingSaleId = null;
+
     public $showCreateForm = false;
 
     // Modal to create customer inline
     public $showCreateCustomerModal = false;
+
     public $new_customer_nama = '';
+
     public $new_customer_telepon = '';
+
     public $new_customer_email = '';
+
     public $new_customer_alamat = '';
+
     // Sale items
     public $saleItems = [];
 
@@ -54,14 +68,20 @@ class Sales extends Component
 
     // Delivery note (Surat Jalan) properties
     public $showDeliveryNoteModal = false;
+
     public $deliveryNoteNumber;
+
     public $deliveryDate;
+
     public $deliveryNotes;
+
     public $deliveryApproved = false;
 
     // Stock warning
     public $showStockWarning = false;
+
     public $stockWarningMessage = '';
+
     public $useWarehouseStock = false;
 
     protected $rules = [
@@ -161,6 +181,32 @@ class Sales extends Component
         $this->showCreateForm = true;
     }
 
+    public function updatedLocationSource($value)
+    {
+        /**
+         * Listener ketika user mengubah location_source
+         * Jika memilih 'toko', set warehouse_id null dan pastikan store_id terisi
+         * Jika memilih 'gudang', set store_id null dan set warehouse_id ke gudang pertama
+         */
+        if ($value === 'toko') {
+            // Switch ke TOKO
+            $this->warehouse_id = null;
+            // Auto-set store pertama jika belum ada
+            if (! $this->store_id) {
+                $firstStore = Store::orderBy('nama_toko')->first();
+                $this->store_id = $firstStore ? $firstStore->id : null;
+            }
+        } elseif ($value === 'gudang') {
+            // Switch ke GUDANG
+            $this->store_id = null;
+            // Auto-set gudang pertama jika belum ada
+            if (! $this->warehouse_id) {
+                $firstWarehouse = \App\Models\Warehouse::orderBy('nama_gudang')->first();
+                $this->warehouse_id = $firstWarehouse ? $firstWarehouse->id : null;
+            }
+        }
+    }
+
     public function addItem()
     {
         $this->saleItems[] = [
@@ -175,6 +221,7 @@ class Sales extends Component
             'batch_id' => null,
             'batch_name' => null,
             'batch_warning' => null,
+            'location_source' => null, // null = ikuti global, or 'toko'|'gudang'
         ];
     }
 
@@ -192,7 +239,7 @@ class Sales extends Component
     {
         $productId = $this->saleItems[$index]['product_id'] ?? null;
 
-        if (!$productId) {
+        if (! $productId) {
             return collect([]);
         }
 
@@ -201,11 +248,14 @@ class Sales extends Component
             ->where('status', 'aktual') // Only show aktual batches, not hold
             ->orderBy('created_at', 'asc');
 
-        // Filter based on location_source choice
-        if ($this->location_source === 'toko' && $this->store_id) {
+        // Determine effective source: per-row override if set, otherwise global
+        $rowSource = $this->saleItems[$index]['location_source'] ?? null;
+        $effectiveSource = $rowSource ?: $this->location_source;
+
+        if ($effectiveSource === 'toko' && $this->store_id) {
             $query->where('location_type', 'store')
                 ->where('location_id', $this->store_id);
-        } elseif ($this->location_source === 'gudang' && $this->warehouse_id) {
+        } elseif ($effectiveSource === 'gudang' && $this->warehouse_id) {
             $query->where('location_type', 'warehouse')
                 ->where('location_id', $this->warehouse_id);
         }
@@ -217,6 +267,76 @@ class Sales extends Component
         return $batches;
     }
 
+    /**
+     * Return products filtered by selected category/subcategory for a given row index
+     */
+    public function getProductsForRow($index)
+    {
+        $categoryId = $this->saleItems[$index]['category_id'] ?? null;
+        $subcategoryId = $this->saleItems[$index]['subcategory_id'] ?? null;
+
+        $query = Product::query();
+
+        if ($subcategoryId) {
+            $query->where('subcategory_id', $subcategoryId);
+        } elseif ($categoryId) {
+            // products whose subcategory belongs to this category
+            $query->whereHas('subcategory', function ($q) use ($categoryId) {
+                $q->where('category_id', $categoryId);
+            });
+        }
+
+        // Determine effective source per-row
+        $rowSource = $this->saleItems[$index]['location_source'] ?? null;
+        $effectiveSource = $rowSource ?: $this->location_source;
+
+        // filter by stock location (only show products that have stock in selected location)
+        if ($effectiveSource === 'toko' && $this->store_id) {
+            $query->whereHas('stockBatches', function ($q) {
+                $q->where('location_type', 'store')
+                    ->where('location_id', $this->store_id)
+                    ->where('qty', '>', 0)
+                    ->where('status', 'aktual');
+            });
+        } elseif ($effectiveSource === 'gudang' && $this->warehouse_id) {
+            $query->whereHas('stockBatches', function ($q) {
+                $q->where('location_type', 'warehouse')
+                    ->where('location_id', $this->warehouse_id)
+                    ->where('qty', '>', 0)
+                    ->where('status', 'aktual');
+            });
+        }
+
+        return $query->orderBy('nama_produk')->get();
+    }
+
+    #[Computed]
+    public function availableProducts()
+    {
+        /**
+         * Filter products berdasarkan location_source
+         * - Jika toko: tampilkan produk yang memiliki stok di toko terpilih
+         * - Jika gudang: tampilkan produk yang memiliki stok di gudang terpilih
+         */
+        if ($this->location_source === 'toko' && $this->store_id) {
+            return Product::whereHas('stockBatches', function ($query) {
+                $query->where('location_type', 'store')
+                    ->where('location_id', $this->store_id)
+                    ->where('qty', '>', 0)
+                    ->where('status', 'aktual');
+            })->get();
+        } elseif ($this->location_source === 'gudang' && $this->warehouse_id) {
+            return Product::whereHas('stockBatches', function ($query) {
+                $query->where('location_type', 'warehouse')
+                    ->where('location_id', $this->warehouse_id)
+                    ->where('qty', '>', 0)
+                    ->where('status', 'aktual');
+            })->get();
+        }
+
+        return collect([]);
+    }
+
     #[Computed]
     public function availableBatchesByItem()
     {
@@ -224,6 +344,7 @@ class Sales extends Component
         foreach ($this->saleItems as $index => $item) {
             $result[$index] = $this->getAvailableBatches($index);
         }
+
         return $result;
     }
 
@@ -258,21 +379,23 @@ class Sales extends Component
          * Check apakah batch qty cukup untuk requested qty
          * Store warning/info di saleItems
          */
-        if (!isset($this->saleItems[$index])) {
+        if (! isset($this->saleItems[$index])) {
             return;
         }
 
         $batchId = $this->saleItems[$index]['batch_id'] ?? null;
         $requestedQty = $this->saleItems[$index]['qty'] ?? 0;
 
-        if (!$batchId || !$requestedQty) {
+        if (! $batchId || ! $requestedQty) {
             $this->saleItems[$index]['batch_warning'] = null;
+
             return;
         }
 
         $batch = StockBatch::find($batchId);
-        if (!$batch) {
+        if (! $batch) {
             $this->saleItems[$index]['batch_warning'] = 'Batch tidak ditemukan';
+
             return;
         }
 
@@ -295,16 +418,16 @@ class Sales extends Component
          * Jika product_search berubah, extract product ID dari search string
          */
         \Log::info("updatedSaleItems: key=$key, value=$value");
-        \Log::info("Checking if key contains .product_search: " . (strpos($key, '.product_search') !== false ? 'YES' : 'NO'));
+        \Log::info('Checking if key contains .product_search: ' . (strpos($key, '.product_search') !== false ? 'YES' : 'NO'));
 
         if (strpos($key, '.product_search') !== false) {
             // Handle product search input dari datalist
             \Log::info("INSIDE product_search block! Full key: '$key'");
             // Key format is "0.product_search" not "saleItems.0.product_search"
             preg_match('/(\d+)\.product_search/', $key, $matches);
-            \Log::info("Regex matches: " . json_encode($matches));
+            \Log::info('Regex matches: ' . json_encode($matches));
             if (isset($matches[1])) {
-                $index = (int)$matches[1];
+                $index = (int) $matches[1];
                 $searchValue = trim($value);
 
                 \Log::info("Product search at index $index: '$searchValue'");
@@ -323,14 +446,36 @@ class Sales extends Component
                         \Log::warning("Product not found for code: '$productCode'");
                     }
                 } else {
-                    \Log::warning("Could not extract product code from: '$searchValue'");
+                    // Try to match by product name but only within row-filtered products
+                    \Log::info("Could not extract product code from: '$searchValue'. Trying name match within allowed products...");
+
+                    // get products allowed for this row (based on category/subcategory and location)
+                    $candidates = $this->getProductsForRow($index);
+
+                    // exact match first
+                    $product = $candidates->firstWhere('nama_produk', $searchValue);
+
+                    // only attempt partial match for inputs of length >= 3
+                    if (! $product && strlen($searchValue) >= 3) {
+                        $product = $candidates->first(function ($p) use ($searchValue) {
+                            return stripos($p->nama_produk, $searchValue) !== false;
+                        });
+                    }
+
+                    if ($product) {
+                        \Log::info("Product matched by name within row: {$product->nama_produk} (ID: {$product->id})");
+                        $this->saleItems[$index]['product_id'] = $product->id;
+                        $this->populateBatchForItem($index);
+                    } else {
+                        \Log::info("No product match within row for search: '$searchValue' (len=" . strlen($searchValue) . ")");
+                    }
                 }
             }
         } elseif (strpos($key, '.product_id') !== false) {
             // Extract index dari key: "0.product_id" => 0
             preg_match('/(\d+)\.product_id/', $key, $matches);
             if (isset($matches[1])) {
-                $index = (int)$matches[1];
+                $index = (int) $matches[1];
                 \Log::info("Product changed at index $index to $value");
                 $this->populateBatchForItem($index);
             }
@@ -338,7 +483,7 @@ class Sales extends Component
             // User memilih batch manual, update batch_name dari database
             preg_match('/(\d+)\.batch_id/', $key, $matches);
             if (isset($matches[1])) {
-                $index = (int)$matches[1];
+                $index = (int) $matches[1];
                 $batchId = $this->saleItems[$index]['batch_id'] ?? null;
                 if ($batchId) {
                     $batch = StockBatch::find($batchId);
@@ -353,7 +498,7 @@ class Sales extends Component
             // User mengubah qty, check batch availability
             preg_match('/(\d+)\.qty/', $key, $matches);
             if (isset($matches[1])) {
-                $index = (int)$matches[1];
+                $index = (int) $matches[1];
                 $this->checkBatchAvailability($index);
             }
         }
@@ -365,20 +510,29 @@ class Sales extends Component
          * Auto-select batch untuk item pada index tertentu
          * Menggunakan FIFO: ambil batch tertua dengan stok tersedia
          */
-        if (!isset($this->saleItems[$index])) {
+        if (! isset($this->saleItems[$index])) {
             return;
         }
 
         $productId = $this->saleItems[$index]['product_id'] ?? null;
-        if (!$productId) {
+        if (! $productId) {
             $this->saleItems[$index]['batch_id'] = null;
             $this->saleItems[$index]['batch_name'] = null;
+
             return;
         }
 
-        // Get location dari form
-        $storeId = $this->store_id ?? null;
-        $warehouseId = $this->warehouse_id ?? null;
+        // Get location dari per-row override atau global
+        $rowSource = $this->saleItems[$index]['location_source'] ?? null;
+        $effectiveSource = $rowSource ?: $this->location_source;
+
+        $storeId = null;
+        $warehouseId = null;
+        if ($effectiveSource === 'toko') {
+            $storeId = $this->store_id ?? null;
+        } elseif ($effectiveSource === 'gudang') {
+            $warehouseId = $this->warehouse_id ?? null;
+        }
 
         // Query batch yang tersedia (FIFO - oldest first)
         $query = StockBatch::where('product_id', $productId)
@@ -400,7 +554,7 @@ class Sales extends Component
             $this->saleItems[$index]['batch_name'] = $batch->nama_tumpukan ?? "Batch #{$batch->id}";
         } else {
             $this->saleItems[$index]['batch_id'] = null;
-            $this->saleItems[$index]['batch_name'] = "Stok tidak tersedia";
+            $this->saleItems[$index]['batch_name'] = 'Stok tidak tersedia';
         }
     }
 
@@ -410,10 +564,12 @@ class Sales extends Component
             'customer_id' => $this->customer_id,
             'current_no_invoice' => $this->no_invoice,
         ]);
+        // Use selected sale date if provided, otherwise today
+        $dateSource = $this->tanggal_penjualan ?: date('Y-m-d');
+        $today = date('Ymd', strtotime($dateSource));
 
-        if (!$this->customer_id) {
+        if (! $this->customer_id) {
             // Generate default invoice without customer code
-            $today = date('Ymd');
             $prefix = 'INV/PJ/' . $today;
 
             $lastSale = Sale::where('no_invoice', 'LIKE', $prefix . '/%')
@@ -424,53 +580,57 @@ class Sales extends Component
             if ($lastSale) {
                 $parts = explode('/', $lastSale->no_invoice);
                 if (count($parts) >= 4) {
-                    $sequence = (int)$parts[3] + 1;
+                    $sequence = (int) $parts[3] + 1;
                 }
             }
 
             $this->no_invoice = sprintf('INV/PJ/%s/%03d', $today, $sequence);
 
             \Log::info('Generated invoice (no customer):', ['no_invoice' => $this->no_invoice]);
+
             return;
         }
 
         $customer = Customer::find($this->customer_id);
-        if (!$customer) {
+        if (! $customer) {
             $this->no_invoice = '';
             \Log::warning('Customer not found, no_invoice set to empty');
+
             return;
         }
 
-        // Format: [CUSTOMER_CODE]/PJ/[YYYYMMDD]/[SEQUENCE]
-        // Contoh: CUST001/PJ/20251107/001
-        $today = date('Ymd');
-        $prefix = $customer->kode_pelanggan . '/PJ/' . $today;
+        // Determine customer code: prefer kode_pelanggan, fallback to uppercase name without spaces
+        $customerCode = $customer->kode_pelanggan ?: preg_replace('/\s+/', '', strtoupper($customer->nama_pelanggan ?? ''));
 
-        // Cari invoice terakhir dengan pattern yang sama (by invoice prefix, not by customer_id)
+        // Format: [CUSTOMER_CODE]/PJ/[YYYYMMDD]/[SEQUENCE]
+        $prefix = $customerCode . '/PJ/' . $today;
+
+        // Cari invoice terakhir dengan pattern yang sama (by invoice prefix)
         $lastInvoice = Sale::where('no_invoice', 'LIKE', $prefix . '/%')
             ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '/', -1) AS UNSIGNED) DESC")
             ->first();
 
         $sequence = 1;
         if ($lastInvoice) {
-            // Extract sequence dari last invoice
             $parts = explode('/', $lastInvoice->no_invoice);
             if (count($parts) >= 4) {
-                $sequence = (int)$parts[3] + 1;
+                $sequence = (int) $parts[3] + 1;
             }
         }
 
-        $this->no_invoice = sprintf(
-            '%s/PJ/%s/%03d',
-            $customer->kode_pelanggan,
-            $today,
-            $sequence
-        );
+        $this->no_invoice = sprintf('%s/PJ/%s/%03d', $customerCode, $today, $sequence);
 
         \Log::info('Generated invoice (with customer):', [
-            'customer_code' => $customer->kode_pelanggan,
+            'customer_code' => $customerCode,
             'no_invoice' => $this->no_invoice,
         ]);
+    }
+
+    public function updatedTanggalPenjualan()
+    {
+        \Log::info('updatedTanggalPenjualan fired', ['tanggal_penjualan' => $this->tanggal_penjualan]);
+        // Regenerate invoice number when user changes the sale date
+        $this->generateInvoiceNumber();
     }
 
     public function generateDeliveryNoteNumber()
@@ -485,11 +645,11 @@ class Sales extends Component
             ->first();
 
         $sequence = 1;
-        if ($lastSale && !empty($lastSale->delivery_note_number)) {
+        if ($lastSale && ! empty($lastSale->delivery_note_number)) {
             // Extract sequence dari last delivery note
             $parts = explode('/', $lastSale->delivery_note_number);
             if (count($parts) >= 3) {
-                $sequence = (int)$parts[2] + 1;
+                $sequence = (int) $parts[2] + 1;
             }
         }
 
@@ -531,13 +691,14 @@ class Sales extends Component
             }
         }
 
-        if (!empty($insufficientItems)) {
+        if (! empty($insufficientItems)) {
             $this->showStockWarning = true;
             $message = "Stok di toko tidak mencukupi:\n";
             foreach ($insufficientItems as $item) {
                 $message .= "- {$item['product_name']}: Diminta {$item['requested']}, Stok Toko {$item['store_stock']}, Stok Gudang {$item['warehouse_stock']}\n";
             }
             $this->stockWarningMessage = $message;
+
             return false;
         }
 
@@ -636,7 +797,6 @@ class Sales extends Component
          * - Gunakan FIFO (First In First Out) - ambil dari batch tertua dulu
          * - UPDATE StockCard untuk laporan stok
          */
-
         $query = StockBatch::where('product_id', $productId)
             ->where('qty', '>', 0)
             ->orderBy('created_at', 'asc');
@@ -670,7 +830,7 @@ class Sales extends Component
         if ($remainingQty > 0) {
             throw new \Exception(
                 "Stok produk tidak cukup. Kurang: {$remainingQty} unit. " .
-                    "Tersedia di batch: " . ($qty - $remainingQty) . " unit"
+                    'Tersedia di batch: ' . ($qty - $remainingQty) . ' unit'
             );
         }
     }
@@ -769,8 +929,8 @@ class Sales extends Component
             ]);
 
             // Step 1: Cek stok availability (hanya untuk penjualan baru, bukan edit)
-            if (!$this->editingSaleId && !$this->deliveryApproved) {
-                if (!$this->checkStockAvailability()) {
+            if (! $this->editingSaleId && ! $this->deliveryApproved) {
+                if (! $this->checkStockAvailability()) {
                     // Stok tidak cukup, tampilkan warning
                     // User harus pilih ambil dari gudang atau tidak
                     return;
@@ -779,6 +939,7 @@ class Sales extends Component
                 // Stok cukup di TOKO, langsung simpan TANPA surat jalan
                 // Set flag agar tidak loop kembali ke sini
                 $this->deliveryApproved = true;
+
                 // Rekursif call save() untuk proses simpan
                 return $this->save();
             }
@@ -798,19 +959,19 @@ class Sales extends Component
 
             // Validate batch qty availability
             foreach ($this->saleItems as $index => $item) {
-                if (!$item['batch_id'] || !$item['qty']) {
+                if (! $item['batch_id'] || ! $item['qty']) {
                     continue;
                 }
 
                 $batch = StockBatch::find($item['batch_id']);
-                if (!$batch) {
-                    throw new \Exception("Batch tidak ditemukan pada item " . ($index + 1));
+                if (! $batch) {
+                    throw new \Exception('Batch tidak ditemukan pada item ' . ($index + 1));
                 }
 
                 // Check if requested qty exceeds available batch qty
                 if ($item['qty'] > $batch->qty) {
                     throw new \Exception(
-                        "Batch {$batch->nama_tumpukan} pada item " . ($index + 1) . " tidak cukup. " .
+                        "Batch {$batch->nama_tumpukan} pada item " . ($index + 1) . ' tidak cukup. ' .
                             "Diminta: {$item['qty']} sak, Tersedia: {$batch->qty} sak"
                     );
                 }
@@ -879,6 +1040,7 @@ class Sales extends Component
                             $holdService = app(\App\Services\HoldStockService::class);
                             $holdService->moveToHold($sale, $batch, $item['qty']);
                         }
+
                         continue; // Skip normal stock reduction
                     }
 
@@ -1041,7 +1203,7 @@ class Sales extends Component
         $customers = Customer::all();
         $categories = Category::all();
         $subcategories = Subcategory::all();
-        $products = Product::all();  // Always load products even if form not shown
+        $products = $this->availableProducts();  // Use filtered products based on location
         $units = Unit::all();
         $stores = Store::all();
         $warehouses = \App\Models\Warehouse::all();

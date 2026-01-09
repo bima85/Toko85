@@ -2,9 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\StockCard;
 use App\Models\Product;
-use App\Models\StockBatch;
+use App\Models\StockCard;
 use App\Models\User;
 use Tests\TestCase;
 
@@ -12,7 +11,7 @@ class StockCardFeatureTest extends TestCase
 {
     protected $user;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->user = User::factory()->create();

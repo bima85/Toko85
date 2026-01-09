@@ -9,7 +9,9 @@ use Livewire\Component;
 class SalesCreate extends Component
 {
     public $date;
+
     public $customer_name;
+
     public $total_amount;
 
     protected function rules(): array
@@ -33,6 +35,7 @@ class SalesCreate extends Component
         ]);
 
         session()->flash('success', 'Penjualan berhasil dibuat.');
+
         return redirect()->route('admin.sales');
     }
 

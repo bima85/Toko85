@@ -14,15 +14,25 @@ class Customers extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_pelanggan;
+
     public $nama_pelanggan;
+
     public $alamat;
+
     public $telepon;
+
     public $email;
+
     public $keterangan;
+
     public $editingCustomerId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedCustomer = null;
 
     protected $rules = [
@@ -85,7 +95,7 @@ class Customers extends Component
             'telepon' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'keterangan' => 'nullable|string',
-            'kode_pelanggan' => 'required|string|max:50|unique:customers,kode_pelanggan' . ($this->editingCustomerId ? (',' . $this->editingCustomerId) : ''),
+            'kode_pelanggan' => 'required|string|max:50|unique:customers,kode_pelanggan'.($this->editingCustomerId ? (','.$this->editingCustomerId) : ''),
         ];
 
         $this->validate($rules);
@@ -137,9 +147,9 @@ class Customers extends Component
 
     public function render()
     {
-        $customers = Customer::where('nama_pelanggan', 'like', '%' . $this->search . '%')
-            ->orWhere('kode_pelanggan', 'like', '%' . $this->search . '%')
-            ->orWhere('email', 'like', '%' . $this->search . '%')
+        $customers = Customer::where('nama_pelanggan', 'like', '%'.$this->search.'%')
+            ->orWhere('kode_pelanggan', 'like', '%'.$this->search.'%')
+            ->orWhere('email', 'like', '%'.$this->search.'%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

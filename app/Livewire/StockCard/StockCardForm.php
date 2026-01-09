@@ -10,14 +10,23 @@ use Livewire\Component;
 class StockCardForm extends Component
 {
     public $stockCard = null;
+
     public $product_id = '';
+
     public $batch_id = '';
+
     public $type = 'in';
+
     public $qty = '';
+
     public $from_location = '';
+
     public $to_location = '';
+
     public $reference_type = '';
+
     public $reference_id = '';
+
     public $note = '';
 
     protected $rules = [
@@ -36,7 +45,7 @@ class StockCardForm extends Component
     {
         if ($stockCard) {
             // Handle if $stockCard is an ID (string/int) instead of model instance
-            if (!$stockCard instanceof StockCard) {
+            if (! $stockCard instanceof StockCard) {
                 $stockCard = StockCard::findOrFail($stockCard);
             }
 
@@ -69,7 +78,7 @@ class StockCardForm extends Component
 
         $this->dispatch('toast', [
             'message' => $message,
-            'type' => 'success'
+            'type' => 'success',
         ]);
 
         return redirect()->route('stock-card.index');
@@ -82,7 +91,7 @@ class StockCardForm extends Component
 
     public function getBatchesProperty()
     {
-        if (!$this->product_id) {
+        if (! $this->product_id) {
             return [];
         }
 

@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TransactionsExport;
 use App\Models\TransactionHistory;
 use Illuminate\Http\Request;
-use Yajra\DataTables\Facades\DataTables;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\TransactionsExport;
+use Yajra\DataTables\Facades\DataTables;
 
 class TransactionController extends Controller
 {
@@ -14,6 +14,7 @@ class TransactionController extends Controller
     {
         $count = TransactionHistory::count();
         $sample = TransactionHistory::with('user')->first();
+
         return response()->json([
             'total_records' => $count,
             'sample' => $sample,
@@ -32,18 +33,23 @@ class TransactionController extends Controller
             $additionalInfo = [];
 
             if ($transaction->transaction_type === 'penjualan' && $transaction->reference_id) {
-                $sale = \App\Models\Sale::with(['saleItems.product', 'saleItems.unit', 'customer'])->find($transaction->reference_id);
+                $sale = \App\Models\Sale::with(['saleItems.product', 'saleItems.unit', 'customer', 'store', 'warehouse'])->find($transaction->reference_id);
                 if ($sale) {
                     $additionalInfo['sale'] = [
                         'no_invoice' => $sale->no_invoice,
                         'customer' => $sale->customer->nama_pelanggan ?? 'Umum',
+                        'store' => $sale->store->nama_toko ?? '-',
+                        'warehouse' => $sale->warehouse->nama_gudang ?? '-',
+                        'sale_date' => $sale->tanggal_penjualan?->format('d/m/Y') ?? '-',
+                        'total_amount' => 'Rp '.number_format($sale->saleItems->sum(fn ($item) => $item->qty * $item->harga_jual), 0, ',', '.'),
                         'items' => $sale->saleItems->map(function ($item) {
                             return [
                                 'product' => $item->product->nama_produk ?? '-',
                                 'qty' => $item->qty,
                                 'unit' => $item->unit->nama_unit ?? '-',
-                                'price' => 'Rp ' . number_format($item->harga_jual, 0, ',', '.'),
-                                'subtotal' => 'Rp ' . number_format(($item->qty ?? 0) * ($item->harga_jual ?? 0), 0, ',', '.'),
+                                'price' => 'Rp '.number_format($item->harga_jual, 0, ',', '.'),
+                                'subtotal' => 'Rp '.number_format(($item->qty ?? 0) * ($item->harga_jual ?? 0), 0, ',', '.'),
+                                'notes' => $item->notes ?? '-',
                             ];
                         }),
                     ];
@@ -54,13 +60,32 @@ class TransactionController extends Controller
                     $additionalInfo['purchase'] = [
                         'no_invoice' => $purchase->no_invoice,
                         'supplier' => $purchase->supplier->nama_supplier ?? '-',
+                        'warehouse' => $purchase->warehouse->nama_gudang ?? '-',
+                        'purchase_date' => $purchase->tanggal_pembelian?->format('d/m/Y') ?? '-',
+                        'total_amount' => 'Rp '.number_format($purchase->purchaseItems->sum('total'), 0, ',', '.'),
                         'items' => $purchase->purchaseItems->map(function ($item) {
+                            // Get batch information
+                            $batchInfo = '-';
+                            if ($item->batches && is_array($item->batches) && count($item->batches) > 0) {
+                                $batchNames = array_map(function ($batch) {
+                                    $name = $batch['name'] ?? '';
+                                    $qty = $batch['qty'] ?? 0;
+
+                                    return $name && $qty > 0 ? "{$name} ({$qty})" : '';
+                                }, $item->batches);
+                                $batchNames = array_filter($batchNames);
+                                $batchInfo = ! empty($batchNames) ? implode(', ', $batchNames) : '-';
+                            }
+
                             return [
                                 'product' => $item->product->nama_produk ?? '-',
-                                'qty' => $item->qty,
+                                'qty_toko' => $item->qty ?? 0,
+                                'qty_gudang' => $item->qty_gudang ?? 0,
+                                'qty_total' => ($item->qty ?? 0) + ($item->qty_gudang ?? 0),
                                 'unit' => $item->unit->nama_unit ?? '-',
-                                'price' => 'Rp ' . number_format($item->harga_beli, 0, ',', '.'),
-                                'subtotal' => 'Rp ' . number_format(($item->qty ?? 0) * ($item->harga_beli ?? 0), 0, ',', '.'),
+                                'price' => 'Rp '.number_format($item->harga_beli, 0, ',', '.'),
+                                'subtotal' => 'Rp '.number_format($item->total ?? 0, 0, ',', '.'),
+                                'batch' => $batchInfo,
                             ];
                         }),
                     ];
@@ -77,7 +102,7 @@ class TransactionController extends Controller
                     'transaction_date' => $transaction->transaction_date->format('Y-m-d H:i:s'),
                     'transaction_date_formatted' => $transaction->transaction_date->format('d/m/Y H:i'),
                     'amount' => $transaction->amount,
-                    'amount_formatted' => 'Rp ' . number_format($transaction->amount, 0, ',', '.'),
+                    'amount_formatted' => 'Rp '.number_format($transaction->amount, 0, ',', '.'),
                     'status' => $transaction->status,
                     'user_name' => $transaction->user->name ?? '-',
                     'payment_method' => $transaction->payment_method,
@@ -109,11 +134,11 @@ class TransactionController extends Controller
             }
 
             if ($request->has('filterDateFrom') && $request->filterDateFrom) {
-                $query->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00');
+                $query->where('transaction_date', '>=', $request->filterDateFrom.' 00:00:00');
             }
 
             if ($request->has('filterDateTo') && $request->filterDateTo) {
-                $query->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59');
+                $query->where('transaction_date', '<=', $request->filterDateTo.' 23:59:59');
             }
 
             // Calculate stats
@@ -125,29 +150,30 @@ class TransactionController extends Controller
 
             // Calculate by type
             $penjualanTotal = TransactionHistory::where('transaction_type', 'penjualan')
-                ->when($request->filterDateFrom, fn($q) => $q->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00'))
-                ->when($request->filterDateTo, fn($q) => $q->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59'))
+                ->when($request->filterDateFrom, fn ($q) => $q->where('transaction_date', '>=', $request->filterDateFrom.' 00:00:00'))
+                ->when($request->filterDateTo, fn ($q) => $q->where('transaction_date', '<=', $request->filterDateTo.' 23:59:59'))
                 ->sum('amount');
 
             $pembelianTotal = TransactionHistory::where('transaction_type', 'pembelian')
-                ->when($request->filterDateFrom, fn($q) => $q->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00'))
-                ->when($request->filterDateTo, fn($q) => $q->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59'))
+                ->when($request->filterDateFrom, fn ($q) => $q->where('transaction_date', '>=', $request->filterDateFrom.' 00:00:00'))
+                ->when($request->filterDateTo, fn ($q) => $q->where('transaction_date', '<=', $request->filterDateTo.' 23:59:59'))
                 ->sum('amount');
 
             return response()->json([
                 'total_amount' => $totalAmount,
-                'total_amount_formatted' => 'Rp ' . number_format($totalAmount, 0, ',', '.'),
+                'total_amount_formatted' => 'Rp '.number_format($totalAmount, 0, ',', '.'),
                 'total_count' => $totalCount,
                 'completed_count' => $completedCount,
                 'pending_count' => $pendingCount,
                 'cancelled_count' => $cancelledCount,
                 'penjualan_total' => $penjualanTotal,
-                'penjualan_total_formatted' => 'Rp ' . number_format($penjualanTotal, 0, ',', '.'),
+                'penjualan_total_formatted' => 'Rp '.number_format($penjualanTotal, 0, ',', '.'),
                 'pembelian_total' => $pembelianTotal,
-                'pembelian_total_formatted' => 'Rp ' . number_format($pembelianTotal, 0, ',', '.'),
+                'pembelian_total_formatted' => 'Rp '.number_format($pembelianTotal, 0, ',', '.'),
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in TransactionController.stats: ' . $e->getMessage());
+            \Log::error('Error in TransactionController.stats: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -179,7 +205,7 @@ class TransactionController extends Controller
 
             // Check if there's any data at all
             $totalBefore = $query->count();
-            \Log::info('Total transactions before filters: ' . $totalBefore);
+            \Log::info('Total transactions before filters: '.$totalBefore);
 
             // Apply filters
             if ($request->has('filterType') && $request->filterType) {
@@ -191,11 +217,11 @@ class TransactionController extends Controller
             }
 
             if ($request->has('filterDateFrom') && $request->filterDateFrom) {
-                $query->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00');
+                $query->where('transaction_date', '>=', $request->filterDateFrom.' 00:00:00');
             }
 
             if ($request->has('filterDateTo') && $request->filterDateTo) {
-                $query->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59');
+                $query->where('transaction_date', '<=', $request->filterDateTo.' 23:59:59');
             }
 
             $result = DataTables::of($query)
@@ -220,9 +246,11 @@ class TransactionController extends Controller
                         if ($sale && $sale->saleItems->count() > 0) {
                             // Ambil harga jual dari item pertama (atau rata-rata jika berbeda)
                             $hargaJual = $sale->saleItems->first()->harga_jual ?? 0;
-                            return 'Rp ' . number_format($hargaJual, 0, ',', '.');
+
+                            return 'Rp '.number_format($hargaJual, 0, ',', '.');
                         }
                     }
+
                     return '-';
                 })
                 ->addColumn('satuan', function ($transaction) {
@@ -238,6 +266,7 @@ class TransactionController extends Controller
                             return $purchase->purchaseItems->first()->unit->nama_unit ?? '-';
                         }
                     }
+
                     return '-';
                 })
                 ->addColumn('harga_beli', function ($transaction) {
@@ -247,13 +276,15 @@ class TransactionController extends Controller
                         if ($purchase && $purchase->purchaseItems->count() > 0) {
                             // Ambil harga beli dari item pertama
                             $hargaBeli = $purchase->purchaseItems->first()->harga_beli ?? 0;
-                            return 'Rp ' . number_format($hargaBeli, 0, ',', '.');
+
+                            return 'Rp '.number_format($hargaBeli, 0, ',', '.');
                         }
                     }
+
                     return '-';
                 })
                 ->addColumn('total_amount', function ($transaction) {
-                    return 'Rp ' . number_format($transaction->amount, 0, ',', '.');
+                    return 'Rp '.number_format($transaction->amount, 0, ',', '.');
                 })
                 ->addColumn('user_name', function ($transaction) {
                     return $transaction->user->name ?? '-';
@@ -268,11 +299,13 @@ class TransactionController extends Controller
                 ->make(true);
 
             \Log::info('DataTables result created successfully');
+
             return $result;
         } catch (\Exception $e) {
-            \Log::error('Error in TransactionController.data: ' . $e->getMessage(), [
+            \Log::error('Error in TransactionController.data: '.$e->getMessage(), [
                 'exception' => $e,
             ]);
+
             return response()->json([
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -298,11 +331,11 @@ class TransactionController extends Controller
             }
 
             if ($request->has('filterDateFrom') && $request->filterDateFrom) {
-                $query->where('transaction_date', '>=', $request->filterDateFrom . ' 00:00:00');
+                $query->where('transaction_date', '>=', $request->filterDateFrom.' 00:00:00');
             }
 
             if ($request->has('filterDateTo') && $request->filterDateTo) {
-                $query->where('transaction_date', '<=', $request->filterDateTo . ' 23:59:59');
+                $query->where('transaction_date', '<=', $request->filterDateTo.' 23:59:59');
             }
 
             // Apply simple search param (from DataTables search.value)
@@ -341,13 +374,13 @@ class TransactionController extends Controller
                                 $qty,
                                 $item->unit->nama_unit ?? '-',
                                 // formatted harga jual
-                                $hargaJualNum ? 'Rp ' . number_format($hargaJualNum, 0, ',', '.') : '-',
+                                $hargaJualNum ? 'Rp '.number_format($hargaJualNum, 0, ',', '.') : '-',
                                 // formatted harga beli
-                                $hargaBeliNum ? 'Rp ' . number_format($hargaBeliNum, 0, ',', '.') : '-',
+                                $hargaBeliNum ? 'Rp '.number_format($hargaBeliNum, 0, ',', '.') : '-',
                                 // formatted subtotal
-                                'Rp ' . number_format($subtotalNum, 0, ',', '.'),
+                                'Rp '.number_format($subtotalNum, 0, ',', '.'),
                                 // total transaksi formatted
-                                'Rp ' . number_format((float) $t->amount, 0, ',', '.'),
+                                'Rp '.number_format((float) $t->amount, 0, ',', '.'),
                                 $t->description,
                             ];
                         }
@@ -372,13 +405,13 @@ class TransactionController extends Controller
                                 $qty,
                                 $item->unit->nama_unit ?? '-',
                                 // formatted harga jual if any
-                                $hargaJualNum ? 'Rp ' . number_format($hargaJualNum, 0, ',', '.') : '-',
+                                $hargaJualNum ? 'Rp '.number_format($hargaJualNum, 0, ',', '.') : '-',
                                 // formatted harga beli
-                                $hargaBeliNum ? 'Rp ' . number_format($hargaBeliNum, 0, ',', '.') : '-',
+                                $hargaBeliNum ? 'Rp '.number_format($hargaBeliNum, 0, ',', '.') : '-',
                                 // formatted subtotal (based on harga_beli)
-                                'Rp ' . number_format($subtotalNum, 0, ',', '.'),
+                                'Rp '.number_format($subtotalNum, 0, ',', '.'),
                                 // total transaksi formatted
-                                'Rp ' . number_format((float) $t->amount, 0, ',', '.'),
+                                'Rp '.number_format((float) $t->amount, 0, ',', '.'),
                                 $t->description,
                             ];
                         }
@@ -401,16 +434,18 @@ class TransactionController extends Controller
                         '-', // harga jual
                         '-', // harga beli
                         '-', // subtotal
-                        'Rp ' . number_format((float) $t->amount, 0, ',', '.'),
+                        'Rp '.number_format((float) $t->amount, 0, ',', '.'),
                         $t->description,
                     ];
                 }
             }
 
-            $fileName = 'Transaksi_Detail_' . date('Y-m-d_His') . '.xlsx';
+            $fileName = 'Transaksi_Detail_'.date('Y-m-d_His').'.xlsx';
+
             return Excel::download(new TransactionsExport($rows), $fileName);
         } catch (\Exception $e) {
-            \Log::error('Error exporting transactions: ' . $e->getMessage());
+            \Log::error('Error exporting transactions: '.$e->getMessage());
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

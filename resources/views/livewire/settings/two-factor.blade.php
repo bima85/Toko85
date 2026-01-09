@@ -126,7 +126,7 @@
 
                 <div class="flex justify-center">
                     <div class="relative w-64 overflow-hidden border rounded-lg border-stone-200 dark:border-stone-700 aspect-square">
-                        @empty($qrCodeSvg)
+                        @if(empty($qrCodeSvg))
                             <div class="absolute inset-0 flex items-center justify-center bg-white dark:bg-stone-700 animate-pulse">
                                 <flux:icon.loading/>
                             </div>
@@ -136,7 +136,7 @@
                                     {!! $qrCodeSvg !!}
                                 </div>
                             </div>
-                        @endempty
+                        @endif
                     </div>
                 </div>
 
@@ -175,7 +175,7 @@
                         }"
                     >
                         <div class="flex items-stretch w-full border rounded-xl dark:border-stone-700">
-                            @empty($manualSetupKey)
+                            @if(empty($manualSetupKey))
                                 <div class="flex items-center justify-center w-full p-3 bg-stone-100 dark:bg-stone-700">
                                     <flux:icon.loading variant="mini"/>
                                 </div>
@@ -198,7 +198,7 @@
                                         class="text-green-500"
                                     ></flux:icon>
                                 </button>
-                            @endempty
+                            @endif
                         </div>
                     </div>
                 </div>

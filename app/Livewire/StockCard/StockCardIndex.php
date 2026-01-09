@@ -4,24 +4,30 @@ namespace App\Livewire\StockCard;
 
 use App\Exports\StockCardExport;
 use App\Models\StockCard;
-use App\Repositories\StockCardRepository;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\WithoutUrlPagination;
 use Maatwebsite\Excel\Facades\Excel;
 
 class StockCardIndex extends Component
 {
-    use WithPagination, WithoutUrlPagination;
+    use WithPagination;
 
     public $search = '';
+
     public $filter_type = '';
+
     public $filter_product = '';
+
     public $per_page = 15;
+
     public $selectAll = false;
+
     public $selectedCards = [];
+
     public $groupByProduct = true;
+
     public $expandedGroups = [];
+
     protected $queryString = ['search', 'filter_type', 'filter_product', 'groupByProduct'];
 
     protected $listeners = ['refreshStockCard' => '$refresh'];
@@ -72,7 +78,7 @@ class StockCardIndex extends Component
 
     public function getGroupedStockCardsProperty()
     {
-        if (!$this->groupByProduct) {
+        if (! $this->groupByProduct) {
             return null;
         }
 
@@ -171,6 +177,7 @@ class StockCardIndex extends Component
 
         // Fallback to first product's satuan
         $product = \App\Models\Product::whereNotNull('satuan')->first();
+
         return $product ? $product->satuan : 'unit';
     }
 
@@ -182,7 +189,7 @@ class StockCardIndex extends Component
             $stockCard->delete();
             $this->dispatch('toast', [
                 'message' => 'Kartu stok berhasil dihapus',
-                'type' => 'success'
+                'type' => 'success',
             ]);
         }
     }
@@ -211,8 +218,9 @@ class StockCardIndex extends Component
         if (empty($this->selectedCards)) {
             $this->dispatch('toast', [
                 'message' => 'Pilih minimal satu kartu stok untuk dihapus',
-                'type' => 'warning'
+                'type' => 'warning',
             ]);
+
             return;
         }
 
@@ -222,8 +230,8 @@ class StockCardIndex extends Component
         $this->selectAll = false;
         $this->resetPage();
         $this->dispatch('toast', [
-            'message' => $count . ' kartu stok berhasil dihapus',
-            'type' => 'success'
+            'message' => $count.' kartu stok berhasil dihapus',
+            'type' => 'success',
         ]);
     }
 
@@ -232,13 +240,13 @@ class StockCardIndex extends Component
         // Akan diimplementasikan dengan library PDF seperti TCPDF atau mPDF
         $this->dispatch('toast', [
             'message' => 'Fitur export PDF sedang dalam pengembangan',
-            'type' => 'info'
+            'type' => 'info',
         ]);
     }
 
     public function exportToExcel()
     {
-        $filename = 'kartu-stok-' . now()->format('Y-m-d-His') . '.xlsx';
+        $filename = 'kartu-stok-'.now()->format('Y-m-d-His').'.xlsx';
 
         return Excel::download(
             new StockCardExport($this->search, $this->filter_type, $this->groupByProduct),

@@ -2,12 +2,12 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 use App\Models\Category;
+use App\Models\Product;
 use App\Models\Subcategory;
 use App\Models\Supplier;
-use App\Models\Product;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class ShopCustomSeeder extends Seeder
 {
@@ -16,19 +16,19 @@ class ShopCustomSeeder extends Seeder
         // Ensure categories
         $catBeras = Category::firstOrCreate(
             ['nama_kategori' => 'Beras'],
-            ['kode_kategori' => 'BR-' . Str::upper(Str::random(6)), 'description' => 'Kategori Beras']
+            ['kode_kategori' => 'BR-'.Str::upper(Str::random(6)), 'description' => 'Kategori Beras']
         );
 
         $catKetan = Category::firstOrCreate(
             ['nama_kategori' => 'Ketan'],
-            ['kode_kategori' => 'KT-' . Str::upper(Str::random(6)), 'description' => 'Kategori Ketan']
+            ['kode_kategori' => 'KT-'.Str::upper(Str::random(6)), 'description' => 'Kategori Ketan']
         );
 
         // Helper to ensure subcategory under a category
         $ensureSub = function ($category, $name) {
             return Subcategory::firstOrCreate(
                 ['nama_subkategori' => $name, 'category_id' => $category->id],
-                ['kode_subkategori' => Str::upper(Str::substr(Str::slug($name), 0, 6)) . '-' . Str::upper(Str::random(4)), 'description' => $name]
+                ['kode_subkategori' => Str::upper(Str::substr(Str::slug($name), 0, 6)).'-'.Str::upper(Str::random(4)), 'description' => $name]
             );
         };
 
@@ -247,17 +247,17 @@ class ShopCustomSeeder extends Seeder
             $supplier = Supplier::firstOrCreate(
                 ['nama_supplier' => $supplierData['nama']],
                 [
-                    'kode_supplier' => 'SUP-' . Str::upper(Str::random(6)),
-                    'keterangan' => 'Owner: ' . ($supplierData['owner'] ?? ''),
+                    'kode_supplier' => 'SUP-'.Str::upper(Str::random(6)),
+                    'keterangan' => 'Owner: '.($supplierData['owner'] ?? ''),
                     'owner' => $supplierData['owner'] ?? null,
                 ]
             );
 
             // If supplier already existed but owner is provided in the data, ensure it's persisted
-            if (!empty($supplierData['owner']) && ($supplier->owner !== $supplierData['owner'] || empty($supplier->keterangan))) {
+            if (! empty($supplierData['owner']) && ($supplier->owner !== $supplierData['owner'] || empty($supplier->keterangan))) {
                 $supplier->update([
                     'owner' => $supplierData['owner'],
-                    'keterangan' => 'Owner: ' . $supplierData['owner'],
+                    'keterangan' => 'Owner: '.$supplierData['owner'],
                 ]);
             }
 
@@ -266,7 +266,7 @@ class ShopCustomSeeder extends Seeder
                 Product::firstOrCreate(
                     ['nama_produk' => $p['nama'], 'subcategory_id' => $sub->id],
                     [
-                        'kode_produk' => 'PRD-' . Str::upper(Str::random(6)),
+                        'kode_produk' => 'PRD-'.Str::upper(Str::random(6)),
                         'description' => null,
                         'satuan' => 'Kg',
                         'category_id' => $sub->category_id,

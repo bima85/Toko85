@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\StockBatch;
 use App\Models\Product;
+use App\Models\StockBatch;
 use App\Models\Store;
 use App\Models\Warehouse;
+use Illuminate\Http\Request;
 
 class StockReportController extends Controller
 {
@@ -41,11 +41,11 @@ class StockReportController extends Controller
             $query->where('location_type', 'warehouse');
         }
 
-        if (!empty($locationId)) {
+        if (! empty($locationId)) {
             $query->where('location_id', $locationId);
         }
 
-        if (!empty($search)) {
+        if (! empty($search)) {
             $q = $search;
             $query->whereHas('product', function ($sub) use ($q) {
                 $sub->where('nama_produk', 'like', "%$q%")
@@ -56,7 +56,7 @@ class StockReportController extends Controller
         $rows = $query->selectRaw('product_id, SUM(qty) as total_qty')
             ->groupBy('product_id')
             ->get()
-            ->map(function ($batch) use ($type, $locationId, $startDate, $endDate) {
+            ->map(function ($batch) use ($type, $locationId) {
                 $product = Product::find($batch->product_id);
 
                 $lokasi = 'Semua Lokasi';
@@ -69,8 +69,12 @@ class StockReportController extends Controller
                         $lokasi = $s?->nama_toko ?? $lokasi;
                     }
                 } else {
-                    if ($type === 'warehouse') $lokasi = 'Semua Gudang';
-                    if ($type === 'store') $lokasi = 'Semua Toko';
+                    if ($type === 'warehouse') {
+                        $lokasi = 'Semua Gudang';
+                    }
+                    if ($type === 'store') {
+                        $lokasi = 'Semua Toko';
+                    }
                 }
 
                 $holdQuery = StockBatch::where('product_id', $batch->product_id)->where('status', 'hold')->where('qty', '>', 0);
@@ -99,10 +103,11 @@ class StockReportController extends Controller
             })->values();
 
         // apply php search fallback
-        if (!empty($search)) {
+        if (! empty($search)) {
             $lower = mb_strtolower($search);
             $rows = $rows->filter(function ($r) use ($lower) {
-                $hay = mb_strtolower(($r['nama_produk'] ?? '') . ' ' . ($r['kode_produk'] ?? ''));
+                $hay = mb_strtolower(($r['nama_produk'] ?? '').' '.($r['kode_produk'] ?? ''));
+
                 return mb_strpos($hay, $lower) !== false;
             })->values();
         }

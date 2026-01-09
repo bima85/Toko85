@@ -31,7 +31,7 @@ class UpdateSuppliers extends Command
 
         $this->info('Updating nama_supplier from owner where owner is present...');
         $affected = DB::update("UPDATE suppliers SET nama_supplier = owner WHERE owner IS NOT NULL AND TRIM(owner) <> ''");
-        $this->info('Updated rows: ' . $affected);
+        $this->info('Updated rows: '.$affected);
 
         $count = DB::table('suppliers')
             ->whereNotNull('owner')
@@ -39,7 +39,7 @@ class UpdateSuppliers extends Command
             ->whereColumn('nama_supplier', 'owner')
             ->count();
 
-        $this->info('Rows now matching nama_supplier == owner: ' . $count);
+        $this->info('Rows now matching nama_supplier == owner: '.$count);
 
         return 0;
     }

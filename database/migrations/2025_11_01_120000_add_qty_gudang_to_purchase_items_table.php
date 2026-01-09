@@ -6,23 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-   /**
-    * Run the migrations.
-    */
-   public function up(): void
-   {
-      Schema::table('purchase_items', function (Blueprint $table) {
-         $table->integer('qty_gudang')->default(0)->after('qty');
-      });
-   }
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('purchase_items', function (Blueprint $table) {
+            $table->integer('qty_gudang')->default(0)->after('qty');
+        });
+    }
 
-   /**
-    * Reverse the migrations.
-    */
-   public function down(): void
-   {
-      Schema::table('purchase_items', function (Blueprint $table) {
-         $table->dropColumn('qty_gudang');
-      });
-   }
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('purchase_items', function (Blueprint $table) {
+            $table->dropColumn('qty_gudang');
+        });
+    }
 };

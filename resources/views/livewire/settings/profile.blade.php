@@ -4,7 +4,8 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-user-circle mr-2"></i>{{ __('Edit Profile') }}
+          <i class="fas fa-user-circle mr-2"></i>
+          {{ __('Edit Profile') }}
         </h3>
       </div>
 
@@ -33,7 +34,10 @@
         <!-- Name Field -->
         <div class="form-group">
           <label for="name">
-            <strong>{{ __('Full Name') }} <span class="text-danger">*</span></strong>
+            <strong>
+              {{ __('Full Name') }}
+              <span class="text-danger">*</span>
+            </strong>
           </label>
           <input
             wire:model="name"
@@ -53,7 +57,10 @@
         <!-- Email Field -->
         <div class="form-group">
           <label for="email">
-            <strong>{{ __('Email Address') }} <span class="text-danger">*</span></strong>
+            <strong>
+              {{ __('Email Address') }}
+              <span class="text-danger">*</span>
+            </strong>
           </label>
           <input
             wire:model="email"
@@ -70,20 +77,22 @@
         </div>
 
         <!-- Email Verification Status -->
-        @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !auth()->user()->hasVerifiedEmail())
+        @if (auth()->user() instanceof \Illuminate\Contracts\Auth\MustVerifyEmail &&! auth()->user()->hasVerifiedEmail())
           <div class="alert alert-warning alert-dismissible">
             <button type="button" class="close" data-dismiss="alert" aria-hidden="true">
               &times;
             </button>
             <i class="icon fas fa-exclamation-triangle"></i>
-            <strong>{{ __('Email Not Verified!') }}</strong><br />
+            <strong>{{ __('Email Not Verified!') }}</strong>
+            <br />
             {{ __('Your email address is not verified yet.') }}
             <a
               href="#"
               wire:click.prevent="resendVerificationNotification"
               class="btn btn-sm btn-warning mt-2"
             >
-              <i class="fas fa-envelope mr-1"></i>{{ __('Resend Verification Email') }}
+              <i class="fas fa-envelope mr-1"></i>
+              {{ __('Resend Verification Email') }}
             </a>
           </div>
         @endif
@@ -99,11 +108,13 @@
             <i class="fas fa-save mr-2" wire:loading.remove></i>
             <span wire:loading.remove>{{ __('Save Changes') }}</span>
             <span wire:loading>
-              <i class="fas fa-spinner fa-spin mr-2"></i>{{ __('Saving...') }}
+              <i class="fas fa-spinner fa-spin mr-2"></i>
+              {{ __('Saving...') }}
             </span>
           </button>
           <button type="reset" class="btn btn-secondary ml-2">
-            <i class="fas fa-redo mr-2"></i>{{ __('Reset') }}
+            <i class="fas fa-redo mr-2"></i>
+            {{ __('Reset') }}
           </button>
         </div>
       </form>
@@ -118,7 +129,8 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-info-circle mr-2"></i>{{ __('Account Information') }}
+          <i class="fas fa-info-circle mr-2"></i>
+          {{ __('Account Information') }}
         </h3>
       </div>
       <div class="card-body">
@@ -146,11 +158,13 @@
 
         <div class="user-profile-info">
           <p class="text-muted mb-2">
-            <strong>{{ __('Member Since:') }}</strong><br />
+            <strong>{{ __('Member Since:') }}</strong>
+            <br />
             <small>{{ auth()->user()->created_at->format('d M Y') }}</small>
           </p>
           <p class="text-muted mb-2">
-            <strong>{{ __('Last Updated:') }}</strong><br />
+            <strong>{{ __('Last Updated:') }}</strong>
+            <br />
             <small>{{ auth()->user()->updated_at->format('d M Y H:i') }}</small>
           </p>
         </div>
@@ -161,24 +175,28 @@
     <div class="card card-primary card-outline">
       <div class="card-header">
         <h3 class="card-title">
-          <i class="fas fa-cog mr-2"></i>{{ __('Other Settings') }}
+          <i class="fas fa-cog mr-2"></i>
+          {{ __('Other Settings') }}
         </h3>
       </div>
       <div class="card-body p-0">
         <ul class="list-unstyled">
           <li class="border-bottom">
             <a href="{{ route('user-password.edit') }}" class="d-block p-3 text-dark">
-              <i class="fas fa-lock mr-2 text-primary"></i>{{ __('Change Password') }}
+              <i class="fas fa-lock mr-2 text-primary"></i>
+              {{ __('Change Password') }}
             </a>
           </li>
           <li class="border-bottom">
             <a href="{{ route('two-factor.show') }}" class="d-block p-3 text-dark">
-              <i class="fas fa-shield-alt mr-2 text-primary"></i>{{ __('Two-Factor Authentication') }}
+              <i class="fas fa-shield-alt mr-2 text-primary"></i>
+              {{ __('Two-Factor Authentication') }}
             </a>
           </li>
           <li>
             <a href="{{ route('appearance.edit') }}" class="d-block p-3 text-dark">
-              <i class="fas fa-palette mr-2 text-primary"></i>{{ __('Appearance') }}
+              <i class="fas fa-palette mr-2 text-primary"></i>
+              {{ __('Appearance') }}
             </a>
           </li>
         </ul>

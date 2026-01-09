@@ -15,13 +15,21 @@ class Subcategories extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_subkategori;
+
     public $nama_subkategori;
+
     public $description;
+
     public $category_id;
+
     public $editingSubcategoryId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedSubcategory = null;
 
     protected $rules = [
@@ -80,7 +88,7 @@ class Subcategories extends Component
             'nama_subkategori' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
-            'kode_subkategori' => 'required|string|max:50|unique:subcategories,kode_subkategori' . ($this->editingSubcategoryId ? (',' . $this->editingSubcategoryId) : ''),
+            'kode_subkategori' => 'required|string|max:50|unique:subcategories,kode_subkategori'.($this->editingSubcategoryId ? (','.$this->editingSubcategoryId) : ''),
         ];
 
         $this->validate($rules);
@@ -129,11 +137,11 @@ class Subcategories extends Component
         $query = Subcategory::with('category');
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('kode_subkategori', 'like', '%' . $this->search . '%')
-                    ->orWhere('nama_subkategori', 'like', '%' . $this->search . '%')
-                    ->orWhere('description', 'like', '%' . $this->search . '%')
+                $q->where('kode_subkategori', 'like', '%'.$this->search.'%')
+                    ->orWhere('nama_subkategori', 'like', '%'.$this->search.'%')
+                    ->orWhere('description', 'like', '%'.$this->search.'%')
                     ->orWhereHas('category', function ($q) {
-                        $q->where('nama_kategori', 'like', '%' . $this->search . '%');
+                        $q->where('nama_kategori', 'like', '%'.$this->search.'%');
                     });
             });
         }

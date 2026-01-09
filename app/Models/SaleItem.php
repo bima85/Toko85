@@ -7,29 +7,29 @@ use Illuminate\Database\Eloquent\Model;
 
 class SaleItem extends Model
 {
-   use HasFactory;
+    use HasFactory;
 
-   protected $fillable = [
-      'sale_id',
-      'product_id',
-      'qty',
-      'unit_id',
-      'harga_jual',
-      'batch_id',
-   ];
+    protected $fillable = [
+        'sale_id',
+        'product_id',
+        'qty',
+        'unit_id',
+        'harga_jual',
+        'batch_id',
+    ];
 
-   public function sale()
-   {
-      return $this->belongsTo(Sale::class);
-   }
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class);
+    }
 
-   public function product()
-   {
-      return $this->belongsTo(Product::class);
-   }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 
-   public function unit()
-   {
-      return $this->belongsTo(Unit::class);
-   }
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
 }

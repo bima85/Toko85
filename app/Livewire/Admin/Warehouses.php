@@ -14,15 +14,25 @@ class Warehouses extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $search = '';
+
     public $kode_gudang;
+
     public $nama_gudang;
+
     public $alamat;
+
     public $telepon;
+
     public $pic;
+
     public $keterangan;
+
     public $editingWarehouseId = null;
+
     public $showForm = false;
+
     public $showModal = false;
+
     public $selectedWarehouse = null;
 
     protected $rules = [
@@ -85,7 +95,7 @@ class Warehouses extends Component
             'telepon' => 'nullable|string|max:20',
             'pic' => 'nullable|string|max:255',
             'keterangan' => 'nullable|string',
-            'kode_gudang' => 'required|string|max:50|unique:warehouses,kode_gudang' . ($this->editingWarehouseId ? (',' . $this->editingWarehouseId) : ''),
+            'kode_gudang' => 'required|string|max:50|unique:warehouses,kode_gudang'.($this->editingWarehouseId ? (','.$this->editingWarehouseId) : ''),
         ];
 
         $this->validate($rules);
@@ -137,9 +147,9 @@ class Warehouses extends Component
 
     public function render()
     {
-        $warehouses = Warehouse::where('nama_gudang', 'like', '%' . $this->search . '%')
-            ->orWhere('kode_gudang', 'like', '%' . $this->search . '%')
-            ->orWhere('pic', 'like', '%' . $this->search . '%')
+        $warehouses = Warehouse::where('nama_gudang', 'like', '%'.$this->search.'%')
+            ->orWhere('kode_gudang', 'like', '%'.$this->search.'%')
+            ->orWhere('pic', 'like', '%'.$this->search.'%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

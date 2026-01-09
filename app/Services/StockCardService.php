@@ -27,14 +27,14 @@ class StockCardService
             return DB::transaction(function () use ($data) {
                 // Validasi product exists
                 $product = Product::find($data['product_id']);
-                if (!$product) {
+                if (! $product) {
                     throw new Exception('Produk tidak ditemukan');
                 }
 
                 // Validasi batch jika ada
-                if (!empty($data['batch_id'])) {
+                if (! empty($data['batch_id'])) {
                     $batch = StockBatch::find($data['batch_id']);
-                    if (!$batch || $batch->product_id !== $product->id) {
+                    if (! $batch || $batch->product_id !== $product->id) {
                         throw new Exception('Batch tidak valid untuk produk ini');
                     }
                 }
@@ -42,7 +42,7 @@ class StockCardService
                 return $this->repository->create($data);
             });
         } catch (Exception $e) {
-            throw new Exception('Gagal membuat kartu stok: ' . $e->getMessage());
+            throw new Exception('Gagal membuat kartu stok: '.$e->getMessage());
         }
     }
 
@@ -54,13 +54,13 @@ class StockCardService
         try {
             return DB::transaction(function () use ($id, $data) {
                 $stockCard = $this->repository->getById($id);
-                if (!$stockCard) {
+                if (! $stockCard) {
                     throw new Exception('Kartu stok tidak ditemukan');
                 }
 
-                if (isset($data['batch_id']) && !empty($data['batch_id'])) {
+                if (isset($data['batch_id']) && ! empty($data['batch_id'])) {
                     $batch = StockBatch::find($data['batch_id']);
-                    if (!$batch || $batch->product_id !== $stockCard->product_id) {
+                    if (! $batch || $batch->product_id !== $stockCard->product_id) {
                         throw new Exception('Batch tidak valid');
                     }
                 }
@@ -68,7 +68,7 @@ class StockCardService
                 return $this->repository->update($id, $data);
             });
         } catch (Exception $e) {
-            throw new Exception('Gagal memperbarui kartu stok: ' . $e->getMessage());
+            throw new Exception('Gagal memperbarui kartu stok: '.$e->getMessage());
         }
     }
 
@@ -80,14 +80,14 @@ class StockCardService
         try {
             return DB::transaction(function () use ($id) {
                 $stockCard = $this->repository->getById($id);
-                if (!$stockCard) {
+                if (! $stockCard) {
                     throw new Exception('Kartu stok tidak ditemukan');
                 }
 
                 return $this->repository->delete($id);
             });
         } catch (Exception $e) {
-            throw new Exception('Gagal menghapus kartu stok: ' . $e->getMessage());
+            throw new Exception('Gagal menghapus kartu stok: '.$e->getMessage());
         }
     }
 

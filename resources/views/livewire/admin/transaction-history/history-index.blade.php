@@ -750,11 +750,33 @@
                 if (transaction.additional_info.sale && transaction.additional_info.sale.items) {
                   html += '<hr><div class="row"><div class="col-12">' +
                     '<strong><i class="fas fa-shopping-cart mr-1"></i>Detail Penjualan</strong>' +
-                    '<p class="mb-2"><small>Pelanggan: ' + transaction.additional_info.sale.customer + '</small></p>' +
+                    '<div class="row mt-2 mb-3"><div class="col-md-6">' +
+                    '<small><strong>Pelanggan:</strong> ' + transaction.additional_info.sale.customer + '</small><br>' +
+                    '<small><strong>Toko:</strong> ' + transaction.additional_info.sale.store + '</small><br>' +
+                    '<small><strong>Gudang:</strong> ' + transaction.additional_info.sale.warehouse + '</small><br>' +
+                    '<small><strong>Tanggal:</strong> ' + transaction.additional_info.sale.sale_date + '</small>' +
+                    '</div><div class="col-md-6 text-right">' +
+                    '<small><strong>Total Penjualan:</strong></small><br>' +
+                    '<strong class="text-success" style="font-size: 18px;">' + transaction.additional_info.sale.total_amount + '</strong>' +
+                    '</div></div>' +
                     '<div class="table-responsive"><table class="table table-sm table-bordered">' +
-                    '<thead class="bg-light"><tr><th>Produk</th><th class="text-center">Qty</th><th>Satuan</th><th class="text-right">Harga</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
+                    '<thead class="bg-light"><tr>' +
+                    '<th>Produk</th>' +
+                    '<th class="text-center">Qty</th>' +
+                    '<th>Satuan</th>' +
+                    '<th class="text-right">Harga Jual</th>' +
+                    '<th class="text-right">Subtotal</th>' +
+                    '<th>Catatan</th>' +
+                    '</tr></thead><tbody>';
                   transaction.additional_info.sale.items.forEach(function(item) {
-                    html += '<tr><td>' + item.product + '</td><td class="text-center">' + item.qty + '</td><td>' + item.unit + '</td><td class="text-right">' + item.price + '</td><td class="text-right">' + item.subtotal + '</td></tr>';
+                    html += '<tr>' +
+                      '<td><strong>' + item.product + '</strong></td>' +
+                      '<td class="text-center">' + item.qty + '</td>' +
+                      '<td>' + item.unit + '</td>' +
+                      '<td class="text-right">' + item.price + '</td>' +
+                      '<td class="text-right"><strong>' + item.subtotal + '</strong></td>' +
+                      '<td><small>' + item.notes + '</small></td>' +
+                      '</tr>';
                   });
                   html += '</tbody></table></div></div></div>';
                 }
@@ -762,11 +784,38 @@
                 if (transaction.additional_info.purchase && transaction.additional_info.purchase.items) {
                   html += '<hr><div class="row"><div class="col-12">' +
                     '<strong><i class="fas fa-truck mr-1"></i>Detail Pembelian</strong>' +
-                    '<p class="mb-2"><small>Supplier: ' + transaction.additional_info.purchase.supplier + '</small></p>' +
+                    '<div class="row mt-2 mb-3"><div class="col-md-6">' +
+                    '<small><strong>Supplier:</strong> ' + transaction.additional_info.purchase.supplier + '</small><br>' +
+                    '<small><strong>Gudang:</strong> ' + transaction.additional_info.purchase.warehouse + '</small><br>' +
+                    '<small><strong>Tanggal:</strong> ' + transaction.additional_info.purchase.purchase_date + '</small>' +
+                    '</div><div class="col-md-6 text-right">' +
+                    '<small><strong>Total Pembelian:</strong></small><br>' +
+                    '<strong class="text-primary" style="font-size: 18px;">' + transaction.additional_info.purchase.total_amount + '</strong>' +
+                    '</div></div>' +
                     '<div class="table-responsive"><table class="table table-sm table-bordered">' +
-                    '<thead class="bg-light"><tr><th>Produk</th><th class="text-center">Qty</th><th>Satuan</th><th class="text-right">Harga</th><th class="text-right">Subtotal</th></tr></thead><tbody>';
+                    '<thead class="bg-light"><tr>' +
+                    '<th>Produk</th>' +
+                    '<th class="text-center">Qty Toko</th>' +
+                    '<th class="text-center">Qty Gudang</th>' +
+                    '<th class="text-center">Total Qty</th>' +
+                    '<th>Satuan</th>' +
+                    '<th class="text-right">Harga Beli</th>' +
+                    '<th class="text-right">Subtotal</th>' +
+                    '<th>Batch</th>' +
+                    '<th>Catatan</th>' +
+                    '</tr></thead><tbody>';
                   transaction.additional_info.purchase.items.forEach(function(item) {
-                    html += '<tr><td>' + item.product + '</td><td class="text-center">' + item.qty + '</td><td>' + item.unit + '</td><td class="text-right">' + item.price + '</td><td class="text-right">' + item.subtotal + '</td></tr>';
+                    html += '<tr>' +
+                      '<td><strong>' + item.product + '</strong></td>' +
+                      '<td class="text-center">' + item.qty_toko + '</td>' +
+                      '<td class="text-center">' + item.qty_gudang + '</td>' +
+                      '<td class="text-center"><strong>' + item.qty_total + '</strong></td>' +
+                      '<td>' + item.unit + '</td>' +
+                      '<td class="text-right">' + item.price + '</td>' +
+                      '<td class="text-right"><strong>' + item.subtotal + '</strong></td>' +
+                      '<td><small class="badge badge-secondary">' + item.batch + '</small></td>' +
+                      '<td><small>' + item.notes + '</small></td>' +
+                      '</tr>';
                   });
                   html += '</tbody></table></div></div></div>';
                 }

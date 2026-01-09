@@ -2,12 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\StockBatch;
+use App\Models\Subcategory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
-use App\Models\Product;
-use App\Models\Category;
-use App\Models\Subcategory;
-use App\Models\StockBatch;
 
 class StockBatchTotalPerProductTest extends TestCase
 {
