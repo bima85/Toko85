@@ -14,6 +14,7 @@ class StockCard extends Model
     protected $fillable = [
         'product_id',
         'batch_id',
+        'cost',
         'type',
         'qty',
         'from_location',
@@ -27,6 +28,7 @@ class StockCard extends Model
 
     protected $casts = [
         'qty' => 'decimal:2',
+        'cost' => 'decimal:2',
     ];
 
     /**
