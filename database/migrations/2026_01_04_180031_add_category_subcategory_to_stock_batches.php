@@ -11,20 +11,31 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('stock_batches', function (Blueprint $table) {
-            $table->unsignedBigInteger('category_id')->nullable()->after('product_id');
-            $table->unsignedBigInteger('subcategory_id')->nullable()->after('category_id');
+        if (! Schema::hasColumn('stock_batches', 'category_id')) {
+            Schema::table('stock_batches', function (Blueprint $table) {
+                $table->unsignedBigInteger('category_id')->nullable()->after('product_id');
+            });
 
-            $table->foreign('category_id')
-                ->references('id')
-                ->on('categories')
-                ->nullOnDelete();
+            Schema::table('stock_batches', function (Blueprint $table) {
+                $table->foreign('category_id')
+                    ->references('id')
+                    ->on('categories')
+                    ->nullOnDelete();
+            });
+        }
 
-            $table->foreign('subcategory_id')
-                ->references('id')
-                ->on('subcategories')
-                ->nullOnDelete();
-        });
+        if (! Schema::hasColumn('stock_batches', 'subcategory_id')) {
+            Schema::table('stock_batches', function (Blueprint $table) {
+                $table->unsignedBigInteger('subcategory_id')->nullable()->after('category_id');
+            });
+
+            Schema::table('stock_batches', function (Blueprint $table) {
+                $table->foreign('subcategory_id')
+                    ->references('id')
+                    ->on('subcategories')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     /**
@@ -33,9 +44,15 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('stock_batches', function (Blueprint $table) {
-            $table->dropForeignKey(['category_id']);
-            $table->dropForeignKey(['subcategory_id']);
-            $table->dropColumn(['category_id', 'subcategory_id']);
+            if (Schema::hasColumn('stock_batches', 'subcategory_id')) {
+                $table->dropForeign(['subcategory_id']);
+                $table->dropColumn('subcategory_id');
+            }
+
+            if (Schema::hasColumn('stock_batches', 'category_id')) {
+                $table->dropForeign(['category_id']);
+                $table->dropColumn('category_id');
+            }
         });
     }
 };

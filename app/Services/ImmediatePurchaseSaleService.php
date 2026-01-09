@@ -29,11 +29,26 @@ class ImmediatePurchaseSaleService
             // For storing created batches by product id
             $createdBatches = [];
 
+            // ensure a default unit exists
+            $defaultUnit = \App\Models\Unit::first() ?? \App\Models\Unit::create([
+                'kode_unit' => 'U1',
+                'nama_unit' => 'Pcs',
+                'is_base_unit' => true,
+                'conversion_value' => 1,
+            ]);
+
             foreach ($purchaseData['items'] as $it) {
-                $purchase->items()->create([
+                $product = \App\Models\Product::find($it['product_id']);
+                $hargaBeli = $it['harga_beli'] ?? 0;
+                $qty = $it['qty'];
+                $purchase->purchaseItems()->create([
                     'product_id' => $it['product_id'],
-                    'qty' => $it['qty'],
-                    'harga_beli' => $it['harga_beli'] ?? 0,
+                    'qty' => $qty,
+                    'unit_id' => $defaultUnit->id,
+                    'harga_beli' => $hargaBeli,
+                    'total' => $hargaBeli * $qty,
+                    'category_id' => $product?->category_id,
+                    'subcategory_id' => $product?->subcategory_id,
                 ]);
 
                 // Create a batch for this immediate incoming stock
@@ -62,9 +77,10 @@ class ImmediatePurchaseSaleService
             $sale = Sale::create($saleData['meta'] ?? []);
 
             foreach ($saleData['items'] as $it) {
-                $sale->items()->create([
+                $sale->saleItems()->create([
                     'product_id' => $it['product_id'],
                     'qty' => $it['qty'],
+                    'unit_id' => $defaultUnit->id,
                     'harga_jual' => $it['harga_jual'] ?? 0,
                 ]);
 
