@@ -27,6 +27,12 @@
       margin-bottom: 0;
     }
 
+    .purchases-table--stack .table td,
+    .purchases-table--stack .table th {
+      vertical-align: middle;
+      padding: 8px;
+    }
+
     .purchases-table--cards .actions {
       display: flex;
       gap: 8px;
@@ -366,16 +372,19 @@
                   >
                     <thead class="bg-light">
                       <tr>
-                        <th style="width: 2%">#</th>
-                        <th style="width: 8.5%">Kategori</th>
-                        <th style="width: 10%">Subkategori</th>
-                        <th style="width: 15%">Produk</th>
-                        <th style="width: 8%; vertical-align: middle">Batch</th>
-                        <th style="width: 25%">Tujuan & Qty</th>
-                        <th style="width: 7%">Unit</th>
-                        <th style="width: 10%">Harga Beli</th>
-                        <th style="width: 10%">Total</th>
-                        <th style="width: 8%">Hapus</th>
+                        <th style="width: 3%">#</th>
+                        <th style="width: 10%; text-align: center">Kategori</th>
+                        <th style="width: 12%; text-align: center">Subkategori</th>
+                        <th style="width: 14%; text-align: center">Produk</th>
+                        @if ($this->batch_enabled)
+                          <th style="width: 10%; text-align: center">Batch</th>
+                        @endif
+
+                        <th style="width: 10%">Tujuan & Qty</th>
+                        <th style="width: 6%">Unit</th>
+                        <th style="width: 9%">Harga Beli</th>
+                        <th style="width: 9%">Total</th>
+                        <th style="width: 7%">Hapus</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -462,15 +471,12 @@
                               </small>
                             @endif
                           </td>
-                          <td
-                            data-label="Batch"
-                            style="padding: 8px; vertical-align: top; width: 210px"
-                          >
-                            @if ($this->batch_enabled)
+                          @if ($this->batch_enabled)
+                            <td
+                              data-label="Batch"
+                              style="padding: 8px; vertical-align: top; width: 210px"
+                            >
                               <div style="display: flex; flex-direction: column; gap: 6px">
-                                <div style="font-size: 0.8rem; font-weight: 600; color: #444">
-                                  Batch & Qty
-                                </div>
                                 <div style="display: flex; flex-wrap: wrap; gap: 6px">
                                   @foreach ($item['batches'] ?? [] as $bIndex => $batch)
                                     <div
@@ -524,20 +530,23 @@
                                 >
                                   <button
                                     type="button"
-                                    class="btn btn-outline-primary btn-sm"
+                                    class="btn btn-outline-primary btn-sm text-center mt-2"
                                     wire:click="addBatchRow({{ $index }})"
                                   >
                                     <i class="fas fa-plus-circle mr-1"></i>
                                     Tambah
                                   </button>
-                                  <small class="text-muted">Qty toko dijumlahkan</small>
                                 </div>
                               </div>
-                            @endif
-                          </td>
-                          <td data-label="Tujuan & Qty" style="padding: 6px">
-                            <div style="display: flex; gap: 6px; align-items: flex-end">
-                              <div style="flex: 1.5">
+                            </td>
+                          @endif
+
+                          <td
+                            data-label="Tujuan & Qty"
+                            style="padding: 6px 8px; vertical-align: middle"
+                          >
+                            <div style="display: flex; gap: 10px; align-items: center">
+                              <div style="flex: 0 0 100px; min-width: 90px">
                                 <select
                                   wire:model.live="purchaseItems.{{ $index }}.destination_type"
                                   class="form-control form-control-sm"
@@ -548,18 +557,28 @@
                                 </select>
                               </div>
 
-                              @if ($item['destination_type'] === 'gudang' || $item['destination_type'] === 'both')
-                                <div style="flex: 1; display: flex; flex-direction: column">
-                                  <small
+                              <div
+                                style="
+                                  flex: 1;
+                                  display: flex;
+                                  gap: 8px;
+                                  align-items: center;
+                                  min-width: 0;
+                                "
+                              >
+                                <div
+                                  style="flex:0 0 64px; min-width:56px; {{ in_array($item['destination_type'] ?? '', ['gudang', 'both', '']) ? '' : 'display:none;' }}"
+                                >
+                                  <div
                                     style="
-                                      font-size: 0.7rem;
-                                      font-weight: bold;
-                                      margin-bottom: 2px;
-                                      color: #333;
+                                      font-size: 0.65rem;
+                                      font-weight: 600;
+                                      color: #495057;
+                                      margin-bottom: 4px;
                                     "
                                   >
                                     Gudang
-                                  </small>
+                                  </div>
                                   <input
                                     wire:model="purchaseItems.{{ $index }}.qty_gudang"
                                     wire:change="updateTotal({{ $index }})"
@@ -567,22 +586,23 @@
                                     min="0"
                                     class="form-control form-control-sm"
                                     placeholder="0"
+                                    @if ($this->batch_enabled) disabled @endif
                                   />
                                 </div>
-                              @endif
 
-                              @if ($item['destination_type'] === 'toko' || $item['destination_type'] === 'both')
-                                <div style="flex: 1; display: flex; flex-direction: column">
-                                  <small
+                                <div
+                                  style="flex:0 0 64px; min-width:56px; {{ in_array($item['destination_type'] ?? '', ['toko', 'both', '']) ? '' : 'display:none;' }}"
+                                >
+                                  <div
                                     style="
-                                      font-size: 0.7rem;
-                                      font-weight: bold;
-                                      margin-bottom: 2px;
-                                      color: #333;
+                                      font-size: 0.65rem;
+                                      font-weight: 600;
+                                      color: #495057;
+                                      margin-bottom: 4px;
                                     "
                                   >
                                     Toko
-                                  </small>
+                                  </div>
                                   <input
                                     wire:model="purchaseItems.{{ $index }}.qty"
                                     wire:change="updateTotal({{ $index }})"
@@ -590,16 +610,17 @@
                                     min="0"
                                     class="form-control form-control-sm"
                                     placeholder="0"
-                                    @if ($this->batch_enabled) readonly @endif
+                                    @if ($this->batch_enabled) disabled @endif
                                   />
-                                  @if ($this->batch_enabled)
-                                    <small class="text-muted">
-                                      Otomatis dari batch di kolom Batch
-                                    </small>
-                                  @endif
                                 </div>
-                              @endif
+                              </div>
                             </div>
+
+                            @if ($this->batch_enabled)
+                              <small class="text-muted d-block mt-1" style="font-size: 0.65rem">
+                                Otomatis dari batch
+                              </small>
+                            @endif
                           </td>
                           <td data-label="Unit">
                             <select

@@ -1080,22 +1080,26 @@
                             </span>
                           </td>
                           <td>
-                            <code class="text-primary">{{ $stock->product->kode_produk }}</code>
+                            <code class="text-primary">
+                              {{ $stock->product?->kode_produk ?? 'Unknown' }}
+                            </code>
                           </td>
                           <td
-                            data-kategori="{{ $stock->product->category->nama_kategori ?? '-' }}"
-                            data-subkategori="{{ $stock->product->subcategory->kode_subkategori ?? '-' }}"
+                            data-kategori="{{ $stock->product?->category?->nama_kategori ?? '-' }}"
+                            data-subkategori="{{ $stock->product?->subcategory?->kode_subkategori ?? '-' }}"
                           >
-                            <strong>{{ $stock->product->nama_produk }}</strong>
+                            <strong>
+                              {{ $stock->product?->nama_produk ?? 'Unknown Product' }}
+                            </strong>
                           </td>
                           <td>
                             <span class="badge badge-secondary">
-                              {{ $stock->product->category->nama_kategori ?? '-' }}
+                              {{ $stock->product?->category?->nama_kategori ?? '-' }}
                             </span>
                           </td>
                           <td>
                             <span class="badge badge-light text-dark">
-                              {{ $stock->product->subcategory->nama_subkategori ?? '-' }}
+                              {{ $stock->product?->subcategory?->nama_subkategori ?? '-' }}
                             </span>
                           </td>
                           <td class="text-center">
@@ -1236,22 +1240,26 @@
                             </span>
                           </td>
                           <td>
-                            <code class="text-success">{{ $stock->product->kode_produk }}</code>
+                            <code class="text-success">
+                              {{ $stock->product?->kode_produk ?? 'Unknown' }}
+                            </code>
                           </td>
                           <td
-                            data-kategori="{{ $stock->product->category->nama_kategori ?? '-' }}"
-                            data-subkategori="{{ $stock->product->subcategory->kode_subkategori ?? '-' }}"
+                            data-kategori="{{ $stock->product?->category?->nama_kategori ?? '-' }}"
+                            data-subkategori="{{ $stock->product?->subcategory?->kode_subkategori ?? '-' }}"
                           >
-                            <strong>{{ $stock->product->nama_produk }}</strong>
+                            <strong>
+                              {{ $stock->product?->nama_produk ?? 'Unknown Product' }}
+                            </strong>
                           </td>
                           <td>
                             <span class="badge badge-secondary">
-                              {{ $stock->product->category->nama_kategori ?? '-' }}
+                              {{ $stock->product?->category?->nama_kategori ?? '-' }}
                             </span>
                           </td>
                           <td>
                             <span class="badge badge-light text-dark">
-                              {{ $stock->product->subcategory->nama_subkategori ?? '-' }}
+                              {{ $stock->product?->subcategory?->nama_subkategori ?? '-' }}
                             </span>
                           </td>
                           <td class="text-center">
@@ -1457,21 +1465,25 @@
                       </td>
                       <td class="text-center">{{ $adjustments->firstItem() + $index }}</td>
                       <td>
-                        <code class="text-warning">{{ $adjustment->product->kode_produk }}</code>
+                        <code class="text-warning">
+                          {{ $adjustment->product?->kode_produk ?? 'Unknown' }}
+                        </code>
                         <br />
-                        <small class="text-muted">{{ $adjustment->product->nama_produk }}</small>
+                        <small class="text-muted">
+                          {{ $adjustment->product?->nama_produk ?? 'Unknown Product' }}
+                        </small>
                         <br />
                         <small style="color: #28a745">
                           Kategori:
                           <strong>
-                            {{ $adjustment->product->category?->nama_kategori ?? '-' }}
+                            {{ $adjustment->product?->category?->nama_kategori ?? '-' }}
                           </strong>
                         </small>
                         <br />
                         <small style="color: #28a745">
                           Sub:
                           <strong>
-                            {{ $adjustment->product->subcategory?->nama_subkategori ?? '-' }}
+                            {{ $adjustment->product?->subcategory?->nama_subkategori ?? '-' }}
                           </strong>
                         </small>
                       </td>
@@ -1514,7 +1526,29 @@
                         </small>
                       </td>
                       <td class="text-center">
-                        <small>{{ $adjustment->adjustment_date->format('d/m/Y') }}</small>
+                        @php
+                          $adjDate = $adjustment->adjustment_date;
+                          // If it's not a Carbon instance, try to create one from common formats
+                          if (! ($adjDate instanceof \Carbon\Carbon)) {
+                            try {
+                              $adjDate = \Carbon\Carbon::createFromFormat('Y-m-d', (string) $adjDate);
+                            } catch (\Throwable $e1) {
+                              try {
+                                $adjDate = \Carbon\Carbon::createFromFormat('d/m/Y', (string) $adjDate);
+                              } catch (\Throwable $e2) {
+                                try {
+                                  $adjDate = \Carbon\Carbon::parse((string) $adjDate);
+                                } catch (\Throwable $e3) {
+                                  $adjDate = null;
+                                }
+                              }
+                            }
+                          }
+                        @endphp
+
+                        <small>
+                          {{ $adjDate ? $adjDate->format('d/m/Y') : $adjustment->adjustment_date ?? '-' }}
+                        </small>
                       </td>
                       <td class="text-center">
                         <small class="text-muted">

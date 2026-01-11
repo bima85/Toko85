@@ -88,4 +88,24 @@ class StockCard extends Model
     {
         return $query->orderBy('created_at', 'desc');
     }
+
+    public function setBatchIdAttribute($value)
+    {
+        $this->attributes['batch_id'] = $value === '' ? null : $value;
+    }
+
+    public function setReferenceIdAttribute($value)
+    {
+        $this->attributes['reference_id'] = $value === '' ? null : $value;
+    }
+
+    public function setFromLocationAttribute($value)
+    {
+        $this->attributes['from_location'] = $value === '' ? null : $value;
+    }
+
+    public function setToLocationAttribute($value)
+    {
+        $this->attributes['to_location'] = $value === '' ? null : $value;
+    }
 }

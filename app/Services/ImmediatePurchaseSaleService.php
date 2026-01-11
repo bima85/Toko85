@@ -9,6 +9,7 @@ use App\Models\SaleItem;
 use App\Models\StockBatch;
 use App\Models\StockCard;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class ImmediatePurchaseSaleService
 {
@@ -58,6 +59,9 @@ class ImmediatePurchaseSaleService
                     'qty' => $it['qty'],
                 ]);
 
+                // Determine purchase event date
+                $purchaseDate = $purchase->tanggal_pembelian ? Carbon::parse($purchase->tanggal_pembelian) : Carbon::now();
+
                 // StockCard IN
                 StockCard::create([
                     'product_id' => $it['product_id'],
@@ -68,6 +72,8 @@ class ImmediatePurchaseSaleService
                     'reference_type' => 'purchase',
                     'reference_id' => $purchase->id,
                     'note' => 'Immediate purchase incoming',
+                    'created_at' => $purchaseDate,
+                    'updated_at' => $purchaseDate,
                 ]);
 
                 $createdBatches[$it['product_id']][] = $batch;
@@ -91,6 +97,9 @@ class ImmediatePurchaseSaleService
                     // reduce batch qty
                     StockBatch::where('id', $alloc['batch_id'])->decrement('qty', $alloc['qty']);
 
+                    // Determine sale event date
+                    $saleDate = $sale->tanggal_penjualan ? Carbon::parse($sale->tanggal_penjualan) : Carbon::now();
+
                     // StockCard OUT
                     StockCard::create([
                         'product_id' => $it['product_id'],
@@ -101,6 +110,8 @@ class ImmediatePurchaseSaleService
                         'reference_type' => 'sale',
                         'reference_id' => $sale->id,
                         'note' => 'Immediate sale outgoing',
+                        'created_at' => $saleDate,
+                        'updated_at' => $saleDate,
                     ]);
                 }
             }

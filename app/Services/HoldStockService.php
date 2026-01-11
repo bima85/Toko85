@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\StockBatch;
 use App\Models\StockCard;
 use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class HoldStockService
 {
@@ -46,6 +47,9 @@ class HoldStockService
             // 5. Tambah qty di batch HOLD
             $holdBatch->increment('qty', $qty);
 
+            // Determine event date: prefer sale tanggal_penjualan if available
+            $eventDate = $sale->tanggal_penjualan ? Carbon::parse($sale->tanggal_penjualan) : Carbon::now();
+
             // 6. Catat di StockCard (tipe: hold)
             StockCard::create([
                 'product_id' => $batch->product_id,
@@ -57,6 +61,8 @@ class HoldStockService
                 'reference_type' => Sale::class,
                 'reference_id' => $sale->id,
                 'note' => "Stok ditahan untuk Order #{$sale->id} - {$sale->customer->name}",
+                'created_at' => $eventDate,
+                'updated_at' => $eventDate,
             ]);
 
             // 7. Update Sale status
@@ -115,6 +121,8 @@ class HoldStockService
             // 5. Hapus batch HOLD
             $holdBatch->delete();
 
+            $eventDate = $sale->tanggal_penjualan ? Carbon::parse($sale->tanggal_penjualan) : Carbon::now();
+
             // 6. Catat di StockCard (tipe: cancel_hold)
             StockCard::create([
                 'product_id' => $holdBatch->product_id,
@@ -125,6 +133,8 @@ class HoldStockService
                 'reference_type' => Sale::class,
                 'reference_id' => $sale->id,
                 'note' => "Hold dibatalkan untuk Order #{$sale->id}",
+                'created_at' => $eventDate,
+                'updated_at' => $eventDate,
             ]);
 
             // 7. Update Sale status
@@ -168,6 +178,8 @@ class HoldStockService
                 $holdBatch->delete();
             }
 
+            $eventDate = $sale->tanggal_penjualan ? Carbon::parse($sale->tanggal_penjualan) : Carbon::now();
+
             // 4. Catat di StockCard (tipe: sale dari hold)
             StockCard::create([
                 'product_id' => $holdBatch->product_id,
@@ -179,6 +191,8 @@ class HoldStockService
                 'reference_type' => Sale::class,
                 'reference_id' => $sale->id,
                 'note' => "Penjualan selesai dari hold Order #{$sale->id}",
+                'created_at' => $eventDate,
+                'updated_at' => $eventDate,
             ]);
 
             // 5. Update Sale status

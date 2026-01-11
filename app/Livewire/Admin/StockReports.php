@@ -205,10 +205,10 @@ class StockReports extends Component
             ->when($this->searchAdjustments, function ($query) {
                 return $query->where(function ($q) {
                     $q->whereHas('product', function ($productQuery) {
-                        $productQuery->where('nama_produk', 'like', '%'.$this->searchAdjustments.'%')
-                            ->orWhere('kode_produk', 'like', '%'.$this->searchAdjustments.'%');
+                        $productQuery->where('nama_produk', 'like', '%' . $this->searchAdjustments . '%')
+                            ->orWhere('kode_produk', 'like', '%' . $this->searchAdjustments . '%');
                     })
-                        ->orWhere('reason', 'like', '%'.$this->searchAdjustments.'%');
+                        ->orWhere('reason', 'like', '%' . $this->searchAdjustments . '%');
                 });
             })
             ->latest()
@@ -277,6 +277,8 @@ class StockReports extends Component
             ->groupBy('product_id')
             ->map(function ($items) use ($store) {
                 $product = $items->first()->product;
+                if (!$product) return null;
+
                 $totalQty = $items->sum('qty');
 
                 // Ambil adjustment terakhir untuk produk ini di store ini
@@ -304,7 +306,7 @@ class StockReports extends Component
                 $stokAwal = $firstAdjustment ? $firstAdjustment->stok_awal : 0;
 
                 return (object) [
-                    'id' => 'product-'.$product->id,
+                    'id' => 'product-' . $product->id,
                     'product_id' => $product->id,
                     'product' => $product,
                     'stok_awal' => $stokAwal,
@@ -318,6 +320,7 @@ class StockReports extends Component
                     'created_at' => $lastAdjustment ? $lastAdjustment->adjustment_date : now(),
                 ];
             })
+            ->filter()
             ->values();
 
         $adjustments = $batches;
@@ -367,6 +370,8 @@ class StockReports extends Component
             ->groupBy('product_id')
             ->map(function ($items) use ($warehouse) {
                 $product = $items->first()->product;
+                if (!$product) return null;
+
                 $totalQty = $items->sum('qty');
 
                 // Ambil adjustment terakhir untuk produk ini di warehouse ini
@@ -394,7 +399,7 @@ class StockReports extends Component
                 $stokAwal = $firstAdjustment ? $firstAdjustment->stok_awal : 0;
 
                 return (object) [
-                    'id' => 'product-'.$product->id,
+                    'id' => 'product-' . $product->id,
                     'product_id' => $product->id,
                     'product' => $product,
                     'stok_awal' => $stokAwal,
@@ -408,6 +413,7 @@ class StockReports extends Component
                     'created_at' => $lastAdjustment ? $lastAdjustment->adjustment_date : now(),
                 ];
             })
+            ->filter()
             ->values();
 
         $adjustments = $batches;
@@ -551,8 +557,8 @@ class StockReports extends Component
             $this->search = '';           // Clear search filter
             session()->flash('message', 'Penyesuaian stok berhasil dihapus.');
         } catch (\Exception $e) {
-            Log::error('Error deleting adjustment: '.$e->getMessage());
-            session()->flash('error', 'Gagal menghapus penyesuaian: '.$e->getMessage());
+            Log::error('Error deleting adjustment: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus penyesuaian: ' . $e->getMessage());
         }
     }
 
@@ -682,7 +688,7 @@ class StockReports extends Component
 
         return Excel::download(
             new StockReportWithAdjustmentsExport($stokTokoData, $stokGudangData, $allAdjustmentData),
-            'Laporan_Stok_Lengkap_'.date('Y-m-d_His').'.xlsx'
+            'Laporan_Stok_Lengkap_' . date('Y-m-d_His') . '.xlsx'
         );
     }
 
@@ -720,7 +726,7 @@ class StockReports extends Component
         }
 
         return $query->get()
-            ->groupBy(fn ($batch) => $batch->product->category_id ?? 0)
+            ->groupBy(fn($batch) => $batch->product?->category_id ?? 0)
             ->map(function ($batches) {
                 $category = $batches->first()?->product?->category;
                 $products = $batches->pluck('product')->unique('id');
@@ -730,7 +736,7 @@ class StockReports extends Component
                     'category_name' => $category?->nama_kategori ?? 'Tanpa Kategori',
                     'total_qty' => $batches->sum('qty'),
                     'product_count' => $products->count(),
-                    'products' => $products->map(fn ($p) => $p->nama_produk)->implode(', '),
+                    'products' => $products->map(fn($p) => $p?->nama_produk ?? 'Unknown')->implode(', '),
                 ];
             })
             ->sortBy('category_name')
@@ -749,7 +755,7 @@ class StockReports extends Component
         }
 
         return $query->get()
-            ->groupBy(fn ($batch) => $batch->product->subcategory_id ?? 0)
+            ->groupBy(fn($batch) => $batch->product?->subcategory_id ?? 0)
             ->map(function ($batches) {
                 $subcategory = $batches->first()?->product?->subcategory;
                 $category = $batches->first()?->product?->category;
@@ -761,7 +767,7 @@ class StockReports extends Component
                     'category_name' => $category?->nama_kategori ?? 'Tanpa Kategori',
                     'total_qty' => $batches->sum('qty'),
                     'product_count' => $products->count(),
-                    'products' => $products->map(fn ($p) => $p->nama_produk)->implode(', '),
+                    'products' => $products->map(fn($p) => $p?->nama_produk ?? 'Unknown')->implode(', '),
                 ];
             })
             ->sortBy('subcategory_name')
@@ -776,29 +782,33 @@ class StockReports extends Component
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
-                $product = $items->first()->product;
+                $product = $items->first()?->product;
+                if (!$product) return null;
 
                 return (object) [
                     'product_id' => $product->id,
                     'actual_qty' => $items->sum('qty'),
                 ];
-            });
+            })
+            ->filter();
 
         $holds = StockBatch::where('qty', '>', 0)
             ->where('status', 'hold')
             ->get()
             ->groupBy('product_id')
             ->map(function ($items) {
-                $product = $items->first()->product;
+                $product = $items->first()?->product;
+                if (!$product) return null;
 
                 return (object) [
                     'product_id' => $product->id,
                     'hold_qty' => $items->sum('qty'),
                 ];
-            });
+            })
+            ->filter();
 
         $batches = $actual->mapWithKeys(function ($a) use ($holds) {
-            $hold = $holds[$a->product_id]->hold_qty ?? 0;
+            $hold = $holds->get($a->product_id)?->hold_qty ?? 0;
 
             return [$a->product_id => (object) [
                 'product_id' => $a->product_id,
@@ -819,7 +829,7 @@ class StockReports extends Component
     public function toggleSelectAdjustment($adjustmentId)
     {
         if (in_array($adjustmentId, $this->selectedAdjustments)) {
-            $this->selectedAdjustments = array_filter($this->selectedAdjustments, fn ($id) => $id != $adjustmentId);
+            $this->selectedAdjustments = array_filter($this->selectedAdjustments, fn($id) => $id != $adjustmentId);
         } else {
             $this->selectedAdjustments[] = $adjustmentId;
         }
@@ -875,8 +885,8 @@ class StockReports extends Component
                 session()->flash('message', 'Tidak ada penyesuaian yang dihapus');
             }
         } catch (\Exception $e) {
-            Log::error('Error deleting adjustments: '.$e->getMessage());
-            session()->flash('error', 'Gagal menghapus penyesuaian: '.$e->getMessage());
+            Log::error('Error deleting adjustments: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus penyesuaian: ' . $e->getMessage());
         }
     }
 

@@ -24,6 +24,17 @@
           </a>
         </li>
 
+        <!-- Kelola Transaksi -->
+        <li class="nav-item">
+          <a
+            href="{{ route('admin.transactions.manage') }}"
+            class="nav-link @if(request()->routeIs('admin.transactions.manage')) active @endif"
+          >
+            <i class="nav-icon fas fa-exchange-alt"></i>
+            <p>Kelola Transaksi</p>
+          </a>
+        </li>
+
         <!-- Master Data Section -->
         @php
           $masterDataRoutes = ['admin.users', 'admin.categories', 'admin.subcategories', 'admin.units', 'admin.suppliers', 'admin.customers', 'admin.warehouses', 'admin.stores'];
@@ -180,6 +191,15 @@
             </li>
             <li class="nav-item">
               <a
+                href="{{ route('admin.delivery-notes') }}"
+                class="nav-link @if(request()->routeIs('admin.delivery-notes')) active @endif"
+              >
+                <i class="far fa-circle nav-icon"></i>
+                <p>Surat Jalan</p>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a
                 href="{{ route('admin.hold-orders') }}"
                 class="nav-link @if(request()->routeIs('admin.hold-orders')) active @endif"
               >
@@ -258,12 +278,6 @@
             </p>
           </a>
           <ul class="nav nav-treeview">
-            <li class="nav-item">
-              <a href="{{ route('admin.purchases') }}#transaksi" class="nav-link">
-                <i class="far fa-circle nav-icon"></i>
-                <p>Transaksi Pembelian</p>
-              </a>
-            </li>
             <li class="nav-item">
               <a
                 href="{{ route('admin.transactions') }}"

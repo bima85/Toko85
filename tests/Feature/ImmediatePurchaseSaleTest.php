@@ -16,7 +16,7 @@ class ImmediatePurchaseSaleTest extends TestCase
     public function test_immediate_purchase_then_sale_creates_in_and_out_stockcards_and_updates_batches()
     {
         // create category and product (no factory available in this repo)
-        $category = \App\Models\Category::create([ 'kode_kategori' => 'C' . time(), 'nama_kategori' => 'TestCat' ]);
+        $category = \App\Models\Category::create(['kode_kategori' => 'C' . time(), 'nama_kategori' => 'TestCat']);
         $product = Product::create([
             'kode_produk' => 'P' . time(),
             'nama_produk' => 'Test Product',

@@ -109,6 +109,29 @@
     <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 
     <script>
+      // Global delete confirmation helper
+      window.confirmDelete = function (
+        message = 'Apakah Anda yakin ingin menghapus data ini?',
+        title = 'Konfirmasi Hapus'
+      ) {
+        return Swal.fire({
+          title: title,
+          text: message,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#d33',
+          cancelButtonColor: '#3085d6',
+          confirmButtonText: 'Ya, Hapus!',
+          cancelButtonText: 'Batal',
+          customClass: {
+            confirmButton: 'btn btn-danger',
+            cancelButton: 'btn btn-secondary',
+          },
+        }).then((result) => {
+          return result.isConfirmed;
+        });
+      };
+
       // Detect session expired (419 error) and auto-reload
       document.addEventListener('livewire:init', () => {
         Livewire.hook('request', ({ fail }) => {

@@ -85,7 +85,8 @@ class StockBatchService
     public function reduceStock(
         StockBatch $batch,
         float $qty,
-        ?string $note = null
+        ?string $note = null,
+        ?\Carbon\Carbon $createdDate = null
     ): bool {
         if ($batch->qty < $qty) {
             throw new \Exception('Jumlah pengurangan melebihi stok batch');
@@ -103,6 +104,8 @@ class StockBatchService
             $warehouseId = $batch->location_id;
         }
 
+        $eventDate = $createdDate ?? \Carbon\Carbon::now();
+
         StockAdjustment::create([
             'product_id' => $batch->product_id,
             'store_id' => $storeId,
@@ -113,7 +116,7 @@ class StockBatchService
             'stok_masuk' => -$qty,
             'unit_id' => $batch->product?->unit_id,
             'reason' => $note ?? 'Pengurangan stok dari tumpukan',
-            'adjustment_date' => now()->toDateString(),
+            'adjustment_date' => $eventDate->toDateString(),
             'user_id' => Auth::id(),
         ]);
 
@@ -129,6 +132,8 @@ class StockBatchService
             'reference_type' => 'stock_batch',
             'reference_id' => $batch->id,
             'note' => $note ?? 'Pengurangan stok dari tumpukan',
+            'created_at' => $eventDate,
+            'updated_at' => $eventDate,
         ]);
 
         // Jika qty <= 0, batch akan otomatis dihapus via boot method
@@ -144,7 +149,8 @@ class StockBatchService
         string $toNamaTumpukan,
         float $qty,
         ?int $toLocationId = null,
-        ?string $note = null
+        ?string $note = null,
+        ?\Carbon\Carbon $createdDate = null
     ): array {
         if ($fromBatch->qty < $qty) {
             throw new \Exception('Jumlah pemindahan melebihi stok batch');
@@ -165,6 +171,8 @@ class StockBatchService
         $fromLocationLabel = $fromBatch->location_type === 'store' ? "Toko #{$storeId}" : "Gudang #{$warehouseId}";
         $toLocationLabel = $toLocationType === 'store' ? "Toko #{$toLocationId}" : "Gudang #{$toLocationId}";
 
+        $eventDate = $createdDate ?? \Carbon\Carbon::now();
+
         StockAdjustment::create([
             'product_id' => $fromBatch->product_id,
             'store_id' => $storeId,
@@ -175,7 +183,7 @@ class StockBatchService
             'stok_masuk' => -$qty,
             'unit_id' => $fromBatch->product?->unit_id,
             'reason' => $note ?? 'Pemindahan stok dari tumpukan',
-            'adjustment_date' => now()->toDateString(),
+            'adjustment_date' => $eventDate->toDateString(),
             'user_id' => Auth::id(),
         ]);
 
@@ -190,6 +198,8 @@ class StockBatchService
             'reference_type' => 'stock_batch',
             'reference_id' => $fromBatch->id,
             'note' => $note ?? 'Pemindahan stok ke tumpukan',
+            'created_at' => $eventDate,
+            'updated_at' => $eventDate,
         ]);
 
         // Buat batch baru di lokasi tujuan
@@ -199,6 +209,8 @@ class StockBatchService
             'location_id' => $toLocationId,
             'nama_tumpukan' => $toNamaTumpukan,
             'qty' => $qty,
+            'created_at' => $eventDate,
+            'updated_at' => $eventDate,
         ]);
 
         // Catat penambahan di stock_adjustments
@@ -220,7 +232,7 @@ class StockBatchService
             'stok_masuk' => $qty,
             'unit_id' => $fromBatch->product?->unit_id,
             'reason' => $note ?? 'Pemindahan stok ke tumpukan',
-            'adjustment_date' => now()->toDateString(),
+            'adjustment_date' => $eventDate->toDateString(),
             'user_id' => Auth::id(),
         ]);
 
@@ -235,6 +247,8 @@ class StockBatchService
             'reference_type' => 'stock_batch',
             'reference_id' => $toBatch->id,
             'note' => $note ?? 'Penerimaan stok dari pemindahan',
+            'created_at' => $eventDate,
+            'updated_at' => $eventDate,
         ]);
 
         return [

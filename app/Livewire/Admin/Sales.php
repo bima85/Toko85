@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
+use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -48,6 +49,9 @@ class Sales extends Component
     public $editingSaleId = null;
 
     public $showCreateForm = false;
+
+    // When this component is embedded elsewhere we may want to hide the full page header
+    public $hideHeader = false;
 
     // Modal to create customer inline
     public $showCreateCustomerModal = false;
@@ -252,12 +256,18 @@ class Sales extends Component
         $rowSource = $this->saleItems[$index]['location_source'] ?? null;
         $effectiveSource = $rowSource ?: $this->location_source;
 
-        if ($effectiveSource === 'toko' && $this->store_id) {
-            $query->where('location_type', 'store')
-                ->where('location_id', $this->store_id);
-        } elseif ($effectiveSource === 'gudang' && $this->warehouse_id) {
-            $query->where('location_type', 'warehouse')
-                ->where('location_id', $this->warehouse_id);
+        if ($effectiveSource === 'toko') {
+            // Restrict to store batches; if specific store selected, filter by it
+            $query->where('location_type', 'store');
+            if ($this->store_id) {
+                $query->where('location_id', $this->store_id);
+            }
+        } elseif ($effectiveSource === 'gudang') {
+            // Restrict to warehouse batches; if specific warehouse selected, filter by it
+            $query->where('location_type', 'warehouse');
+            if ($this->warehouse_id) {
+                $query->where('location_id', $this->warehouse_id);
+            }
         }
 
         $batches = $query->get();
@@ -501,6 +511,16 @@ class Sales extends Component
                 $index = (int) $matches[1];
                 $this->checkBatchAvailability($index);
             }
+        } elseif (strpos($key, '.location_source') !== false) {
+            // User changed per-row location override (toko/gudang/ikuti global)
+            preg_match('/(\d+)\.location_source/', $key, $matches);
+            if (isset($matches[1])) {
+                $index = (int) $matches[1];
+                // Refresh batch/product choices for this specific row only
+                $this->populateBatchForItem($index);
+                // If product already selected, also recalc totals / warnings
+                $this->updateTotal($index);
+            }
         }
     }
 
@@ -539,12 +559,19 @@ class Sales extends Component
             ->where('qty', '>', 0)
             ->orderBy('created_at', 'asc');
 
+        // If a specific location id is set, filter by it. Otherwise restrict by location_type
         if ($storeId) {
             $query->where('location_type', 'store')
                 ->where('location_id', $storeId);
         } elseif ($warehouseId) {
             $query->where('location_type', 'warehouse')
                 ->where('location_id', $warehouseId);
+        } else {
+            if ($effectiveSource === 'toko') {
+                $query->where('location_type', 'store');
+            } elseif ($effectiveSource === 'gudang') {
+                $query->where('location_type', 'warehouse');
+            }
         }
 
         $batch = $query->first();
@@ -566,7 +593,21 @@ class Sales extends Component
         ]);
         // Use selected sale date if provided, otherwise today
         $dateSource = $this->tanggal_penjualan ?: date('Y-m-d');
-        $today = date('Ymd', strtotime($dateSource));
+
+        // Normalize date source to avoid ambiguity (d/m/Y vs Y-m-d)
+        try {
+            if (str_contains($dateSource, '/')) {
+                // likely d/m/Y from some inputs
+                $carbonDate = Carbon::createFromFormat('d/m/Y', $dateSource);
+            } else {
+                $carbonDate = Carbon::parse($dateSource);
+            }
+        } catch (\Exception $e) {
+            // Fallback to today if parsing fails
+            $carbonDate = Carbon::today();
+        }
+
+        $today = $carbonDate->format('Ymd');
 
         if (! $this->customer_id) {
             // Generate default invoice without customer code
@@ -887,7 +928,7 @@ class Sales extends Component
             'total_stok' => $totalStok,
             'unit_id' => $unitId,
             'reason' => 'Penjualan - Invoice: ' . ($invoiceNo ?? '-'),
-            'adjustment_date' => now(),
+            'adjustment_date' => ($this->tanggal_penjualan) ? \Carbon\Carbon::parse($this->tanggal_penjualan)->toDateString() : now(),
             'user_id' => Auth::id(),
         ]);
     }
@@ -901,6 +942,8 @@ class Sales extends Component
         try {
             $stockCardService = app(StockCardService::class);
 
+            $eventDate = $this->tanggal_penjualan ? Carbon::parse($this->tanggal_penjualan) : Carbon::now();
+
             $stockCardService->createStockCard([
                 'product_id' => $productId,
                 'batch_id' => $batchId,
@@ -911,6 +954,8 @@ class Sales extends Component
                 'reference_type' => 'sale', // Referensi dari Penjualan
                 'reference_id' => $saleId, // ID Penjualan
                 'note' => "Penjualan - Invoice: {$invoiceNo}",
+                'created_at' => $eventDate,
+                'updated_at' => $eventDate,
             ]);
         } catch (\Exception $e) {
             // Log error tapi jangan hentikan proses penjualan

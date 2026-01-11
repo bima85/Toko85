@@ -2,6 +2,33 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     /* Item Penjualan - Responsive Design */
+    /* Print styles: show only the delivery note (printableNota) */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+
+      #printableNota, #printableNota * {
+        visibility: visible;
+      }
+
+      #printableNota {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+
+      /* Ensure buttons and interactive elements are hidden during print */
+      .no-print {
+        display: none !important;
+      }
+
+      @page {
+        size: A4 portrait;
+        margin: 10mm;
+      }
+    }
     .sale-items-container {
       margin-top: 2rem;
     }
@@ -9,7 +36,7 @@
     /* Desktop View - Table */
     @media (min-width: 769px) {
       .sale-items-desktop {
-        display: table;
+        display: block;
         width: 100%;
       }
 
@@ -19,24 +46,142 @@
 
       .sale-items-table {
         width: 100%;
+        border-collapse: collapse;
+      }
+
+      /* Force fixed layout so column widths follow the header percentages */
+      .sale-items-table {
+        table-layout: fixed;
+      }
+
+      /* Ensure form controls don't force cells to expand */
+      .sale-items-table td .form-control,
+      .sale-items-table td .form-select-sm,
+      .sale-items-table td .input-group {
+        width: 100%;
+        min-width: 0;
+      }
+
+      /* Prevent long product names from breaking layout */
+      .sale-items-table td {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* allow product input (col 5) to use full width and not be clipped */
+      .sale-items-table td:nth-child(5) {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
       }
 
       .sale-items-table thead th {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
-        white-space: nowrap;
+        padding: 0.4rem 0.25rem;
+        font-size: 0.95rem;
+        font-weight: 700;
+        background-color: #2c3e50;
+        color: #fff;
+        border: 1px solid #34495e;
+        white-space: normal;
+        vertical-align: middle;
+        line-height: 1.1;
+      }
+
+      /* Header alignment per column */
+      .sale-items-table thead th:nth-child(1),
+      .sale-items-table thead th:nth-child(4),
+      .sale-items-table thead th:nth-child(7),
+      .sale-items-table thead th:nth-child(11) {
+        text-align: center;
+      }
+
+      .sale-items-table thead th:nth-child(9),
+      .sale-items-table thead th:nth-child(10) {
+        text-align: right;
+      }
+
+      /* Body cell alignment to match header */
+      .sale-items-table tbody td:nth-child(1),
+      .sale-items-table tbody td:nth-child(4),
+      .sale-items-table tbody td:nth-child(7),
+      .sale-items-table tbody td:nth-child(11) {
+        text-align: center;
+      }
+
+      .sale-items-table tbody td:nth-child(9),
+      .sale-items-table tbody td:nth-child(10) {
+        text-align: right;
       }
 
       .sale-items-table tbody td {
-        padding: 0.75rem 0.5rem;
+        padding: 0.45rem 0.35rem;
         vertical-align: middle;
+        border: 1px solid #dee2e6;
+        height: auto;
+        font-size: 0.9rem;
+      }
+
+      .sale-items-table tbody tr:nth-child(odd) {
+        background-color: #fff;
+      }
+
+      .sale-items-table tbody tr:nth-child(even) {
+        background-color: #f9f9f9;
+      }
+
+      .sale-items-table tbody tr:hover {
+        background-color: #f0f8ff;
       }
 
       .sale-items-table .form-control-sm {
-        font-size: 0.9rem;
+        font-size: 0.86rem;
+        padding: 0.25rem 0.3rem;
+        height: 36px;
+        margin: 0;
+        line-height: 1.1;
+      }
+
+      /* Button group & icon adjustments */
+      .sale-items-table td .btn-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.08rem;
+      }
+
+      .sale-items-table td .btn {
+        padding: 0.15rem 0.2rem;
+        min-width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+      }
+
+      .sale-items-table td .fa {
+        font-size: 0.65rem;
+      }
+
+      /* Ensure input groups and search input occupy available width */
+      .sale-items-table td .input-group,
+      .sale-items-table td .input-group .form-control,
+      .sale-items-table td .product-search-input {
+        width: 100% !important;
+      }
+
+      /* Keep select and small inputs compact but vertically centered */
+      .sale-items-table select.form-control-sm,
+      .sale-items-table input.form-control-sm {
+        height: 36px;
+      }
+
+      /* Ensure button group sits above any overlays and is clickable */
+      .sale-items-table .btn-group,
+      .sale-items-table .btn {
+        position: relative;
+        z-index: 3;
+        pointer-events: auto;
       }
     }
 
@@ -162,6 +307,217 @@
       margin-bottom: 0.5rem;
       font-size: 0.95rem;
     }
+
+    /* Scrollable items area (desktop & mobile) */
+    /* Desktop items container: table stays as table; make inner wrapper scrollable */
+    .sale-items-desktop .table-responsive {
+      position: relative;
+      max-height: 500px;
+      overflow-y: auto;
+      overflow-x: auto;
+      border: 1px solid #dee2e6;
+      border-radius: 0.25rem;
+      display: block;
+    }
+
+    /* Sticky header inside the scrollable wrapper */
+    .sale-items-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    /* Sticky footer inside scrollable */
+    .sale-items-table tfoot tr {
+      position: sticky;
+      bottom: 0;
+      z-index: 9;
+    }
+
+    .sale-items-table tfoot {
+      background-color: #ecf0f1;
+      border-top: 2px solid #34495e;
+    }
+
+    .sale-items-table tfoot td {
+      padding: 0.4rem 0.25rem;
+      vertical-align: middle;
+      border: 1px solid #dee2e6;
+      font-weight: 600;
+      font-size: 0.78rem;
+    }
+
+    .sale-items-table tfoot tr:first-child td {
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    /* Scrollbar styling */
+    .sale-items-desktop .table-responsive::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+
+    .sale-items-desktop .table-responsive::-webkit-scrollbar-track {
+      background: #e8e8e8;
+      border-left: 1px solid #dee2e6;
+    }
+
+    .sale-items-desktop .table-responsive::-webkit-scrollbar-thumb {
+      background: #0066cc;
+      border-radius: 6px;
+      border: 2px solid #e8e8e8;
+    }
+
+    .sale-items-desktop .table-responsive::-webkit-scrollbar-thumb:hover {
+      background: #0052a3;
+    }
+
+    /* Mobile cards scroll separately */
+    .sale-items-mobile {
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    /* Ensure Sumber column icons are visible (prevent ellipsis clipping) */
+    .sale-items-table thead th:nth-child(4),
+    .sale-items-table tbody td:nth-child(4) {
+      white-space: nowrap;
+      overflow: visible;
+      min-width: 70px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    /* Perbesar ikon dan tombol di kolom Sumber */
+    .sale-items-table tbody td:nth-child(4) .fa {
+      font-size: 15px;
+    }
+    /* .sale-items-table tbody td:nth-child(4) .btn {
+      padding: 0.35rem 0.45rem;
+      min-width: 36px;
+      height: 36px;
+      line-height: 1;
+    } */
+
+    /* Keep product column usable but cap its max width so it doesn't dominate */
+    .sale-items-table thead th:nth-child(5),
+    .sale-items-table td:nth-child(5) {
+      white-space: normal;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Ensure Total column shows full number (no ellipsis) */
+    .sale-items-table thead th:nth-child(10),
+    .sale-items-table td:nth-child(10) {
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: clip;
+    }
+
+    /* Ensure product input uses available width but doesn't break the table */
+    .sale-items-table td:nth-child(5) .product-search-input {
+      width: 100% !important;
+      min-width: 50px;
+      padding-right: 0.15rem;
+      box-sizing: border-box;
+      font-size: 0.78rem;
+    }
+
+    /* Input group styling untuk compact */
+    .sale-items-table td .input-group {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .sale-items-table td .input-group-sm {
+      gap: 0;
+    }
+
+    .sale-items-table td .input-group-prepend {
+      margin-right: 0;
+    }
+
+    /* Use border-box for controls to prevent overflow from padding/borders */
+    .sale-items-table td .form-control,
+    .sale-items-table td .form-select-sm,
+    .sale-items-table td .input-group {
+      box-sizing: border-box;
+    }
+
+    /* Align Rp prepend and input vertically in footer (Kuli input) */
+    .sale-items-table tfoot td .input-group {
+      display: flex !important;
+      align-items: center;
+      margin: 0;
+      height: 32px;
+      width: 100%;
+    }
+
+    .sale-items-table tfoot .input-group-prepend {
+      margin-right: 0;
+      margin: 0;
+    }
+
+    .sale-items-table tfoot .input-group .input-group-text {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px;
+      padding: 0.25rem 0.35rem;
+      background-color: #ecf0f1;
+      border: 1px solid #bdc3c7;
+      font-weight: 600;
+      font-size: 0.78rem;
+      line-height: 1;
+      margin: 0;
+      white-space: nowrap;
+      border-radius: 0 !important;
+    }
+
+    .sale-items-table tfoot .input-group .form-control {
+      height: 32px;
+      padding: 0.25rem 0.35rem;
+      border: 1px solid #bdc3c7;
+      font-size: 0.78rem;
+      margin: 0;
+      flex: 1;
+      border-radius: 0 !important;
+    }
+
+    /* Number input styling */
+    .sale-items-table input[type='number'] {
+      text-align: right;
+      font-size: 0.78rem;
+      line-height: 1;
+    }
+
+    /* Remove spinner buttons dari number input */
+    .sale-items-table input[type='number']::-webkit-outer-spin-button,
+    .sale-items-table input[type='number']::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+
+    .sale-items-table input[type='number'] {
+      -moz-appearance: textfield;
+    }
+
+    /* Input text styling */
+    .sale-items-table input[type='text'] {
+      font-size: 0.78rem;
+      line-height: 1;
+    }
+
+    /* Hapus style dari input-group text */
+    .sale-items-table .input-group-text {
+      margin: 0;
+      padding: 0.2rem 0.2rem;
+      height: 24px;
+      font-size: 0.72rem;
+      line-height: 1;
+    }
   </style>
 
   @if (session()->has('success'))
@@ -189,16 +545,18 @@
   @endif
 
   <!-- Content Header -->
-  <div class="row mb-3">
-    <div class="col-md-12">
-      <h2 class="mb-0">
-        <i class="fas fa-shopping-bag mr-2"></i>
-        Manajemen Penjualan
-      </h2>
-      <small class="text-muted">Kelola data penjualan kepada pelanggan</small>
-      <hr />
+  @unless ($hideHeader)
+    <div class="row mb-3">
+      <div class="col-md-12">
+        <h2 class="mb-0">
+          <i class="fas fa-shopping-bag mr-2"></i>
+          Manajemen Penjualan
+        </h2>
+        <small class="text-muted">Kelola data penjualan kepada pelanggan</small>
+        <hr />
+      </div>
     </div>
-  </div>
+  @endunless
 
   <!-- Inline Create Form -->
   @if ($showCreateForm)
@@ -394,16 +752,16 @@
                     <table class="table table-sm table-bordered sale-items-table">
                       <thead>
                         <tr>
-                          <th style="width: 5%">#</th>
-                          <th style="width: 10%">Kategori</th>
-                          <th style="width: 10%">Subkategori</th>
-                          <th style="width: 6%">Sumber</th>
-                          <th style="width: 12%">Produk</th>
-                          <th style="width: 12%">Batch/Tumpukan</th>
-                          <th style="width: 7%">Qty</th>
-                          <th style="width: 8%">Unit</th>
-                          <th style="width: 12%">Harga Jual</th>
-                          <th style="width: 10%">Total</th>
+                          <th style="width: 3%">#</th>
+                          <th style="width: 9%">Kategori</th>
+                          <th style="width: 9%">Subkategori</th>
+                          <th style="width: 8%">Sumber</th>
+                          <th style="width: 18%">Produk</th>
+                          <th style="width: 14%">Batch/Tumpukan</th>
+                          <th style="width: 6%">Qty</th>
+                          <th style="width: 6%">Unit</th>
+                          <th style="width: 10%">Harga Jual</th>
+                          <th style="width: 8%">Total</th>
                           <th style="width: 5%">Hapus</th>
                         </tr>
                       </thead>
@@ -444,7 +802,7 @@
                               @endphp
 
                               <div
-                                class="btn-group btn-group-sm"
+                                class="btn-group btn-group-xs"
                                 role="group"
                                 aria-label="location-override"
                               >
@@ -571,9 +929,10 @@
                               <button
                                 wire:click="removeItem({{ $index }})"
                                 type="button"
-                                class="btn btn-danger btn-sm"
+                                class="btn btn-sm btn-danger"
+                                title="Hapus item"
                               >
-                                <i class="fas fa-trash"></i>
+                                <i class="fas fa-trash-alt"></i>
                               </button>
                             </td>
                           </tr>
@@ -581,11 +940,15 @@
                       </tbody>
                       <tfoot class="bg-light font-weight-bold">
                         <tr>
-                          <td></td>
-                          <td colspan="7" class="text-right pr-3">Kuli:</td>
-                          <td style="padding: 4px 0; width: 150px">
-                            <div class="input-group input-group-sm">
-                              <div class="input-group-prepend">
+                          <td colspan="9" style="padding: 0.4rem 0.25rem; text-align: right">
+                            Kuli:
+                          </td>
+                          <td style="padding: 0.4rem 0.2rem; width: 180px; min-width: 140px">
+                            <div
+                              class="input-group input-group-sm"
+                              style="margin: 0; display: flex; height: 32px"
+                            >
+                              <div class="input-group-prepend" style="margin: 0">
                                 <span class="input-group-text">Rp</span>
                               </div>
                               <input
@@ -594,18 +957,29 @@
                                 type="text"
                                 class="form-control form-control-sm text-right"
                                 placeholder="0"
+                                style="
+                                  height: 32px;
+                                  padding: 0.25rem 0.35rem;
+                                  font-size: 0.78rem;
+                                  flex: 1;
+                                "
                               />
                             </div>
                           </td>
-                          <td colspan="2"></td>
+                          <td style="padding: 0.4rem 0.25rem"></td>
                         </tr>
                         <tr>
-                          <td colspan="7" class="text-right pr-3">TOTAL:</td>
-                          <td colspan="2" class="text-right text-success">
+                          <td colspan="9" style="padding: 0.4rem 0.25rem; text-align: right">
+                            TOTAL:
+                          </td>
+                          <td
+                            class="text-right text-success"
+                            style="padding: 0.4rem 0.25rem; font-size: 0.9rem"
+                          >
                             Rp
                             {{ number_format(array_sum(array_column($saleItems, 'total')) + ($kuli ?? 0), 0, ',', '.') }}
                           </td>
-                          <td></td>
+                          <td style="padding: 0.4rem 0.25rem"></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -1075,14 +1449,14 @@
   @endif
 
   <!-- Modal: Delivery Note (Surat Jalan) -->
-  @if ($showDeliveryNoteModal)
+    @if ($showDeliveryNoteModal)
     <div
-      class="modal fade show"
+      class="modal fade show no-print"
       style="display: block; background: rgba(0, 0, 0, 0.5)"
       tabindex="-1"
     >
       <div class="modal-dialog modal-xl">
-        <div class="modal-content">
+        <div id="printableNota" class="modal-content">
           <div class="modal-header bg-primary text-white">
             <h5 class="modal-title">
               <i class="fas fa-truck mr-2"></i>
@@ -1156,9 +1530,9 @@
 
                         <tr>
                           <td class="text-center">{{ $index + 1 }}</td>
-                          <td>{{ $products->find($item['product_id'])?->nama_produk ?? '-' }}</td>
+                          <td>{{ \App\Models\Product::find($item['product_id'])?->nama_produk ?? '-' }}</td>
                           <td class="text-right">{{ number_format($item['qty'] ?? 0, 0) }}</td>
-                          <td>{{ $units->find($item['unit_id'])?->nama_unit ?? '-' }}</td>
+                          <td>{{ $units->firstWhere('id', $item['unit_id'])?->nama_unit ?? '-' }}</td>
                           <td>{{ $batchName }}</td>
                         </tr>
                       @endif
