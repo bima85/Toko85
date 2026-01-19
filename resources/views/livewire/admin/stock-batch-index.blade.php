@@ -160,8 +160,9 @@
                       <strong>Tanggal</strong>
                     </label>
                     <input
-                      type="date"
+                      type="text"
                       wire:model="createDate"
+                      placeholder="dd/mm/YYYY"
                       class="form-control @error('createDate') is-invalid @enderror"
                     />
                     @error('createDate')
@@ -504,14 +505,14 @@
                       <div class="mb-3">
                         @foreach ($createNamaTumpukanList as $index => $value)
                           <div class="row mb-2">
-                            <div class="col-8">
+                            <div class="col-7">
                               <div class="input-group">
                                 <input
                                   type="text"
                                   wire:model="createNamaTumpukanList.{{ $index }}"
                                   class="form-control @error('createNamaTumpukanList.*') is-invalid @enderror"
-                                  placeholder="Kosongkan untuk auto-generate nama"
                                   maxlength="255"
+                                  readonly
                                 />
                                 @if (count($createNamaTumpukanList) > 1)
                                   <div class="input-group-append">
@@ -526,7 +527,7 @@
                                 @endif
                               </div>
                             </div>
-                            <div class="col-4">
+                            <div class="col-3">
                               <input
                                 type="number"
                                 wire:model="createQtyList.{{ $index }}"
@@ -535,6 +536,14 @@
                                 step="0.01"
                                 min="0"
                               />
+                            </div>
+                            <div class="col-2">
+                              <select wire:model="createSatuan" class="form-control">
+                                <option value="">-- Satuan --</option>
+                                @foreach ($units as $u)
+                                  <option value="{{ $u->nama_unit }}">{{ $u->nama_unit }}</option>
+                                @endforeach
+                              </select>
                             </div>
                           </div>
                         @endforeach

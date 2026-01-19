@@ -49,7 +49,8 @@ class Products extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -71,11 +72,11 @@ class Products extends Component
             $prefix = strtoupper(substr(str_replace([' ', '-'], '', $value), 0, 3));
 
             // Hitung produk dengan prefix yang sama
-            $count = Product::where('kode_produk', 'like', $prefix.'%')->count();
+            $count = Product::where('kode_produk', 'like', $prefix . '%')->count();
 
             // Format: PREFIX_001_NAMASINGKAT (misal: MAW_001, MAW_002)
             $namaShort = strtoupper(str_replace([' ', '-'], '', $value));
-            $this->kode_produk = $prefix.'_'.str_pad($count + 1, 3, '0', STR_PAD_LEFT).'_'.substr($namaShort, 0, 10);
+            $this->kode_produk = $prefix . '_' . str_pad($count + 1, 3, '0', STR_PAD_LEFT) . '_' . substr($namaShort, 0, 10);
         }
     }
 
@@ -124,7 +125,7 @@ class Products extends Component
         // Jika editing, kode_produk harus unique kecuali milik produk itu sendiri
         // Jika create, kode_produk di-generate otomatis, tetap harus di-validate unique
         if ($this->editingProductId) {
-            $rules['kode_produk'] = 'required|string|max:50|unique:products,kode_produk,'.$this->editingProductId;
+            $rules['kode_produk'] = 'required|string|max:50|unique:products,kode_produk,' . $this->editingProductId;
         } else {
             // Untuk create, kode_produk di-generate otomatis, tapi masih harus unique
             if (! $this->kode_produk) {
@@ -185,14 +186,14 @@ class Products extends Component
         $query = Product::with(['category', 'subcategory']);
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('kode_produk', 'like', '%'.$this->search.'%')
-                    ->orWhere('nama_produk', 'like', '%'.$this->search.'%')
-                    ->orWhere('description', 'like', '%'.$this->search.'%')
+                $q->where('kode_produk', 'like', '%' . $this->search . '%')
+                    ->orWhere('nama_produk', 'like', '%' . $this->search . '%')
+                    ->orWhere('description', 'like', '%' . $this->search . '%')
                     ->orWhereHas('category', function ($q) {
-                        $q->where('nama_kategori', 'like', '%'.$this->search.'%');
+                        $q->where('nama_kategori', 'like', '%' . $this->search . '%');
                     })
                     ->orWhereHas('subcategory', function ($q) {
-                        $q->where('nama_subkategori', 'like', '%'.$this->search.'%');
+                        $q->where('nama_subkategori', 'like', '%' . $this->search . '%');
                     });
             });
         }

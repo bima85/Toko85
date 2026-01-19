@@ -48,7 +48,8 @@ class Suppliers extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -95,7 +96,7 @@ class Suppliers extends Component
             'telepon' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'keterangan' => 'nullable|string',
-            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier'.($this->editingSupplierId ? (','.$this->editingSupplierId) : ''),
+            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier' . ($this->editingSupplierId ? (',' . $this->editingSupplierId) : ''),
         ];
 
         $this->validate($rules);
@@ -147,9 +148,9 @@ class Suppliers extends Component
 
     public function render()
     {
-        $suppliers = Supplier::where('nama_supplier', 'like', '%'.$this->search.'%')
-            ->orWhere('kode_supplier', 'like', '%'.$this->search.'%')
-            ->orWhere('email', 'like', '%'.$this->search.'%')
+        $suppliers = Supplier::where('nama_supplier', 'like', '%' . $this->search . '%')
+            ->orWhere('kode_supplier', 'like', '%' . $this->search . '%')
+            ->orWhere('email', 'like', '%' . $this->search . '%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

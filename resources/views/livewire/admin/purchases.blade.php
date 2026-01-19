@@ -1,16 +1,28 @@
 @push('styles')
   <style>
     .purchases-list-wrapper .card {
-      border-radius: 10px;
+      border-radius: 0.45rem;
       border-color: #e9ecef;
+      margin-bottom: 0.9rem;
+    }
+
+    /* Neutralize the primary-outline highlight and make header subtle */
+    .purchases-list-wrapper .card.card-secondary.card-outline {
+      border: 1px solid #e9ecef;
+      box-shadow: none;
+    }
+
+    .purchases-list-wrapper .card.card-secondary.card-outline .card-header {
+      background: transparent;
+      border-bottom: 1px solid #e9ecef;
     }
 
     .purchases-list-wrapper .card-header {
-      padding: 0.75rem 1rem;
+      padding: 0.55rem 0.9rem;
     }
 
     .purchases-list-wrapper .card-body {
-      padding: 1rem 1.25rem;
+      padding: 0.75rem 0.9rem;
     }
 
     .purchases-list-wrapper .input-group > .form-control,
@@ -47,7 +59,7 @@
       }
 
       .purchases-list-wrapper .card-body {
-        padding: 0.85rem 0.95rem;
+        padding: 0.65rem 0.75rem;
       }
 
       .purchases-table--stack table thead,
@@ -110,7 +122,7 @@
     @media (max-width: 575.98px) {
       .purchases-list-wrapper .card-header,
       .purchases-list-wrapper .card-body {
-        padding: 0.75rem;
+        padding: 0.55rem 0.6rem;
       }
 
       .purchases-table--stack table tbody tr td,
@@ -154,7 +166,7 @@
   @if ($showCreateForm)
     <div class="row mb-3">
       <div class="col-md-12">
-        <div class="card card-primary card-outline">
+        <div class="card card-secondary card-outline">
           <div class="card-header">
             <h3 class="card-title">
               <i class="fas fa-plus-circle mr-2"></i>
@@ -221,7 +233,7 @@
                     </datalist>
                     <div class="input-group-append">
                       <button
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-secondary btn-sm"
                         type="button"
                         wire:click="openOwnerModal"
                         title="Tambah Supplier/Owner Baru"
@@ -253,7 +265,7 @@
                     </select>
                     <div class="input-group-append">
                       <button
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-secondary btn-sm"
                         type="button"
                         wire:click="openSupplierModal"
                         title="Tambah Supplier Baru"
@@ -272,33 +284,28 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="form-group">
-                  <label><strong>Lokasi</strong></label>
-                  <select
-                    wire:change="selectLocation($event.target.value)"
-                    class="form-control @error('store_id') is-invalid @enderror @error('warehouse_id') is-invalid @enderror"
-                  >
-                    <option value="">-- Tidak Ada --</option>
-                    <optgroup label="Toko">
+                  <label><strong>Lokasi - Pilih Toko &/atau Gudang</strong></label>
+                  <div class="d-flex gap-2">
+                    <select
+                      wire:model.live="store_id"
+                      class="form-control @error('store_id') is-invalid @enderror"
+                    >
+                      <option value="">-- Pilih Toko (opsional) --</option>
                       @foreach ($stores as $s)
-                        <option
-                          value="store:{{ $s->id }}"
-                          @if($store_id == $s->id) selected @endif
-                        >
-                          {{ $s->nama_toko }}
-                        </option>
+                        <option value="{{ $s->id }}">{{ $s->nama_toko }}</option>
                       @endforeach
-                    </optgroup>
-                    <optgroup label="Gudang">
+                    </select>
+
+                    <select
+                      wire:model.live="warehouse_id"
+                      class="form-control @error('warehouse_id') is-invalid @enderror"
+                    >
+                      <option value="">-- Pilih Gudang (opsional) --</option>
                       @foreach ($warehouses as $wh)
-                        <option
-                          value="warehouse:{{ $wh->id }}"
-                          @if($warehouse_id == $wh->id) selected @endif
-                        >
-                          {{ $wh->nama_gudang }}
-                        </option>
+                        <option value="{{ $wh->id }}">{{ $wh->nama_gudang }}</option>
                       @endforeach
-                    </optgroup>
-                  </select>
+                    </select>
+                  </div>
                   @error('store_id')
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                   @enderror
@@ -394,7 +401,7 @@
                           <td data-label="Kategori">
                             <select
                               wire:model="purchaseItems.{{ $index }}.category_id"
-                              wire:change="$refresh"
+                              wire:change="updateCategoryFilter({{ $index }})"
                               class="form-control form-control-sm"
                             >
                               <option value="">--</option>
@@ -415,6 +422,7 @@
                           <td data-label="Subkategori">
                             <select
                               wire:model="purchaseItems.{{ $index }}.subcategory_id"
+                              wire:change="updateSubcategoryFilter({{ $index }})"
                               class="form-control form-control-sm"
                             >
                               <option value="">--</option>
@@ -496,8 +504,8 @@
                                         class="form-control form-control-sm"
                                         placeholder="T1"
                                         value="{{ $batch['name'] ?? '' }}"
-                                        wire:input="updateBatchField({{ $index }}, {{ $bIndex }}, 'name', $event.target.value)"
-                                        style="width: 56px"
+                                        readonly
+                                        style="width: 56px; background:#f8f9fa; cursor: default;"
                                       />
                                       <input
                                         type="number"
@@ -517,18 +525,26 @@
                                       >
                                         <i class="fas fa-times"></i>
                                       </button>
+                                      <button
+                                        type="button"
+                                        class="btn btn-outline-secondary btn-xs"
+                                        style="padding: 4px 6px"
+                                        wire:click="addBatchRow({{ $index }})"
+                                      >
+                                        <i class="fas fa-plus-circle"></i>
+                                      </button>
                                     </div>
                                   @endforeach
                                 </div>
 
-                                <div
+                                {{-- <div
                                   style="
                                     display: flex;
                                     justify-content: space-between;
                                     align-items: center;
                                   "
-                                >
-                                  <button
+                                > --}}
+                                  {{-- <button
                                     type="button"
                                     class="btn btn-outline-primary btn-sm text-center mt-2"
                                     wire:click="addBatchRow({{ $index }})"
@@ -537,7 +553,7 @@
                                     Tambah
                                   </button>
                                 </div>
-                              </div>
+                              </div> --}}
                             </td>
                           @endif
 
@@ -546,7 +562,7 @@
                             style="padding: 6px 8px; vertical-align: middle"
                           >
                             <div style="display: flex; gap: 10px; align-items: center">
-                              <div style="flex: 0 0 100px; min-width: 90px">
+                              <div style="flex: 0 0 100px; min-width: 70px">
                                 <select
                                   wire:model.live="purchaseItems.{{ $index }}.destination_type"
                                   class="form-control form-control-sm"
@@ -569,7 +585,7 @@
                                 <div
                                   style="flex:0 0 64px; min-width:56px; {{ in_array($item['destination_type'] ?? '', ['gudang', 'both', '']) ? '' : 'display:none;' }}"
                                 >
-                                  <div
+                                  {{-- <div
                                     style="
                                       font-size: 0.65rem;
                                       font-weight: 600;
@@ -578,7 +594,7 @@
                                     "
                                   >
                                     Gudang
-                                  </div>
+                                  </div> --}}
                                   <input
                                     wire:model="purchaseItems.{{ $index }}.qty_gudang"
                                     wire:change="updateTotal({{ $index }})"
@@ -586,14 +602,13 @@
                                     min="0"
                                     class="form-control form-control-sm"
                                     placeholder="0"
-                                    @if ($this->batch_enabled) disabled @endif
                                   />
                                 </div>
 
                                 <div
                                   style="flex:0 0 64px; min-width:56px; {{ in_array($item['destination_type'] ?? '', ['toko', 'both', '']) ? '' : 'display:none;' }}"
                                 >
-                                  <div
+                                  {{-- <div
                                     style="
                                       font-size: 0.65rem;
                                       font-weight: 600;
@@ -602,7 +617,7 @@
                                     "
                                   >
                                     Toko
-                                  </div>
+                                  </div> --}}
                                   <input
                                     wire:model="purchaseItems.{{ $index }}.qty"
                                     wire:change="updateTotal({{ $index }})"
@@ -610,7 +625,6 @@
                                     min="0"
                                     class="form-control form-control-sm"
                                     placeholder="0"
-                                    @if ($this->batch_enabled) disabled @endif
                                   />
                                 </div>
                               </div>
@@ -618,7 +632,7 @@
 
                             @if ($this->batch_enabled)
                               <small class="text-muted d-block mt-1" style="font-size: 0.65rem">
-                                Otomatis dari batch
+                                Batch mode aktif - input manual masih diperbolehkan
                               </small>
                             @endif
                           </td>
@@ -645,19 +659,8 @@
                             />
                           </td>
                           <td class="text-right font-weight-bold" data-label="Total">
-                            @php
-                              $itemQty = $item['qty'] ?? 0;
-                              $itemHarga = $item['harga_beli'] ?? 0;
-                              $itemUnit = $item['unit_id'] ?? null;
-                              $conv = 1;
-                              if ($itemUnit) {
-                                $unit = \App\Models\Unit::find($itemUnit);
-                                $conv = $unit ? (float) ($unit->conversion_value ?? 1) : 1;
-                              }
-                              $itemTotal = $itemQty * $conv * $itemHarga;
-                            @endphp
-
-                            Rp {{ number_format($itemTotal, 0, ',', '.') }}
+                            {{-- Use server-side computed total which considers toko+gudang when destination is both --}}
+                            Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}
                           </td>
                           <td class="text-center" data-label="Hapus">
                             <button
@@ -693,19 +696,24 @@
             @endif
           </div>
           <div class="card-footer">
-            <button wire:click="addItem" type="button" class="btn btn-info mr-2">
-              <i class="fas fa-plus-circle mr-1"></i>
-              Tambah Item
-            </button>
-            <div class="float-right">
-              <button wire:click="cancel" class="btn btn-secondary mr-2">
-                <i class="fas fa-times"></i>
-                Batal
-              </button>
-              <button wire:click="save" class="btn btn-success">
-                <i class="fas fa-save"></i>
-                Simpan Pembelian
-              </button>
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <button wire:click="addItem" type="button" class="btn btn-info mr-2">
+                  <i class="fas fa-plus-circle mr-1"></i>
+                  Tambah Item
+                </button>
+              </div>
+
+              <div>
+                <button wire:click="cancel" class="btn btn-secondary mr-2">
+                  <i class="fas fa-times"></i>
+                  Batal
+                </button>
+                <button wire:click="save" class="btn btn-success">
+                  <i class="fas fa-save"></i>
+                  Simpan Pembelian
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -716,7 +724,7 @@
   <!-- List View -->
   <div class="row">
     <div class="col-md-12">
-      <div class="card card-primary card-outline">
+      <div class="card card-secondary card-outline">
         <div class="card-header">
           <h3 class="card-title">
             <i class="fas fa-list mr-2"></i>
@@ -750,14 +758,20 @@
               <table class="table table-sm table-striped table-hover">
                 <thead class="bg-light">
                   <tr>
-                    <th style="width: 5%">#</th>
-                    <th style="width: 12%">No Invoice</th>
-                    <th style="width: 12%">Tanggal</th>
-                    <th style="width: 18%">Supplier</th>
-                    <th style="width: 12%">Lokasi</th>
-                    <th style="width: 15%">Total Item</th>
-                    <th style="width: 12%">Status</th>
-                    <th style="width: 14%">Aksi</th>
+                    <th style="width: 3%">#</th>
+                    <th style="width: 8%">No Invoice</th>
+                    <th style="width: 8%">Tanggal</th>
+                    <th style="width: 10%">Supplier</th>
+                    <th style="width: 8%">Lokasi</th>
+                    <th style="width: 8%">Kategori</th>
+                    <th style="width: 8%">Subkategori</th>
+                    <th style="width: 10%">Produk</th>
+                    <th style="width: 6%">Unit</th>
+                    <th style="width: 6%">Total Item</th>
+                    <th style="width: 8%">Total</th>
+                    <th style="width: 8%">Status</th>
+                    <th style="width: 12%">Catatan</th>
+                    <th style="width: 9%">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -784,10 +798,45 @@
                           <span class="text-muted">-</span>
                         @endif
                       </td>
+                      <td data-label="Kategori">
+                        @foreach($purchase->purchaseItems->pluck('product.category.nama_kategori')->unique()->take(2) as $category)
+                          <span class="badge badge-light">{{ $category }}</span>
+                        @endforeach
+                        @if($purchase->purchaseItems->pluck('product.category.nama_kategori')->unique()->count() > 2)
+                          <span class="badge badge-light">+{{ $purchase->purchaseItems->pluck('product.category.nama_kategori')->unique()->count() - 2 }}</span>
+                        @endif
+                      </td>
+                      <td data-label="Subkategori">
+                        @foreach($purchase->purchaseItems->pluck('product.subcategory.nama_subkategori')->unique()->take(2) as $subcategory)
+                          <span class="badge badge-light">{{ $subcategory }}</span>
+                        @endforeach
+                        @if($purchase->purchaseItems->pluck('product.subcategory.nama_subkategori')->unique()->count() > 2)
+                          <span class="badge badge-light">+{{ $purchase->purchaseItems->pluck('product.subcategory.nama_subkategori')->unique()->count() - 2 }}</span>
+                        @endif
+                      </td>
+                      <td data-label="Produk">
+                        @foreach($purchase->purchaseItems->pluck('product.nama_produk')->take(2) as $product)
+                          <span class="badge badge-light">{{ $product }}</span>
+                        @endforeach
+                        @if($purchase->purchaseItems->pluck('product.nama_produk')->count() > 2)
+                          <span class="badge badge-light">+{{ $purchase->purchaseItems->pluck('product.nama_produk')->count() - 2 }}</span>
+                        @endif
+                      </td>
+                      <td data-label="Unit">
+                        @foreach($purchase->purchaseItems->pluck('unit.nama_unit')->unique()->take(2) as $unit)
+                          <span class="badge badge-light">{{ $unit }}</span>
+                        @endforeach
+                        @if($purchase->purchaseItems->pluck('unit.nama_unit')->unique()->count() > 2)
+                          <span class="badge badge-light">+{{ $purchase->purchaseItems->pluck('unit.nama_unit')->unique()->count() - 2 }}</span>
+                        @endif
+                      </td>
                       <td data-label="Total Item">
                         <span class="badge badge-info">
                           {{ $purchase->purchaseItems->count() }} item
                         </span>
+                      </td>
+                      <td data-label="Total">
+                        <strong>Rp {{ number_format($purchase->total_pembelian, 0, ',', '.') }}</strong>
                       </td>
                       <td data-label="Status">
                         @if ($purchase->status === 'completed')
@@ -798,6 +847,7 @@
                           <span class="badge badge-danger">Cancelled</span>
                         @endif
                       </td>
+                      <td data-label="Catatan">{{ $purchase->keterangan ? \Illuminate\Support\Str::limit($purchase->keterangan, 80) : '-' }}</td>
                       <td class="actions" data-label="Aksi">
                         <button
                           wire:click="edit({{ $purchase->id }})"
@@ -833,11 +883,11 @@
 
   <!-- Modal Tambah/Edit Supplier -->
   @if ($showSupplierModal)
-    <div class="modal fade show d-block" tabindex="-1" role="dialog">
-      <div class="modal-backdrop fade show"></div>
-      <div class="modal-dialog modal-lg" role="document" style="z-index: 1050; position: relative">
+    <div class="livewire-modal modal fade show d-block" tabindex="-1" role="dialog" style="display: block; background: rgba(0,0,0,0.4); z-index:200000 !important; position: fixed; inset:0;">
+      <div class="modal-backdrop fade show" style="z-index:199999 !important;"></div>
+      <div class="modal-dialog modal-lg" role="document" style="z-index: 200001; position: relative">
         <div class="modal-content">
-          <div class="modal-header bg-primary">
+          <div class="modal-header bg-secondary">
             <h5 class="modal-title">
               <i class="fas fa-plus-circle mr-2"></i>
               Tambah Pemasok Baru
@@ -968,7 +1018,7 @@
                 <i class="fas fa-times mr-1"></i>
                 Batal
               </button>
-              <button type="submit" class="btn btn-primary">
+              <button type="submit" class="btn btn-secondary">
                 <i class="fas fa-save mr-1"></i>
                 Simpan Pemasok
               </button>
@@ -981,9 +1031,9 @@
 
   <!-- Modal Tambah Owner/Supplier -->
   @if ($showOwnerModal)
-    <div class="modal fade show d-block" tabindex="-1" role="dialog">
-      <div class="modal-backdrop fade show"></div>
-      <div class="modal-dialog modal-lg" role="document" style="z-index: 1050; position: relative">
+    <div class="livewire-modal modal fade show d-block" tabindex="-1" role="dialog" style="display: block; background: rgba(0,0,0,0.4); z-index:200000 !important; position: fixed; inset:0;">
+      <div class="modal-backdrop fade show" style="z-index:199999 !important;"></div>
+      <div class="modal-dialog modal-lg" role="document" style="z-index: 200001; position: relative">
         <div class="modal-content">
           <div class="modal-header bg-success">
             <h5 class="modal-title">
@@ -1092,11 +1142,11 @@
 
   <!-- Category Modal -->
   @if ($showCategoryModal)
-    <div class="modal fade show d-block" tabindex="-1" role="dialog">
-      <div class="modal-backdrop fade show"></div>
-      <div class="modal-dialog" role="document" style="z-index: 1050; position: relative">
+    <div class="livewire-modal modal fade show d-block" tabindex="-1" role="dialog" style="display: block; background: rgba(0,0,0,0.4); z-index:200000 !important; position: fixed; inset:0;">
+      <div class="modal-backdrop fade show" style="z-index:199999 !important;"></div>
+      <div class="modal-dialog" role="document" style="z-index: 200001; position: relative">
         <div class="modal-content">
-          <div class="modal-header bg-primary">
+          <div class="modal-header bg-secondary">
             <h5 class="modal-title">Tambah Kategori</h5>
             <button type="button" class="close" wire:click="closeCategoryModal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
@@ -1116,7 +1166,7 @@
               <button type="button" class="btn btn-secondary" wire:click="closeCategoryModal">
                 Batal
               </button>
-              <button type="submit" class="btn btn-primary">Simpan Kategori</button>
+              <button type="submit" class="btn btn-secondary">Simpan Kategori</button>
             </div>
           </form>
         </div>
@@ -1126,11 +1176,11 @@
 
   <!-- Subcategory Modal -->
   @if ($showSubcategoryModal)
-    <div class="modal fade show d-block" tabindex="-1" role="dialog">
-      <div class="modal-backdrop fade show"></div>
-      <div class="modal-dialog" role="document" style="z-index: 1050; position: relative">
+    <div class="livewire-modal modal fade show d-block" tabindex="-1" role="dialog" style="display: block; background: rgba(0,0,0,0.4); z-index:200000 !important; position: fixed; inset:0;">
+      <div class="modal-backdrop fade show" style="z-index:199999 !important;"></div>
+      <div class="modal-dialog" role="document" style="z-index: 200001; position: relative">
         <div class="modal-content">
-          <div class="modal-header bg-primary">
+          <div class="modal-header bg-secondary">
             <h5 class="modal-title">Tambah Subkategori</h5>
             <button
               type="button"
@@ -1167,7 +1217,7 @@
               <button type="button" class="btn btn-secondary" wire:click="closeSubcategoryModal">
                 Batal
               </button>
-              <button type="submit" class="btn btn-primary">Simpan Subkategori</button>
+              <button type="submit" class="btn btn-secondary">Simpan Subkategori</button>
             </div>
           </form>
         </div>
@@ -1177,11 +1227,11 @@
 
   <!-- Product Modal -->
   @if ($showProductModal)
-    <div class="modal fade show d-block" tabindex="-1" role="dialog">
-      <div class="modal-backdrop fade show"></div>
-      <div class="modal-dialog" role="document" style="z-index: 1050; position: relative">
+    <div class="livewire-modal modal fade show d-block" tabindex="-1" role="dialog" style="display: block; background: rgba(0,0,0,0.4); z-index:200000 !important; position: fixed; inset:0;">
+      <div class="modal-backdrop fade show" style="z-index:199999 !important;"></div>
+      <div class="modal-dialog" role="document" style="z-index: 200001; position: relative">
         <div class="modal-content">
-          <div class="modal-header bg-primary">
+          <div class="modal-header bg-secondary">
             <h5 class="modal-title">Tambah Produk</h5>
             <button type="button" class="close" wire:click="closeProductModal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
@@ -1222,7 +1272,7 @@
               <button type="button" class="btn btn-secondary" wire:click="closeProductModal">
                 Batal
               </button>
-              <button type="submit" class="btn btn-primary">Simpan Produk</button>
+              <button type="submit" class="btn btn-secondary">Simpan Produk</button>
             </div>
           </form>
         </div>

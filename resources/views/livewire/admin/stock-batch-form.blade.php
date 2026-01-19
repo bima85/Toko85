@@ -251,27 +251,38 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="addQty">
-            Jumlah
-            @if ($this->selectedProduct && $this->selectedProduct->satuan)
-              <span class="text-muted">({{ $this->selectedProduct->satuan }})</span>
-            @endif
+        <div class="form-row">
+          <div class="form-group col-md-6">
+            <label for="addQty">
+              Jumlah
+              <span class="text-danger">*</span>
+            </label>
+            <input
+              type="number"
+              wire:model="qty"
+              id="addQty"
+              class="form-control"
+              step="0.01"
+              placeholder="0"
+              required
+            />
+            @error('qty')
+              <span class="text-danger small">{{ $message }}</span>
+            @enderror
+          </div>
 
-            <span class="text-danger">*</span>
-          </label>
-          <input
-            type="number"
-            wire:model="qty"
-            id="addQty"
-            class="form-control"
-            step="0.01"
-            placeholder="0"
-            required
-          />
-          @error('qty')
-            <span class="text-danger small">{{ $message }}</span>
-          @enderror
+          <div class="form-group col-md-6">
+            <label for="addUnit">Satuan</label>
+            <select wire:model="unit" id="addUnit" class="form-control">
+              <option value="">-- Pilih Satuan --</option>
+              @foreach ($units as $u)
+                <option value="{{ $u->nama_unit }}">{{ $u->nama_unit }}</option>
+              @endforeach
+            </select>
+            @error('unit')
+              <span class="text-danger small">{{ $message }}</span>
+            @enderror
+          </div>
         </div>
 
         <div class="form-group">

@@ -21,6 +21,7 @@ class StockBatchService
         float $qty,
         ?int $locationId = null,
         ?string $note = null,
+        ?string $unit = null,
         ?\Carbon\Carbon $createdDate = null
     ): StockBatch {
         // Jika tidak ada createdDate, gunakan now()
@@ -30,6 +31,8 @@ class StockBatchService
             'product_id' => $productId,
             'location_type' => $locationType,
             'location_id' => $locationId,
+            'unit' => $unit,
+            'note' => $note,
             'nama_tumpukan' => $namaTumpukan,
             'qty' => $qty,
             'created_at' => $batchDateTime,
@@ -207,6 +210,7 @@ class StockBatchService
             'product_id' => $fromBatch->product_id,
             'location_type' => $toLocationType,
             'location_id' => $toLocationId,
+            'unit' => $fromBatch->unit,
             'nama_tumpukan' => $toNamaTumpukan,
             'qty' => $qty,
             'created_at' => $eventDate,

@@ -39,7 +39,8 @@ class Categories extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -82,7 +83,7 @@ class Categories extends Component
         $rules = [
             'nama_kategori' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'kode_kategori' => 'required|string|max:50|unique:categories,kode_kategori'.($this->editingCategoryId ? (','.$this->editingCategoryId) : ''),
+            'kode_kategori' => 'required|string|max:50|unique:categories,kode_kategori' . ($this->editingCategoryId ? (',' . $this->editingCategoryId) : ''),
         ];
 
         $this->validate($rules);
@@ -128,9 +129,9 @@ class Categories extends Component
         $query = Category::query();
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('kode_kategori', 'like', '%'.$this->search.'%')
-                    ->orWhere('nama_kategori', 'like', '%'.$this->search.'%')
-                    ->orWhere('description', 'like', '%'.$this->search.'%');
+                $q->where('kode_kategori', 'like', '%' . $this->search . '%')
+                    ->orWhere('nama_kategori', 'like', '%' . $this->search . '%')
+                    ->orWhere('description', 'like', '%' . $this->search . '%');
             });
         }
 

@@ -1,304 +1,391 @@
 <aside class="main-sidebar sidebar-dark-primary elevation-4">
-  <!-- Brand Logo -->
+  {{-- Brand --}}
   <a href="{{ route('admin.dashboard') }}" class="brand-link text-center">
     <span class="brand-text font-weight-light">Toko 85</span>
   </a>
 
-  <!-- Sidebar -->
   <div class="sidebar">
-    <nav class="mt-2">
-      <ul
-        class="nav nav-pills nav-sidebar flex-column"
-        data-widget="treeview"
-        role="menu"
-        data-accordion="false"
-      >
-        <!-- Dashboard -->
-        <li class="nav-item">
-          <a
-            href="{{ route('admin.dashboard') }}"
-            class="nav-link @if(request()->routeIs('admin.dashboard')) active @endif"
-          >
-            <i class="nav-icon fas fa-tachometer-alt"></i>
-            <p>Dashboard</p>
-          </a>
-        </li>
-
-        <!-- Kelola Transaksi -->
-        <li class="nav-item">
-          <a
-            href="{{ route('admin.transactions.manage') }}"
-            class="nav-link @if(request()->routeIs('admin.transactions.manage')) active @endif"
-          >
-            <i class="nav-icon fas fa-exchange-alt"></i>
-            <p>Kelola Transaksi</p>
-          </a>
-        </li>
-
-        <!-- Master Data Section -->
-        @php
-          $masterDataRoutes = ['admin.users', 'admin.categories', 'admin.subcategories', 'admin.units', 'admin.suppliers', 'admin.customers', 'admin.warehouses', 'admin.stores'];
-        @endphp
-
-        <li
-          class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($masterDataRoutes)) menu-open @endif"
+      <nav class="mt-2">
+        <ul
+          class="nav nav-pills nav-sidebar flex-column"
+          data-widget="treeview"
+          role="menu"
+          data-accordion="false"
         >
-          <a
-            href="#"
-            class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($masterDataRoutes)) active @endif"
-          >
-            <i class="nav-icon fas fa-cogs"></i>
-            <p>
-              Master Data
-              <i class="fas fa-angle-left right"></i>
-            </p>
-          </a>
-          <ul class="nav nav-treeview">
-            <!-- Products Section -->
+          {{-- Dashboard --}}
+          @if (\App\Helpers\NavHelper::canAccessRoute('admin.dashboard'))
             <li class="nav-item">
               <a
-                href="{{ route('admin.products') }}"
-                class="nav-link @if(request()->routeIs('admin.products')) active @endif"
+                href="{{ route('admin.dashboard') }}"
+                class="nav-link @if(request()->routeIs('admin.dashboard')) active @endif"
               >
-                <i class="nav-icon fas fa-box"></i>
-                <p>Produk</p>
+                <i class="nav-icon fas fa-tachometer-alt"></i>
+                <p>Dashboard</p>
               </a>
             </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.users') }}"
-                class="nav-link @if(request()->routeIs('admin.users')) active @endif"
-              >
-                <i class="far fa-user nav-icon"></i>
-                <p>Users</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.categories') }}"
-                class="nav-link @if(request()->routeIs('admin.categories')) active @endif"
-              >
-                <i class="far fa-folder nav-icon"></i>
-                <p>Kategori</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.subcategories') }}"
-                class="nav-link @if(request()->routeIs('admin.subcategories')) active @endif"
-              >
-                <i class="far fa-folder nav-icon"></i>
-                <p>Subkategori</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.units') }}"
-                class="nav-link @if(request()->routeIs('admin.units')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Unit</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.suppliers') }}"
-                class="nav-link @if(request()->routeIs('admin.suppliers')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Pemasok</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.customers') }}"
-                class="nav-link @if(request()->routeIs('admin.customers')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Pelanggan</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.warehouses') }}"
-                class="nav-link @if(request()->routeIs('admin.warehouses')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Gudang</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.stores') }}"
-                class="nav-link @if(request()->routeIs('admin.stores')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Toko</p>
-              </a>
-            </li>
-          </ul>
-        </li>
+          @endif
 
-        <!-- Pembelian Section -->
-        <li class="nav-item @if(request()->routeIs('admin.purchases')) menu-open @endif">
-          <a href="#" class="nav-link @if(request()->routeIs('admin.purchases')) active @endif">
-            <i class="nav-icon fas fa-shopping-cart"></i>
-            <p>
-              Pembelian
-              <i class="fas fa-angle-left right"></i>
-            </p>
-          </a>
-          <ul class="nav nav-treeview">
+          {{-- Kelola Transaksi --}}
+          @if (\App\Helpers\NavHelper::canAccessRoute('admin.transactions.manage'))
             <li class="nav-item">
               <a
-                href="{{ route('admin.purchases') }}"
+                href="{{ route('admin.transactions.manage') }}"
+                class="nav-link @if(request()->routeIs('admin.transactions.manage')) active @endif"
+              >
+                <i class="nav-icon fas fa-exchange-alt"></i>
+                <p>Kelola Transaksi</p>
+              </a>
+            </li>
+          @endif
+
+          {{-- Master Data --}}
+          @php
+            $masterDataRoutes = ['admin.users', 'admin.roles', 'admin.permissions', 'admin.categories', 'admin.subcategories', 'admin.units', 'admin.suppliers', 'admin.customers', 'admin.warehouses', 'admin.stores', 'admin.products', 'admin.access-matrix'];
+          @endphp
+
+          @if (\App\Helpers\NavHelper::canAccessAny($masterDataRoutes))
+            <li
+              class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($masterDataRoutes)) menu-open @endif"
+            >
+              <a
+                href="#"
+                class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($masterDataRoutes)) active @endif"
+              >
+                <i class="nav-icon fas fa-cogs"></i>
+                <p>
+                  Master Data
+                  <i class="fas fa-angle-left right"></i>
+                </p>
+              </a>
+              <ul class="nav nav-treeview">
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.products'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.products') }}"
+                      class="nav-link @if(request()->routeIs('admin.products')) active @endif"
+                    >
+                      <i class="nav-icon fas fa-box"></i>
+                      <p>Produk</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.users'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.users') }}"
+                      class="nav-link @if(request()->routeIs('admin.users')) active @endif"
+                    >
+                      <i class="far fa-user nav-icon"></i>
+                      <p>Users</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.roles'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.roles') }}"
+                      class="nav-link @if(request()->routeIs('admin.roles')) active @endif"
+                    >
+                      <i class="fas fa-user-shield nav-icon"></i>
+                      <p>Roles</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.access-matrix'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.access-matrix') }}"
+                      class="nav-link @if(request()->routeIs('admin.access-matrix')) active @endif"
+                    >
+                      <i class="fas fa-network-wired nav-icon"></i>
+                      <p>Access Matrix</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.categories'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.categories') }}"
+                      class="nav-link @if(request()->routeIs('admin.categories')) active @endif"
+                    >
+                      <i class="far fa-folder nav-icon"></i>
+                      <p>Kategori</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.subcategories'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.subcategories') }}"
+                      class="nav-link @if(request()->routeIs('admin.subcategories')) active @endif"
+                    >
+                      <i class="far fa-folder nav-icon"></i>
+                      <p>Subkategori</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.units'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.units') }}"
+                      class="nav-link @if(request()->routeIs('admin.units')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Unit</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.suppliers'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.suppliers') }}"
+                      class="nav-link @if(request()->routeIs('admin.suppliers')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Pemasok</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.customers'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.customers') }}"
+                      class="nav-link @if(request()->routeIs('admin.customers')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Pelanggan</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.warehouses'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.warehouses') }}"
+                      class="nav-link @if(request()->routeIs('admin.warehouses')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Gudang</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.stores'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.stores') }}"
+                      class="nav-link @if(request()->routeIs('admin.stores')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Toko</p>
+                    </a>
+                  </li>
+                @endif
+              </ul>
+            </li>
+          @endif
+
+          {{-- Pembelian --}}
+          @if (\App\Helpers\NavHelper::canAccessRoute('admin.purchases'))
+            <li class="nav-item @if(request()->routeIs('admin.purchases')) menu-open @endif">
+              <a
+                href="#"
                 class="nav-link @if(request()->routeIs('admin.purchases')) active @endif"
               >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Daftar Pembelian</p>
+                <i class="nav-icon fas fa-shopping-cart"></i>
+                <p>
+                  Pembelian
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
+              <ul class="nav nav-treeview">
+                <li class="nav-item">
+                  <a
+                    href="{{ route('admin.purchases') }}"
+                    class="nav-link @if(request()->routeIs('admin.purchases')) active @endif"
+                  >
+                    <i class="far fa-circle nav-icon"></i>
+                    <p>Daftar Pembelian</p>
+                  </a>
+                </li>
+              </ul>
             </li>
-          </ul>
-        </li>
+          @endif
 
-        <!-- Penjualan Section -->
-        @php
-          $salesRoutes = ['admin.sales', 'admin.hold-orders'];
-        @endphp
+          {{-- Penjualan --}}
+          @php
+            $salesRoutes = ['admin.sales', 'admin.hold-orders', 'admin.delivery-notes'];
+          @endphp
 
-        <li
-          class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($salesRoutes)) menu-open @endif"
-        >
-          <a
-            href="#"
-            class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($salesRoutes)) active @endif"
-          >
-            <i class="nav-icon fas fa-dollar-sign"></i>
-            <p>
-              Penjualan
-              <i class="fas fa-angle-left right"></i>
-            </p>
-          </a>
-          <ul class="nav nav-treeview">
-            <li class="nav-item">
+          @if (\App\Helpers\NavHelper::canAccessAny($salesRoutes))
+            <li
+              class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($salesRoutes)) menu-open @endif"
+            >
               <a
-                href="{{ route('admin.sales') }}"
-                class="nav-link @if(request()->routeIs('admin.sales')) active @endif"
+                href="#"
+                class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($salesRoutes)) active @endif"
               >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Daftar Penjualan</p>
+                <i class="nav-icon fas fa-dollar-sign"></i>
+                <p>
+                  Penjualan
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.delivery-notes') }}"
-                class="nav-link @if(request()->routeIs('admin.delivery-notes')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Surat Jalan</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.hold-orders') }}"
-                class="nav-link @if(request()->routeIs('admin.hold-orders')) active @endif"
-              >
-                <i class="far fa-hand-paper nav-icon"></i>
-                <p>Hold / Keep Orders</p>
-              </a>
-            </li>
-          </ul>
-        </li>
+              <ul class="nav nav-treeview">
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.sales'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.sales') }}"
+                      class="nav-link @if(request()->routeIs('admin.sales')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Daftar Penjualan</p>
+                    </a>
+                  </li>
+                @endif
 
-        <!-- Stock Management Section -->
-        @php
-          $stockRoutes = ['admin.stock-reports', 'stock-batches.index'];
-        @endphp
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.delivery-notes'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.delivery-notes') }}"
+                      class="nav-link @if(request()->routeIs('admin.delivery-notes')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Surat Jalan</p>
+                    </a>
+                  </li>
+                @endif
 
-        <li
-          class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($stockRoutes)) menu-open @endif"
-        >
-          <a
-            href="#"
-            class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($stockRoutes)) active @endif"
-          >
-            <i class="nav-icon fas fa-warehouse"></i>
-            <p>
-              Manajemen Stok
-              <i class="fas fa-angle-left right"></i>
-            </p>
-          </a>
-          <ul class="nav nav-treeview">
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.stock-reports') }}"
-                class="nav-link @if(request()->routeIs('admin.stock-reports')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Laporan Stok</p>
-              </a>
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.hold-orders'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.hold-orders') }}"
+                      class="nav-link @if(request()->routeIs('admin.hold-orders')) active @endif"
+                    >
+                      <i class="far fa-hand-paper nav-icon"></i>
+                      <p>Hold / Keep Orders</p>
+                    </a>
+                  </li>
+                @endif
+              </ul>
             </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('admin.stock-batches.index') }}"
-                class="nav-link @if(request()->routeIs('admin.stock-batches.index')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Stok Tumpukan</p>
-              </a>
-            </li>
-            <li class="nav-item">
-              <a
-                href="{{ route('stock-card.index') }}"
-                class="nav-link @if(request()->routeIs('stock-card.*')) active @endif"
-              >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Kartu Stok</p>
-              </a>
-            </li>
-          </ul>
-        </li>
+          @endif
 
-        <!-- Reports & Analytics Section -->
-        @php
-          $reportRoutes = ['admin.transactions', 'admin.profit-margin'];
-        @endphp
+          {{-- Stock Management --}}
+          @php
+            $stockRoutes = ['admin.stock-reports', 'admin.stock-batches.index', 'stock-card.index'];
+          @endphp
 
-        <li
-          class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($reportRoutes)) menu-open @endif"
-        >
-          <a
-            href="#"
-            class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($reportRoutes)) active @endif"
-          >
-            <i class="nav-icon fas fa-chart-line"></i>
-            <p>
-              Laporan & Analitik
-              <i class="fas fa-angle-left right"></i>
-            </p>
-          </a>
-          <ul class="nav nav-treeview">
-            <li class="nav-item">
+          @if (\App\Helpers\NavHelper::canAccessAny($stockRoutes))
+            <li
+              class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($stockRoutes)) menu-open @endif"
+            >
               <a
-                href="{{ route('admin.transactions') }}"
-                class="nav-link @if(request()->routeIs('admin.transactions')) active @endif"
+                href="#"
+                class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($stockRoutes)) active @endif"
               >
-                <i class="far fa-circle nav-icon"></i>
-                <p>Historis Transaksi</p>
+                <i class="nav-icon fas fa-warehouse"></i>
+                <p>
+                  Manajemen Stok
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
+              <ul class="nav nav-treeview">
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.stock-reports'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.stock-reports') }}"
+                      class="nav-link @if(request()->routeIs('admin.stock-reports')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Laporan Stok</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.stock-batches.index'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.stock-batches.index') }}"
+                      class="nav-link @if(request()->routeIs('admin.stock-batches.index')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Stok Tumpukan</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('stock-card.index'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('stock-card.index') }}"
+                      class="nav-link @if(request()->routeIs('stock-card.*')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Kartu Stok</p>
+                    </a>
+                  </li>
+                @endif
+              </ul>
             </li>
-            <li class="nav-item">
+          @endif
+
+          {{-- Reports & Analytics --}}
+          @php
+            $reportRoutes = ['admin.transactions', 'admin.profit-margin'];
+          @endphp
+
+          @if (\App\Helpers\NavHelper::canAccessAny($reportRoutes))
+            <li
+              class="nav-item @if(\App\Helpers\NavHelper::isRouteActive($reportRoutes)) menu-open @endif"
+            >
               <a
-                href="{{ route('admin.profit-margin') }}"
-                class="nav-link @if(request()->routeIs('admin.profit-margin')) active @endif"
+                href="#"
+                class="nav-link @if(\App\Helpers\NavHelper::isRouteActive($reportRoutes)) active @endif"
               >
-                <i class="fas fa-hand-holding-usd nav-icon"></i>
-                <p>Margin Profit</p>
+                <i class="nav-icon fas fa-chart-line"></i>
+                <p>
+                  Laporan & Analitik
+                  <i class="fas fa-angle-left right"></i>
+                </p>
               </a>
+              <ul class="nav nav-treeview">
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.transactions'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.transactions') }}"
+                      class="nav-link @if(request()->routeIs('admin.transactions')) active @endif"
+                    >
+                      <i class="far fa-circle nav-icon"></i>
+                      <p>Historis Transaksi</p>
+                    </a>
+                  </li>
+                @endif
+
+                @if (\App\Helpers\NavHelper::canAccessRoute('admin.profit-margin'))
+                  <li class="nav-item">
+                    <a
+                      href="{{ route('admin.profit-margin') }}"
+                      class="nav-link @if(request()->routeIs('admin.profit-margin')) active @endif"
+                    >
+                      <i class="fas fa-hand-holding-usd nav-icon"></i>
+                      <p>Margin Profit</p>
+                    </a>
+                  </li>
+                @endif
+              </ul>
             </li>
-          </ul>
-        </li>
-      </ul>
-    </nav>
-  </div>
+          @endif
+        </ul>
+      </nav>
+    </div>
+  </aside>
 </aside>

@@ -1,0 +1,1741 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\StockAdjustment;
+use App\Models\StockBatch;
+use App\Models\Store;
+use App\Models\Subcategory;
+use App\Models\Supplier;
+use App\Models\Unit;
+use App\Services\StockBatchService;
+use App\Services\StockCardService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
+use Livewire\WithPagination;
+
+#[Layout('layouts.admin')]
+class Purchases extends Component
+{
+    use WithPagination;
+
+    protected $paginationTheme = 'bootstrap';
+
+    public $search = '';
+
+    public $ownerFilter = null;
+
+    public $suppliers;
+
+    public $showOwnerModal = false;
+
+    public $new_owner_name = '';
+
+    // Supplier modal state and fields
+    public $showSupplierModal = false;
+
+    public $kode_supplier;
+
+    public $nama_supplier;
+
+    public $telepon;
+
+    public $email;
+
+    public $alamat;
+
+    public $supplier_keterangan;
+
+    public $no_invoice;
+
+    public $tanggal_pembelian;
+
+    public $supplier_id;
+
+    public $store_id;
+
+    public $warehouse_id;
+
+    public $status = 'completed';
+
+    public $keterangan;
+
+    public $editingPurchaseId = null;
+
+    public $showCreateForm = false;
+
+    public $showModal = false;
+
+    public $selectedPurchase = null;
+
+    // Purchase items
+    public $purchaseItems = [];
+
+    public $batch_enabled = false; // Global batch toggle
+
+    // Batch input dinamis
+    public $showCreateBatchSection = false;
+
+    public $batchNameList = [];
+
+    public $batchQtyList = [];
+
+    public $batchLocationList = [];
+
+    // Modal states and fields for inline add
+    public $showCategoryModal = false;
+
+    public $new_category_name = '';
+
+    public $category_modal_row = null;
+
+    public $showSubcategoryModal = false;
+
+    public $new_subcategory_name = '';
+
+    public $subcategory_modal_row = null;
+
+    public $subcategory_modal_category_id = null;
+
+    public $showProductModal = false;
+
+    public $new_product_name = '';
+
+    public $product_modal_row = null;
+
+    public $product_modal_category_id = null;
+
+    public $product_modal_subcategory_id = null;
+
+    protected $listeners = ['addCategory', 'addSubcategory', 'addProduct', 'openCategoryModal', 'openSubcategoryModal', 'openProductModal'];
+
+    protected $rules = [
+        'no_invoice' => 'required|string|max:50|unique:purchases,no_invoice',
+        'tanggal_pembelian' => 'required|date',
+        'supplier_id' => 'required|exists:suppliers,id',
+        'store_id' => 'nullable|exists:stores,id',
+        'warehouse_id' => 'nullable|exists:warehouses,id',
+        'status' => 'required|in:pending,completed,cancelled',
+        'keterangan' => 'nullable|string',
+        'purchaseItems' => 'required|array|min:1',
+        'purchaseItems.*.category_id' => 'required|exists:categories,id',
+        'purchaseItems.*.subcategory_id' => 'nullable|exists:subcategories,id',
+        'purchaseItems.*.product_id' => 'required|exists:products,id',
+        'purchaseItems.*.qty' => 'required|integer|min:1',
+        'purchaseItems.*.unit_id' => 'required|exists:units,id',
+        'purchaseItems.*.harga_beli' => 'required|numeric|min:0',
+    ];
+
+    public function mount()
+    {
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+
+        $this->suppliers = collect();
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedOwnerFilter($value)
+    {
+        // set the ownerFilter from the incoming $value and normalize it
+        $this->ownerFilter = is_string($value) ? trim($value) : $value;
+
+        // saat owner dipilih dalam form pembuatan, reset supplier_id agar user memilih ulang dari daftar yang terfilter
+        $this->supplier_id = null;
+        // update suppliers list (support multiple owner names separated by comma)
+        // we update suppliers regardless of whether the form is shown so data is ready
+        $query = Supplier::orderBy('nama_supplier');
+        if (! empty($this->ownerFilter)) {
+            // if ownerFilter contains commas, split into array and filter by partial match (orWhere like)
+            if (str_contains($this->ownerFilter, ',')) {
+                $owners = array_map('trim', explode(',', $this->ownerFilter));
+                $query->where(function ($q2) use ($owners) {
+                    foreach ($owners as $o) {
+                        if ($o !== '') {
+                            $q2->orWhere('owner', 'like', '%'.$o.'%');
+                        }
+                    }
+                });
+            } else {
+                // use partial match as well so exact formatting doesn't block matches
+                $query->where('owner', 'like', '%'.$this->ownerFilter.'%');
+            }
+        }
+        $this->suppliers = $query->get();
+
+        // if form is shown and only one supplier matches, auto-select it
+        if ($this->showCreateForm) {
+            if ($this->suppliers instanceof \Illuminate\Support\Collection && $this->suppliers->count() === 1) {
+                $this->supplier_id = $this->suppliers->first()->id;
+                // generate invoice when supplier auto-selected here
+                $this->generateInvoiceNumber($this->supplier_id);
+            } else {
+                $this->supplier_id = null;
+            }
+        }
+        // force re-render
+        $this->dispatch('$refresh');
+    }
+
+    public function openOwnerModal()
+    {
+        $this->showOwnerModal = true;
+        $this->new_owner_name = '';
+    }
+
+    public function ownerChanged($value)
+    {
+        // helper invoked from frontend change event to ensure update occurs
+        $this->updatedOwnerFilter($value);
+        // if updatedOwnerFilter resulted in a single supplier, generate invoice
+        if (! empty($this->supplier_id)) {
+            $this->generateInvoiceNumber($this->supplier_id);
+        }
+    }
+
+    public function closeOwnerModal()
+    {
+        $this->showOwnerModal = false;
+        $this->new_owner_name = '';
+    }
+
+    public function saveOwner()
+    {
+        $this->validate([
+            'new_owner_name' => 'required|string|max:255',
+        ]);
+
+        try {
+            // create a minimal supplier entry to persist owner value so it appears in owners list
+            $supplier = Supplier::create([
+                'kode_supplier' => 'SUP-'.\Illuminate\Support\Str::upper(\Illuminate\Support\Str::random(6)),
+                'nama_supplier' => $this->new_owner_name,
+                'owner' => $this->new_owner_name,
+                'keterangan' => 'Owner: '.$this->new_owner_name,
+            ]);
+
+            // set filter to new owner and reset supplier selection
+            $this->ownerFilter = $this->new_owner_name;
+            $this->supplier_id = null;
+            $this->closeOwnerModal();
+            session()->flash('message', 'Owner berhasil ditambahkan.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to create owner supplier: '.$e->getMessage());
+            session()->flash('error', 'Gagal menambahkan owner: '.$e->getMessage());
+        }
+    }
+
+    public function create()
+    {
+        $this->resetForm();
+        // reset owner filter to start fresh
+        $this->ownerFilter = null;
+        // set default store to the first store if available (warehouse kosong)
+        $firstStore = Store::orderBy('nama_toko')->first();
+        $this->store_id = $firstStore ? $firstStore->id : null;
+        // warehouse_id dibiarkan kosong (null) - user pilih manual jika mau
+        $this->warehouse_id = null;
+        // set tanggal
+        $this->tanggal_pembelian = date('Y-m-d');
+        $this->editingPurchaseId = null;
+        $this->showCreateForm = true;
+        // set suppliers
+        $this->suppliers = Supplier::when($this->ownerFilter, fn ($q) => $q->where('owner', $this->ownerFilter))
+            ->orderBy('nama_supplier')->get();
+        // jika hanya ada satu perusahaan, pilih otomatis
+        if ($this->suppliers instanceof \Illuminate\Support\Collection && $this->suppliers->count() === 1) {
+            $this->supplier_id = $this->suppliers->first()->id;
+            $this->generateInvoiceNumber($this->supplier_id);
+        }
+        // tambahkan satu baris item kosong agar form tidak tampak kosong
+        $this->addItem();
+    }
+
+    public function edit($id)
+    {
+        $purchase = Purchase::with('purchaseItems')->findOrFail($id);
+        $this->editingPurchaseId = $purchase->id;
+        $this->no_invoice = $purchase->no_invoice;
+        $this->tanggal_pembelian = $purchase->tanggal_pembelian->format('Y-m-d');
+        $this->supplier_id = $purchase->supplier_id;
+        // set owner filter based on the supplier's owner
+        $supplier = Supplier::find($purchase->supplier_id);
+        $this->ownerFilter = $supplier ? $supplier->owner : null;
+        $this->store_id = $purchase->store_id;
+        $this->warehouse_id = $purchase->warehouse_id;
+        $this->status = $purchase->status;
+        $this->keterangan = $purchase->keterangan;
+        $this->purchaseItems = $purchase->purchaseItems->map(function ($item) {
+            $qty = $item->qty ?? 0;
+            $harga = $item->harga_beli ?? 0;
+            $conv = 1;
+            if (! empty($item['unit_id'])) {
+                $unit = Unit::find($item['unit_id']);
+                $conv = $unit ? (float) ($unit->conversion_value ?? 1) : 1;
+            }
+            $product = Product::find($item->product_id);
+            $productSearchFormat = $product ? $product->nama_produk : '';
+
+            return [
+                'category_id' => $item->category_id,
+                'subcategory_id' => $item->subcategory_id,
+                'product_id' => $item->product_id,
+                'product_search' => $productSearchFormat,
+                'qty' => $item->qty,
+                'qty_gudang' => $item->qty_gudang ?? 0,
+                'destination_type' => 'toko', // Initialize destination type
+                'unit_id' => $item->unit_id,
+                'harga_beli' => $item->harga_beli,
+                'total' => ($qty * $conv) * $harga,
+                'use_batch' => false, // Initialize batch toggle
+                'batch_name' => '', // Initialize batch fields for edit
+                'batch_qty' => 0,
+                'batch_location' => 'toko',
+                'batches' => [
+                    ['name' => '', 'qty' => $item->qty ?? 0],
+                ],
+            ];
+        })->toArray();
+        $this->showCreateForm = true;
+        // set suppliers
+        $this->suppliers = Supplier::when($this->ownerFilter, fn ($q) => $q->where('owner', $this->ownerFilter))
+            ->orderBy('nama_supplier')->get();
+        // jika hanya ada satu perusahaan dan belum ada supplier terpilih, pilih otomatis
+        if ($this->suppliers instanceof \Illuminate\Support\Collection && $this->suppliers->count() === 1 && empty($this->supplier_id)) {
+            $this->supplier_id = $this->suppliers->first()->id;
+        }
+    }
+
+    public function show($id)
+    {
+        $this->selectedPurchase = Purchase::with('supplier', 'purchaseItems.product', 'purchaseItems.category', 'purchaseItems.subcategory', 'purchaseItems.unit')->findOrFail($id);
+        $this->showModal = true;
+    }
+
+    private function generateInvoiceNumber($supplierId)
+    {
+        // Create invoice number in format PB/YYYY/MM/DD-XXX where XXX increments per supplier per day
+        $date = date('Y/m/d');
+        $lastPurchase = Purchase::where('supplier_id', $supplierId)
+            ->whereDate('tanggal_pembelian', date('Y-m-d'))
+            ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '-', -1) AS UNSIGNED) DESC")
+            ->first();
+
+        if ($lastPurchase) {
+            $parts = explode('-', $lastPurchase->no_invoice);
+            $num = isset($parts[1]) ? intval($parts[1]) + 1 : 1;
+        } else {
+            $num = 1;
+        }
+
+        $this->no_invoice = 'PB/'.$date.'-'.str_pad($num, 3, '0', STR_PAD_LEFT);
+
+        // Check if this invoice already exists (safety check)
+        while (Purchase::where('no_invoice', $this->no_invoice)->exists()) {
+            $num++;
+            $this->no_invoice = 'PB/'.$date.'-'.str_pad($num, 3, '0', STR_PAD_LEFT);
+        }
+    }
+
+    public function closeModal()
+    {
+        $this->showModal = false;
+        $this->selectedPurchase = null;
+    }
+
+    public function save()
+    {
+        // Build unique rule for no_invoice
+        $uniqueRule = 'unique:purchases,no_invoice';
+        if ($this->editingPurchaseId) {
+            $uniqueRule .= ','.$this->editingPurchaseId;
+        }
+
+        $rules = [
+            'tanggal_pembelian' => 'required|date',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'store_id' => 'nullable|exists:stores,id',
+            'warehouse_id' => 'nullable|exists:warehouses,id',
+            'status' => 'required|in:pending,completed,cancelled',
+            'keterangan' => 'nullable|string',
+            'no_invoice' => 'required|string|max:50|'.$uniqueRule,
+            'purchaseItems' => 'required|array|min:1',
+            'purchaseItems.*.category_id' => 'required|exists:categories,id',
+            'purchaseItems.*.subcategory_id' => 'nullable|exists:subcategories,id',
+            'purchaseItems.*.product_id' => 'required|exists:products,id',
+            'purchaseItems.*.destination_type' => 'required|in:gudang,toko,both',
+            'purchaseItems.*.qty' => 'required|integer|min:0',
+            'purchaseItems.*.qty_gudang' => 'required|integer|min:0',
+            'purchaseItems.*.unit_id' => 'required|exists:units,id',
+            'purchaseItems.*.harga_beli' => 'required|numeric|min:0',
+        ];
+
+        // sinkronkan qty toko dari batch sebelum validasi
+        $this->syncAllBatchedQty();
+
+        $this->validate($rules);
+
+        // Custom validation for destination-based quantities
+        foreach ($this->purchaseItems as $index => $item) {
+            $destinationType = $item['destination_type'] ?? 'toko';
+            $qty = $item['qty'] ?? 0;
+            $qtyGudang = $item['qty_gudang'] ?? 0;
+
+            if ($destinationType === 'toko' && $qty <= 0) {
+                $this->addError("purchaseItems.{$index}.qty", 'Jumlah toko harus lebih dari 0 untuk tujuan Toko');
+            } elseif ($destinationType === 'gudang' && $qtyGudang <= 0) {
+                $this->addError("purchaseItems.{$index}.qty_gudang", 'Jumlah gudang harus lebih dari 0 untuk tujuan Gudang');
+            } elseif ($destinationType === 'both' && ($qty <= 0 || $qtyGudang <= 0)) {
+                if ($qty <= 0) {
+                    $this->addError("purchaseItems.{$index}.qty", 'Jumlah toko harus lebih dari 0 untuk tujuan Gudang & Toko');
+                }
+                if ($qtyGudang <= 0) {
+                    $this->addError("purchaseItems.{$index}.qty_gudang", 'Jumlah gudang harus lebih dari 0 untuk tujuan Gudang & Toko');
+                }
+            }
+        }
+
+        // Check for validation errors from custom rules
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
+        DB::beginTransaction();
+        try {
+            // Calculate totals for each item using unit conversion_value when available
+            $unitIds = collect($this->purchaseItems)->pluck('unit_id')->filter()->unique()->values()->all();
+            $conversionMap = [];
+            if (! empty($unitIds)) {
+                $conversionMap = Unit::whereIn('id', $unitIds)->pluck('conversion_value', 'id')->toArray();
+            }
+
+            foreach ($this->purchaseItems as &$item) {
+                $qty = $item['qty'] ?? 0;
+                $qty_gudang = $item['qty_gudang'] ?? 0;
+                $harga = $item['harga_beli'] ?? 0;
+                $conv = 1;
+                if (! empty($item['unit_id']) && isset($conversionMap[$item['unit_id']])) {
+                    $conv = (float) $conversionMap[$item['unit_id']];
+                }
+                // Use qty if filled, otherwise use qty_gudang
+                $use_qty = ($qty > 0) ? $qty : $qty_gudang;
+                $item['total'] = ($use_qty * $conv) * $harga;
+            }
+
+            if ($this->editingPurchaseId) {
+                $purchase = Purchase::findOrFail($this->editingPurchaseId);
+                $purchase->no_invoice = $this->no_invoice;
+                $purchase->tanggal_pembelian = $this->tanggal_pembelian;
+                $purchase->supplier_id = $this->supplier_id;
+                $purchase->store_id = $this->store_id;
+                $purchase->warehouse_id = $this->warehouse_id;
+                $purchase->status = $this->status;
+                $purchase->keterangan = $this->keterangan;
+                $purchase->save();
+
+                // Delete old stock adjustments for this purchase
+                StockAdjustment::where('reason', 'like', '%Pembelian dari%')
+                    ->whereDate('adjustment_date', $purchase->tanggal_pembelian)
+                    ->where(function ($q) use ($purchase) {
+                        $q->where('store_id', $purchase->store_id)
+                            ->orWhere('warehouse_id', $purchase->warehouse_id);
+                    })
+                    ->delete();
+
+                // Update purchase items
+                $purchase->purchaseItems()->delete();
+                foreach ($this->purchaseItems as $item) {
+                    $purchaseItem = $purchase->purchaseItems()->create($item);
+
+                    $destinationType = $item['destination_type'] ?? 'toko';
+
+                    // Create StockAdjustment dan StockBatch based on destination_type
+                    if (in_array($destinationType, ['toko', 'both']) && $this->store_id && ($item['qty'] ?? 0) > 0) {
+                        $store = Store::find($this->store_id);
+                        $batchedEntries = collect($item['batches'] ?? [])->filter(function ($b) {
+                            return isset($b['qty']) && (float) $b['qty'] > 0;
+                        })->values();
+                        $effectiveQty = $item['qty'] ?? 0;
+
+                        StockAdjustment::create([
+                            'product_id' => $item['product_id'],
+                            'store_id' => $this->store_id,
+                            'warehouse_id' => null,
+                            'adjustment_type' => 'add',
+                            'quantity' => $effectiveQty,
+                            'stok_awal' => 0,
+                            'stok_masuk' => $effectiveQty,
+                            'unit_id' => $item['unit_id'] ?? null,
+                            'reason' => 'Pembelian dari '.$this->getSupplerName(),
+                            'adjustment_date' => $this->tanggal_pembelian,
+                            'user_id' => Auth::id(),
+                        ]);
+
+                        // Re-create StockBatch untuk Toko
+                        if ($batchedEntries->isNotEmpty()) {
+                            foreach ($batchedEntries as $batchRow) {
+                                $batchName = $batchRow['name'] ?? '';
+                                $finalBatchName = $batchName !== ''
+                                    ? $batchName
+                                    : "Batch - {$this->no_invoice} - ".($store->nama_toko ?? 'Toko');
+
+                                app(StockBatchService::class)->addStock(
+                                    $item['product_id'],
+                                    'store',
+                                    $finalBatchName,
+                                    $batchRow['qty'],
+                                    $this->store_id,
+                                    'Pembelian dari '.$this->getSupplerName(),
+                                    \Carbon\Carbon::parse($this->tanggal_pembelian)
+                                );
+
+                                // Create StockCard per batch
+                                $this->createStockCardForPurchase(
+                                    $item['product_id'],
+                                    $batchRow['qty'],
+                                    ($store->nama_toko ?? 'Toko').' - Batch: '.$finalBatchName,
+                                    $purchase->id,
+                                    $this->no_invoice
+                                );
+                            }
+                        } else {
+                            $batchName = "Pembelian - {$this->no_invoice} - ".($store->nama_toko ?? 'Toko');
+                            app(StockBatchService::class)->addStock(
+                                $item['product_id'],
+                                'store',
+                                $batchName,
+                                $effectiveQty,
+                                $this->store_id,
+                                'Pembelian dari '.$this->getSupplerName(),
+                                \Carbon\Carbon::parse($this->tanggal_pembelian)
+                            );
+
+                            // Create StockCard untuk Toko
+                            $this->createStockCardForPurchase(
+                                $item['product_id'],
+                                $effectiveQty,
+                                $store->nama_toko ?? 'Toko',
+                                $purchase->id,
+                                $this->no_invoice
+                            );
+                        }
+                    }
+
+                    // Re-create StockAdjustment dan StockBatch untuk Gudang
+                    if (in_array($destinationType, ['gudang', 'both']) && $this->warehouse_id && ($item['qty_gudang'] ?? 0) > 0) {
+                        StockAdjustment::create([
+                            'product_id' => $item['product_id'],
+                            'store_id' => null,
+                            'warehouse_id' => $this->warehouse_id,
+                            'adjustment_type' => 'add',
+                            'quantity' => $item['qty_gudang'],
+                            'stok_awal' => 0,
+                            'stok_masuk' => $item['qty_gudang'],
+                            'unit_id' => $item['unit_id'] ?? null,
+                            'reason' => 'Pembelian dari '.$this->getSupplerName(),
+                            'adjustment_date' => $this->tanggal_pembelian,
+                            'user_id' => Auth::id(),
+                        ]);
+
+                        // Re-create StockBatch untuk Gudang
+                        $warehouse = \App\Models\Warehouse::find($this->warehouse_id);
+                        $batchName = "Pembelian - {$this->no_invoice} - ".($warehouse->nama_gudang ?? 'Gudang');
+                        app(StockBatchService::class)->addStock(
+                            $item['product_id'],
+                            'warehouse',
+                            $batchName,
+                            $item['qty_gudang'],
+                            $this->warehouse_id,
+                            'Pembelian dari '.$this->getSupplerName(),
+                            \Carbon\Carbon::parse($this->tanggal_pembelian)
+                        );
+
+                        // Create StockCard untuk Gudang
+                        $this->createStockCardForPurchase(
+                            $item['product_id'],
+                            $item['qty_gudang'],
+                            $warehouse->nama_gudang ?? 'Gudang',
+                            $purchase->id,
+                            $this->no_invoice
+                        );
+                    }
+                }
+                session()->flash('message', 'Pembelian diperbarui.');
+
+                // Update transaction history amount to reflect edited items (pisah Toko vs Gudang)
+                try {
+                    $storeAmount = collect($this->purchaseItems)->sum(function ($item) {
+                        $qtyToko = $item['qty'] ?? 0;
+                        $harga = $item['harga_beli'] ?? 0;
+
+                        return $qtyToko * $harga;
+                    });
+
+                    $warehouseAmount = collect($this->purchaseItems)->sum(function ($item) {
+                        $qtyGudang = $item['qty_gudang'] ?? 0;
+                        $harga = $item['harga_beli'] ?? 0;
+
+                        return $qtyGudang * $harga;
+                    });
+
+                    // hapus histori lama untuk purchase ini lalu buat ulang per lokasi
+                    \App\Models\TransactionHistory::where('reference_type', 'purchase')
+                        ->where('reference_id', $purchase->id)
+                        ->delete();
+
+                    $baseData = [
+                        'transaction_type' => 'pembelian',
+                        'reference_type' => 'purchase',
+                        'reference_id' => $purchase->id,
+                        'transaction_date' => $this->tanggal_pembelian ? \Carbon\Carbon::parse($this->tanggal_pembelian) : now(),
+                        'currency' => 'IDR',
+                        'status' => 'completed',
+                        'user_id' => Auth::id(),
+                        'notes' => $purchase->keterangan,
+                    ];
+
+                    if ($storeAmount > 0) {
+                        \App\Models\TransactionHistory::create(array_merge($baseData, [
+                            'transaction_code' => $this->no_invoice.'-TOKO',
+                            'amount' => $storeAmount,
+                            'description' => 'Pembelian Toko - '.$this->no_invoice.' dari '.$this->getSupplerName(),
+                        ]));
+                    }
+
+                    if ($warehouseAmount > 0) {
+                        \App\Models\TransactionHistory::create(array_merge($baseData, [
+                            'transaction_code' => $this->no_invoice.'-GUDANG',
+                            'amount' => $warehouseAmount,
+                            'description' => 'Pembelian Gudang - '.$this->no_invoice.' dari '.$this->getSupplerName(),
+                        ]));
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to update TransactionHistory for Purchase: '.$e->getMessage());
+                }
+            } else {
+                $purchase = Purchase::create([
+                    'no_invoice' => $this->no_invoice,
+                    'tanggal_pembelian' => $this->tanggal_pembelian,
+                    'supplier_id' => $this->supplier_id,
+                    'store_id' => $this->store_id,
+                    'warehouse_id' => $this->warehouse_id,
+                    'status' => $this->status,
+                    'keterangan' => $this->keterangan,
+                ]);
+
+                // Create purchase items
+                foreach ($this->purchaseItems as $item) {
+                    $purchaseItem = $purchase->purchaseItems()->create($item);
+
+                    $destinationType = $item['destination_type'] ?? 'toko';
+
+                    // Create StockAdjustment dan StockBatch untuk Toko
+                    if (in_array($destinationType, ['toko', 'both']) && $this->store_id && ($item['qty'] ?? 0) > 0) {
+                        $store = Store::find($this->store_id);
+                        $batchedEntries = collect($item['batches'] ?? [])->filter(function ($b) {
+                            return isset($b['qty']) && (float) $b['qty'] > 0;
+                        })->values();
+                        $effectiveQty = $item['qty'] ?? 0;
+
+                        StockAdjustment::create([
+                            'product_id' => $item['product_id'],
+                            'store_id' => $this->store_id,
+                            'warehouse_id' => null,
+                            'adjustment_type' => 'add',
+                            'quantity' => $effectiveQty,
+                            'stok_awal' => 0,
+                            'stok_masuk' => $effectiveQty,
+                            'unit_id' => $item['unit_id'] ?? null,
+                            'reason' => 'Pembelian dari '.$this->getSupplerName(),
+                            'adjustment_date' => $this->tanggal_pembelian,
+                            'user_id' => Auth::id(),
+                        ]);
+
+                        // Create StockBatch untuk Toko
+                        if ($batchedEntries->isNotEmpty()) {
+                            foreach ($batchedEntries as $batchRow) {
+                                $batchName = $batchRow['name'] ?? '';
+                                $finalBatchName = $batchName !== ''
+                                    ? $batchName
+                                    : "Batch - {$this->no_invoice} - ".($store->nama_toko ?? 'Toko');
+
+                                app(StockBatchService::class)->addStock(
+                                    $item['product_id'],
+                                    'store',
+                                    $finalBatchName,
+                                    $batchRow['qty'],
+                                    $this->store_id,
+                                    'Pembelian dari '.$this->getSupplerName(),
+                                    \Carbon\Carbon::parse($this->tanggal_pembelian)
+                                );
+
+                                // Create StockCard per batch
+                                $this->createStockCardForPurchase(
+                                    $item['product_id'],
+                                    $batchRow['qty'],
+                                    ($store->nama_toko ?? 'Toko').' - Batch: '.$finalBatchName,
+                                    $purchase->id,
+                                    $this->no_invoice
+                                );
+                            }
+                        } else {
+                            $batchName = "Pembelian - {$this->no_invoice} - ".($store->nama_toko ?? 'Toko');
+                            app(StockBatchService::class)->addStock(
+                                $item['product_id'],
+                                'store',
+                                $batchName,
+                                $effectiveQty,
+                                $this->store_id,
+                                'Pembelian dari '.$this->getSupplerName(),
+                                \Carbon\Carbon::parse($this->tanggal_pembelian)
+                            );
+
+                            // Create StockCard untuk Toko
+                            $this->createStockCardForPurchase(
+                                $item['product_id'],
+                                $effectiveQty,
+                                $store->nama_toko ?? 'Toko',
+                                $purchase->id,
+                                $this->no_invoice
+                            );
+                        }
+                    }
+
+                    // Create StockAdjustment dan StockBatch untuk Gudang
+                    if (in_array($destinationType, ['gudang', 'both']) && $this->warehouse_id && ($item['qty_gudang'] ?? 0) > 0) {
+                        StockAdjustment::create([
+                            'product_id' => $item['product_id'],
+                            'store_id' => null,
+                            'warehouse_id' => $this->warehouse_id,
+                            'adjustment_type' => 'add',
+                            'quantity' => $item['qty_gudang'],
+                            'stok_awal' => 0,
+                            'stok_masuk' => $item['qty_gudang'],
+                            'unit_id' => $item['unit_id'] ?? null,
+                            'reason' => 'Pembelian dari '.$this->getSupplerName(),
+                            'adjustment_date' => $this->tanggal_pembelian,
+                            'user_id' => Auth::id(),
+                        ]);
+
+                        // Create StockBatch untuk Gudang
+                        $warehouse = \App\Models\Warehouse::find($this->warehouse_id);
+                        $batchName = "Pembelian - {$this->no_invoice} - ".($warehouse->nama_gudang ?? 'Gudang');
+                        app(StockBatchService::class)->addStock(
+                            $item['product_id'],
+                            'warehouse',
+                            $batchName,
+                            $item['qty_gudang'],
+                            $this->warehouse_id,
+                            'Pembelian dari '.$this->getSupplerName(),
+                            \Carbon\Carbon::parse($this->tanggal_pembelian)
+                        );
+
+                        // Create StockCard untuk Gudang
+                        $this->createStockCardForPurchase(
+                            $item['product_id'],
+                            $item['qty_gudang'],
+                            $warehouse->nama_gudang ?? 'Gudang',
+                            $purchase->id,
+                            $this->no_invoice
+                        );
+                    }
+                }
+                session()->flash('message', 'Pembelian dibuat.');
+
+                // Create transaction history entry
+                try {
+                    $storeAmount = collect($this->purchaseItems)->sum(function ($item) {
+                        $qtyToko = $item['qty'] ?? 0;
+                        $harga = $item['harga_beli'] ?? 0;
+
+                        return $qtyToko * $harga;
+                    });
+
+                    $warehouseAmount = collect($this->purchaseItems)->sum(function ($item) {
+                        $qtyGudang = $item['qty_gudang'] ?? 0;
+                        $harga = $item['harga_beli'] ?? 0;
+
+                        return $qtyGudang * $harga;
+                    });
+
+                    $baseData = [
+                        'transaction_type' => 'pembelian',
+                        'reference_type' => 'purchase',
+                        'reference_id' => $purchase->id,
+                        'transaction_date' => $this->tanggal_pembelian ? \Carbon\Carbon::parse($this->tanggal_pembelian) : now(),
+                        'currency' => 'IDR',
+                        'status' => 'completed',
+                        'user_id' => Auth::id(),
+                        'notes' => $purchase->keterangan,
+                    ];
+
+                    if ($storeAmount > 0) {
+                        \App\Models\TransactionHistory::create(array_merge($baseData, [
+                            'transaction_code' => $this->no_invoice.'-TOKO',
+                            'amount' => $storeAmount,
+                            'description' => 'Pembelian Toko - '.$this->no_invoice.' dari '.$this->getSupplerName(),
+                        ]));
+                    }
+
+                    if ($warehouseAmount > 0) {
+                        \App\Models\TransactionHistory::create(array_merge($baseData, [
+                            'transaction_code' => $this->no_invoice.'-GUDANG',
+                            'amount' => $warehouseAmount,
+                            'description' => 'Pembelian Gudang - '.$this->no_invoice.' dari '.$this->getSupplerName(),
+                        ]));
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to create TransactionHistory for Purchase: '.$e->getMessage());
+                }
+
+                // Create batch dari purchaseItems batch fields jika ada
+                foreach ($this->purchaseItems as $item) {
+                    $batchQty = $item['batch_qty'] ?? 0;
+                    $batchName = $item['batch_name'] ?? '';
+                    $batchLocation = $item['batch_location'] ?? 'toko';
+
+                    if ($batchQty > 0 && $item['product_id']) {
+                        $product = Product::find($item['product_id']);
+                        if ($product) {
+                            $locationId = ($batchLocation === 'toko') ? $this->store_id : $this->warehouse_id;
+                            $locationType = ($batchLocation === 'toko') ? 'store' : 'warehouse';
+                            $locationName = ($batchLocation === 'toko') ? ($store->nama_toko ?? 'Toko') : ($warehouse->nama_gudang ?? 'Gudang');
+
+                            // Auto-generate nama jika kosong
+                            $finalBatchName = $batchName ?: "Batch - {$this->no_invoice} - {$locationName}";
+
+                            if ($locationId) {
+                                app(StockBatchService::class)->addStock(
+                                    $product->id,
+                                    $locationType,
+                                    $finalBatchName,
+                                    $batchQty,
+                                    $locationId,
+                                    'Batch dari Pembelian - '.$this->no_invoice,
+                                    \Carbon\Carbon::parse($this->tanggal_pembelian)
+                                );
+                            }
+                        }
+                    }
+                }
+
+                // Legacy: Create batch dari input dinamis jika ada (untuk backward compatibility)
+                if ($this->showCreateBatchSection && ! empty($this->batchNameList)) {
+                    foreach ($this->batchNameList as $index => $batchName) {
+                        $batchQty = $this->batchQtyList[$index] ?? 0;
+                        $batchLocation = $this->batchLocationList[$index] ?? 'toko';
+
+                        if ($batchQty > 0) {
+                            // Ambil product pertama dari purchaseItems untuk batch creation
+                            if (! empty($this->purchaseItems)) {
+                                $product = Product::find($this->purchaseItems[0]['product_id'] ?? null);
+                                if ($product) {
+                                    $locationId = ($batchLocation === 'toko') ? $this->store_id : $this->warehouse_id;
+                                    $locationType = ($batchLocation === 'toko') ? 'store' : 'warehouse';
+                                    $locationName = ($batchLocation === 'toko') ? ($store->nama_toko ?? 'Toko') : ($warehouse->nama_gudang ?? 'Gudang');
+
+                                    // Auto-generate nama jika kosong
+                                    $finalBatchName = $batchName ?: "Batch - {$this->no_invoice} - {$locationName}";
+
+                                    if ($locationId) {
+                                        app(StockBatchService::class)->addStock(
+                                            $product->id,
+                                            $locationType,
+                                            $finalBatchName,
+                                            $batchQty,
+                                            $locationId,
+                                            'Batch dari Pembelian - '.$this->no_invoice,
+                                            \Carbon\Carbon::parse($this->tanggal_pembelian)
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+            $this->resetForm();
+            $this->showCreateForm = false;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Purchase save error: '.$e->getMessage());
+            session()->flash('error', 'Gagal menyimpan pembelian: '.$e->getMessage());
+        }
+    }
+
+    public function cancel()
+    {
+        $this->showCreateForm = false;
+        $this->resetForm();
+    }
+
+    public function delete($id)
+    {
+        try {
+            $purchase = Purchase::findOrFail($id);
+
+            // Delete related stock adjustments first
+            StockAdjustment::where('adjustment_type', 'add')
+                ->whereDate('adjustment_date', $purchase->tanggal_pembelian)
+                ->where('reason', 'like', '%Pembelian dari%')
+                ->delete();
+
+            // Delete purchase items
+            $purchase->purchaseItems()->delete();
+
+            // Delete purchase
+            $purchase->delete();
+
+            session()->flash('message', 'Pembelian dihapus.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal menghapus pembelian: '.$e->getMessage());
+            Log::error('Delete purchase error: '.$e->getMessage());
+        }
+    }
+
+    public function confirmDelete($id)
+    {
+        $this->delete($id);
+    }
+
+    public function updatedSupplierId($value)
+    {
+        if ($value) {
+            $this->generateInvoiceNumber($value);
+        }
+    }
+
+    public function updatedBatchEnabled($value)
+    {
+        if ($value) {
+            $this->syncAllBatchedQty();
+        }
+    }
+
+    protected function syncQtyFromBatches($itemIndex)
+    {
+        if (! isset($this->purchaseItems[$itemIndex])) {
+            return;
+        }
+
+        $batches = $this->purchaseItems[$itemIndex]['batches'] ?? [];
+        $sum = 0;
+        foreach ($batches as $batch) {
+            // Ensure qty is numeric before adding
+            $qty = isset($batch['qty']) ? (float) $batch['qty'] : 0;
+            $sum += $qty;
+        }
+
+        $this->purchaseItems[$itemIndex]['qty'] = (float) $sum;
+        $this->computeAllTotals();
+        $this->purchaseItems = array_merge([], $this->purchaseItems);
+    }
+
+    protected function syncAllBatchedQty()
+    {
+        if (! $this->batch_enabled || empty($this->purchaseItems)) {
+            return;
+        }
+
+        foreach ($this->purchaseItems as $idx => $item) {
+            $this->syncQtyFromBatches($idx);
+        }
+    }
+
+    public function addItem()
+    {
+        $this->purchaseItems[] = [
+            'category_id' => null,
+            'subcategory_id' => null,
+            'product_id' => null,
+            'product_search' => '', // For searchable product input
+            'qty' => 0,
+            'qty_gudang' => 0,
+            'destination_type' => 'toko', // gudang, toko, atau both
+            'unit_id' => null,
+            'harga_beli' => 0,
+            'total' => 0,
+            'use_batch' => false, // Toggle for batch fields
+            'batch_name' => '', // For batch/tumpukan name
+            'batch_qty' => 0, // For batch quantity
+            'batch_location' => 'toko', // For batch location (toko/gudang)
+            'batches' => [
+                ['name' => '', 'qty' => 0],
+            ],
+        ];
+        // ensure totals are recalculated after adding an item
+        $this->computeAllTotals();
+        $this->purchaseItems = array_merge([], $this->purchaseItems); // Force reactivity
+    }
+
+    public function addBatchRow($itemIndex)
+    {
+        if (! isset($this->purchaseItems[$itemIndex]['batches'])) {
+            $this->purchaseItems[$itemIndex]['batches'] = [];
+        }
+
+        $this->purchaseItems[$itemIndex]['batches'][] = ['name' => '', 'qty' => 0];
+        $this->syncQtyFromBatches($itemIndex);
+    }
+
+    public function removeBatchRow($itemIndex, $batchIndex)
+    {
+        if (! isset($this->purchaseItems[$itemIndex]['batches'][$batchIndex])) {
+            return;
+        }
+        $batches = $this->purchaseItems[$itemIndex]['batches'] ?? [];
+        // Jangan hapus jika hanya tersisa 1 batch — reset ke satu baris kosong
+        if (count($batches) <= 1) {
+            $this->purchaseItems[$itemIndex]['batches'] = [
+                ['name' => '', 'qty' => 0],
+            ];
+            $this->syncQtyFromBatches($itemIndex);
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+
+            return;
+        }
+
+        unset($this->purchaseItems[$itemIndex]['batches'][$batchIndex]);
+        $this->purchaseItems[$itemIndex]['batches'] = array_values($this->purchaseItems[$itemIndex]['batches']);
+        $this->syncQtyFromBatches($itemIndex);
+    }
+
+    public function updateBatchField($itemIndex, $batchIndex, $field, $value)
+    {
+        if (! isset($this->purchaseItems[$itemIndex]['batches'][$batchIndex])) {
+            return;
+        }
+
+        // Convert value to appropriate type
+        if ($field === 'qty') {
+            $value = is_numeric($value) ? (float) $value : 0;
+        }
+
+        $this->purchaseItems[$itemIndex]['batches'][$batchIndex][$field] = $value;
+        $this->syncQtyFromBatches($itemIndex);
+    }
+
+    public function updateField($field, $value, $index)
+    {
+        $this->purchaseItems[$index][$field] = $value;
+        $this->computeAllTotals();
+        $this->purchaseItems = array_merge([], $this->purchaseItems);
+        $this->dispatch('console-log', ['purchaseItems' => $this->purchaseItems]);
+    }
+
+    public function updatedPurchaseItems($value, $name)
+    {
+        $this->dispatch('console-log', ['message' => 'updatedPurchaseItems called for '.$name.' with value '.json_encode($value)]);
+        $parts = explode('.', $name);
+        if (count($parts) === 3 && $parts[2] === 'product_id') {
+            $index = $parts[1];
+            $productId = $value;
+            if ($productId) {
+                $product = Product::find($productId);
+                if ($product) {
+                    $this->purchaseItems[$index]['category_id'] = $product->category_id;
+                    $this->purchaseItems[$index]['subcategory_id'] = $product->subcategory_id;
+                    $this->purchaseItems[$index]['unit_id'] = $product->unit_id;
+                }
+            }
+            // Recalculate totals after setting unit_id
+            $this->computeAllTotals();
+            $this->purchaseItems = array_merge([], $this->purchaseItems); // Force reactivity
+        }
+
+        // Handle product_search input (searchable product selection)
+        if (count($parts) === 3 && $parts[2] === 'product_search') {
+            $index = $parts[1];
+            $searchValue = $value;
+            if ($searchValue) {
+                // Search product by name
+                $product = Product::where('nama_produk', $searchValue)->first();
+                if ($product) {
+                    $this->purchaseItems[$index]['product_id'] = $product->id;
+                    $this->purchaseItems[$index]['category_id'] = $product->category_id;
+                    $this->purchaseItems[$index]['subcategory_id'] = $product->subcategory_id;
+                    $this->purchaseItems[$index]['unit_id'] = $product->unit_id;
+                    // Recalculate totals
+                    $this->computeAllTotals();
+                    $this->purchaseItems = array_merge([], $this->purchaseItems);
+                }
+            }
+        }
+
+        // Recalculate item total when qty, unit_id or harga_beli changes
+        if (count($parts) === 3 && in_array($parts[2], ['qty', 'unit_id', 'harga_beli'])) {
+            $index = $parts[1];
+            if (! isset($this->purchaseItems[$index])) {
+                return;
+            }
+            $item = $this->purchaseItems[$index];
+            // normalize values to numeric to avoid string arithmetic issues
+            $qty = isset($item['qty']) && $item['qty'] !== null ? (float) $item['qty'] : 0;
+            $harga = isset($item['harga_beli']) && $item['harga_beli'] !== null ? (float) $item['harga_beli'] : 0;
+            $conv = 1;
+            if (! empty($item['unit_id'])) {
+                $unit = Unit::find($item['unit_id']);
+                $conv = $unit ? (float) ($unit->conversion_value ?: 1) : 1;
+            }
+            // ensure total is stored as numeric (float)
+            $this->purchaseItems[$index]['total'] = (float) (($qty * $conv) * $harga);
+
+            // recompute all totals to ensure consistency and force Livewire to sync the updated values
+            $this->computeAllTotals();
+            $this->purchaseItems = array_merge([], $this->purchaseItems); // Force reactivity
+        }
+    }
+
+    public function getTotalProperty()
+    {
+        // get unit conversion values for units used in items
+        $unitIds = collect($this->purchaseItems)->pluck('unit_id')->filter()->unique()->values()->all();
+        $conversionMap = [];
+        if (! empty($unitIds)) {
+            $conversionMap = Unit::whereIn('id', $unitIds)->pluck('conversion_value', 'id')->toArray();
+        }
+
+        return collect($this->purchaseItems)->sum(function ($item) use ($conversionMap) {
+            $qty = isset($item['qty']) && $item['qty'] !== null ? (float) $item['qty'] : 0;
+            $qty_gudang = isset($item['qty_gudang']) && $item['qty_gudang'] !== null ? (float) $item['qty_gudang'] : 0;
+            // Use qty if filled, otherwise use qty_gudang
+            $use_qty = ($qty > 0) ? $qty : $qty_gudang;
+            $harga = isset($item['harga_beli']) && $item['harga_beli'] !== null ? (float) $item['harga_beli'] : 0;
+            $conv = 1;
+            if (! empty($item['unit_id']) && isset($conversionMap[$item['unit_id']])) {
+                $conv = (float) ($conversionMap[$item['unit_id']] ?: 1);
+            }
+
+            return ($use_qty * $conv) * $harga;
+        });
+    }
+
+    /**
+     * Recompute totals for all purchase items using unit conversion values.
+     * This ensures the server-side array contains up-to-date numeric totals
+     * which Livewire will sync back to the client.
+     */
+    protected function computeAllTotals()
+    {
+        if (empty($this->purchaseItems)) {
+            return;
+        }
+
+        $unitIds = collect($this->purchaseItems)->pluck('unit_id')->filter()->unique()->values()->all();
+        $conversionMap = [];
+        if (! empty($unitIds)) {
+            $conversionMap = Unit::whereIn('id', $unitIds)->pluck('conversion_value', 'id')->toArray();
+        }
+
+        foreach ($this->purchaseItems as $i => $item) {
+            $qty = isset($item['qty']) && $item['qty'] !== null ? (float) $item['qty'] : 0;
+            $harga = isset($item['harga_beli']) && $item['harga_beli'] !== null ? (float) $item['harga_beli'] : 0;
+            $conv = 1;
+            if (! empty($item['unit_id']) && isset($conversionMap[$item['unit_id']])) {
+                $conv = (float) ($conversionMap[$item['unit_id']] ?: 1);
+            }
+            $this->purchaseItems[$i]['total'] = (float) (($qty * $conv) * $harga);
+        }
+    }
+
+    public function resetForm()
+    {
+        $this->no_invoice = null;
+        $this->tanggal_pembelian = null;
+        $this->supplier_id = null;
+        $this->store_id = null;
+        $this->warehouse_id = null;
+        $this->status = 'pending';
+        $this->keterangan = null;
+        $this->editingPurchaseId = null;
+        $this->showCreateForm = false;
+        $this->showModal = false;
+        $this->selectedPurchase = null;
+        $this->purchaseItems = [];
+
+        // Reset batch input
+        $this->showCreateBatchSection = false;
+        $this->batchNameList = [];
+        $this->batchQtyList = [];
+        $this->batchLocationList = [];
+    }
+
+    private function getSupplerName()
+    {
+        if ($this->supplier_id) {
+            // Cache supplier lookup to avoid repeated queries
+            static $supplierCache = [];
+
+            if (! isset($supplierCache[$this->supplier_id])) {
+                $supplier = Supplier::find($this->supplier_id);
+                $supplierCache[$this->supplier_id] = $supplier ? $supplier->nama_supplier : 'Unknown';
+            }
+
+            return $supplierCache[$this->supplier_id];
+        }
+
+        return 'Unknown';
+    }
+
+    private function createStockCardForPurchase($productId, $qty, $toLocation = '', $purchaseId = null, $invoiceNo = null)
+    {
+        /**
+         * Buat StockCard untuk audit trail pembelian
+         * StockCard mencatat setiap pergerakan stok dengan detail lengkap
+         */
+        try {
+            $stockCardService = app(StockCardService::class);
+
+            $stockCardService->createStockCard([
+                'product_id' => $productId,
+                'batch_id' => null,
+                'type' => 'in', // Tipe = masuk (pembelian)
+                'qty' => $qty,
+                'from_location' => $this->getSupplerName(), // Dari: Supplier
+                'to_location' => $toLocation, // Ke: Toko/Gudang
+                'reference_type' => 'purchase', // Referensi dari Pembelian
+                'reference_id' => $purchaseId, // ID Pembelian
+                'note' => "Pembelian - Invoice: {$invoiceNo}",
+            ]);
+        } catch (\Exception $e) {
+            // Log error tapi jangan hentikan proses pembelian
+            Log::warning("Failed to create StockCard for Purchase {$invoiceNo}: ".$e->getMessage());
+        }
+    }
+
+    public function updateCategoryFilter($index)
+    {
+        // Clear subcategory and product when category changes
+        if (! isset($this->purchaseItems[$index])) {
+            return;
+        }
+
+        $val = $this->purchaseItems[$index]['category_id'] ?? null;
+        // If the special magic value was set (from the CTA option), open the modal
+        if ($val === '__add_category__') {
+            $this->openCategoryModal($index);
+
+            return;
+        }
+
+        $this->purchaseItems[$index]['subcategory_id'] = null;
+        $this->purchaseItems[$index]['product_id'] = null;
+    }
+
+    /**
+     * Handle combined location selection from UI.
+     * Expected format: "store:{id}" or "warehouse:{id}" or empty string.
+     */
+    public function selectLocation($value)
+    {
+        if (empty($value)) {
+            $this->store_id = null;
+            $this->warehouse_id = null;
+
+            return;
+        }
+
+        if (str_starts_with($value, 'store:')) {
+            $id = (int) substr($value, strlen('store:'));
+            $this->store_id = $id ?: null;
+            $this->warehouse_id = null;
+
+            return;
+        }
+
+        if (str_starts_with($value, 'warehouse:')) {
+            $id = (int) substr($value, strlen('warehouse:'));
+            $this->warehouse_id = $id ?: null;
+            $this->store_id = null;
+
+            return;
+        }
+
+        // Fallback: clear both
+        $this->store_id = null;
+        $this->warehouse_id = null;
+    }
+
+    // Open/close modal helpers
+    public function openCategoryModal($row = null)
+    {
+        $this->category_modal_row = is_numeric($row) ? (int) $row : null;
+        $this->new_category_name = '';
+        $this->showCategoryModal = true;
+    }
+
+    public function closeCategoryModal()
+    {
+        $this->showCategoryModal = false;
+        $this->new_category_name = '';
+        $this->category_modal_row = null;
+    }
+
+    public function saveCategoryModal()
+    {
+        $name = trim($this->new_category_name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama kategori tidak boleh kosong.');
+
+            return;
+        }
+        $this->addCategory($name, $this->category_modal_row);
+        $this->closeCategoryModal();
+    }
+
+    public function updateSubcategoryFilter($index)
+    {
+        // Clear product when subcategory changes
+        if (! isset($this->purchaseItems[$index])) {
+            return;
+        }
+
+        $val = $this->purchaseItems[$index]['subcategory_id'] ?? null;
+        if ($val === '__add_subcategory__') {
+            $this->openSubcategoryModal($index);
+
+            return;
+        }
+
+        $this->purchaseItems[$index]['product_id'] = null;
+    }
+
+    /**
+     * Create a new category from the purchases UI and assign it to the row.
+     */
+    public function addCategory($name, $index = null)
+    {
+        $name = trim($name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama kategori tidak boleh kosong.');
+
+            return;
+        }
+
+        $category = Category::create([
+            'kode_kategori' => 'CAT-'.Str::upper(Str::random(6)),
+            'nama_kategori' => $name,
+            'description' => null,
+        ]);
+
+        // assign to the item row if index provided
+        if (is_numeric($index) && isset($this->purchaseItems[$index])) {
+            $this->purchaseItems[$index]['category_id'] = $category->id;
+            $this->purchaseItems[$index]['subcategory_id'] = null;
+            $this->purchaseItems[$index]['product_id'] = null;
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+        }
+
+        session()->flash('message', 'Kategori "'.$category->nama_kategori.'" berhasil dibuat.');
+    }
+
+    /**
+     * Create a new subcategory under the selected category for the given row.
+     */
+    public function addSubcategory($name, $index = null)
+    {
+        $name = trim($name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama subkategori tidak boleh kosong.');
+
+            return;
+        }
+
+        if (! is_numeric($index) || ! isset($this->purchaseItems[$index])) {
+            session()->flash('error', 'Baris item tidak valid.');
+
+            return;
+        }
+
+        $categoryId = $this->purchaseItems[$index]['category_id'] ?? null;
+        if (empty($categoryId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+
+            return;
+        }
+
+        $sub = Subcategory::create([
+            'kode_subkategori' => 'SUB-'.Str::upper(Str::random(6)),
+            'nama_subkategori' => $name,
+            'description' => null,
+            'category_id' => $categoryId,
+        ]);
+
+        $this->purchaseItems[$index]['subcategory_id'] = $sub->id;
+        $this->purchaseItems[$index]['product_id'] = null;
+        $this->purchaseItems = array_merge([], $this->purchaseItems);
+
+        session()->flash('message', 'Subkategori "'.$sub->nama_subkategori.'" berhasil dibuat.');
+    }
+
+    public function openSubcategoryModal($row = null)
+    {
+        $this->subcategory_modal_row = is_numeric($row) ? (int) $row : null;
+        // try to prefill category id from row if available
+        if (is_numeric($row) && isset($this->purchaseItems[$row]) && ! empty($this->purchaseItems[$row]['category_id'])) {
+            $this->subcategory_modal_category_id = $this->purchaseItems[$row]['category_id'];
+        } else {
+            $this->subcategory_modal_category_id = null;
+        }
+        $this->new_subcategory_name = '';
+        $this->showSubcategoryModal = true;
+    }
+
+    public function closeSubcategoryModal()
+    {
+        $this->showSubcategoryModal = false;
+        $this->new_subcategory_name = '';
+        $this->subcategory_modal_row = null;
+        $this->subcategory_modal_category_id = null;
+    }
+
+    public function saveSubcategoryModal()
+    {
+        $name = trim($this->new_subcategory_name ?? '');
+        $catId = $this->subcategory_modal_category_id ?? null;
+        if ($name === '') {
+            session()->flash('error', 'Nama subkategori tidak boleh kosong.');
+
+            return;
+        }
+        if (empty($catId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+
+            return;
+        }
+
+        // create and assign
+        $sub = Subcategory::create([
+            'kode_subkategori' => 'SUB-'.Str::upper(Str::random(6)),
+            'nama_subkategori' => $name,
+            'description' => null,
+            'category_id' => $catId,
+        ]);
+
+        if (is_numeric($this->subcategory_modal_row) && isset($this->purchaseItems[$this->subcategory_modal_row])) {
+            $this->purchaseItems[$this->subcategory_modal_row]['subcategory_id'] = $sub->id;
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+        }
+
+        session()->flash('message', 'Subkategori "'.$sub->nama_subkategori.'" berhasil dibuat.');
+        $this->closeSubcategoryModal();
+    }
+
+    /**
+     * Create a new product under the selected category/subcategory for the given row.
+     */
+    public function addProduct($name, $index = null)
+    {
+        $name = trim($name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama produk tidak boleh kosong.');
+
+            return;
+        }
+
+        if (! is_numeric($index) || ! isset($this->purchaseItems[$index])) {
+            session()->flash('error', 'Baris item tidak valid.');
+
+            return;
+        }
+
+        $categoryId = $this->purchaseItems[$index]['category_id'] ?? null;
+        if (empty($categoryId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+
+            return;
+        }
+
+        $subcategoryId = $this->purchaseItems[$index]['subcategory_id'] ?? null;
+
+        $product = Product::create([
+            'kode_produk' => 'PRD-'.Str::upper(Str::random(6)),
+            'nama_produk' => $name,
+            'description' => null,
+            'satuan' => null,
+            'supplier_id' => null,
+            'category_id' => $categoryId,
+            'subcategory_id' => $subcategoryId,
+        ]);
+
+        $this->purchaseItems[$index]['product_id'] = $product->id;
+        $this->purchaseItems[$index]['product_search'] = $product->nama_produk;
+        $this->purchaseItems = array_merge([], $this->purchaseItems);
+
+        session()->flash('message', 'Produk "'.$product->nama_produk.'" berhasil dibuat.');
+    }
+
+    public function openProductModal($row = null)
+    {
+        $this->product_modal_row = is_numeric($row) ? (int) $row : null;
+        if (is_numeric($row) && isset($this->purchaseItems[$row])) {
+            $this->product_modal_category_id = $this->purchaseItems[$row]['category_id'] ?? null;
+            $this->product_modal_subcategory_id = $this->purchaseItems[$row]['subcategory_id'] ?? null;
+        } else {
+            $this->product_modal_category_id = null;
+            $this->product_modal_subcategory_id = null;
+        }
+        $this->new_product_name = '';
+        $this->showProductModal = true;
+    }
+
+    public function closeProductModal()
+    {
+        $this->showProductModal = false;
+        $this->new_product_name = '';
+        $this->product_modal_row = null;
+        $this->product_modal_category_id = null;
+        $this->product_modal_subcategory_id = null;
+    }
+
+    public function saveProductModal()
+    {
+        $name = trim($this->new_product_name ?? '');
+        if ($name === '') {
+            session()->flash('error', 'Nama produk tidak boleh kosong.');
+
+            return;
+        }
+        $categoryId = $this->product_modal_category_id ?? null;
+        if (empty($categoryId)) {
+            session()->flash('error', 'Pilih kategori terlebih dahulu.');
+
+            return;
+        }
+
+        $product = Product::create([
+            'kode_produk' => 'PRD-'.Str::upper(Str::random(6)),
+            'nama_produk' => $name,
+            'description' => null,
+            'satuan' => Unit::where('is_base_unit', true)->first()->nama_unit ?? Unit::first()->nama_unit ?? 'pcs',
+            'supplier_id' => null,
+            'category_id' => $categoryId,
+            'subcategory_id' => $this->product_modal_subcategory_id,
+        ]);
+
+        if (is_numeric($this->product_modal_row) && isset($this->purchaseItems[$this->product_modal_row])) {
+            $this->purchaseItems[$this->product_modal_row]['product_id'] = $product->id;
+            $this->purchaseItems[$this->product_modal_row]['product_search'] = $product->nama_produk;
+            $this->purchaseItems = array_merge([], $this->purchaseItems);
+        }
+
+        session()->flash('message', 'Produk "'.$product->nama_produk.'" berhasil dibuat.');
+        $this->closeProductModal();
+    }
+
+    public function updateTotal($index)
+    {
+        // Calculate total for this item based on qty toko or qty gudang (not both)
+        if (isset($this->purchaseItems[$index])) {
+            $qty = $this->purchaseItems[$index]['qty'] ?? 0;
+            $qty_gudang = $this->purchaseItems[$index]['qty_gudang'] ?? 0;
+            $harga = $this->purchaseItems[$index]['harga_beli'] ?? 0;
+            $unit_id = $this->purchaseItems[$index]['unit_id'] ?? null;
+
+            // Use qty if filled, otherwise use qty_gudang
+            $use_qty = ($qty > 0) ? $qty : $qty_gudang;
+
+            // Get unit conversion value
+            $conv = 1;
+            if ($unit_id) {
+                $unit = Unit::find($unit_id);
+                $conv = $unit ? (float) ($unit->conversion_value ?: 1) : 1;
+            }
+
+            $this->purchaseItems[$index]['total'] = ($use_qty * $conv) * $harga;
+        }
+    }
+
+    public function removeItem($index)
+    {
+        unset($this->purchaseItems[$index]);
+        $this->purchaseItems = array_values($this->purchaseItems);
+    }
+
+    public function updateProductFromSearch($index)
+    {
+        if (! isset($this->purchaseItems[$index])) {
+            return;
+        }
+
+        $searchValue = $this->purchaseItems[$index]['product_search'] ?? '';
+
+        if ($searchValue) {
+            // Search product by name
+            $product = Product::where('nama_produk', $searchValue)->first();
+            if ($product) {
+                $this->purchaseItems[$index]['product_id'] = $product->id;
+                $this->purchaseItems[$index]['category_id'] = $product->category_id;
+                $this->purchaseItems[$index]['subcategory_id'] = $product->subcategory_id;
+                $this->purchaseItems[$index]['unit_id'] = $product->unit_id;
+                $this->computeAllTotals();
+                $this->purchaseItems = array_merge([], $this->purchaseItems);
+            }
+        }
+    }
+
+    // Supplier modal methods
+    public function openSupplierModal()
+    {
+        $this->showSupplierModal = true;
+        $this->kode_supplier = null;
+        $this->nama_supplier = null;
+        $this->telepon = null;
+        $this->email = null;
+        $this->alamat = null;
+        $this->supplier_keterangan = null;
+    }
+
+    public function closeSupplierModal()
+    {
+        $this->showSupplierModal = false;
+        $this->kode_supplier = null;
+        $this->nama_supplier = null;
+        $this->telepon = null;
+        $this->email = null;
+        $this->alamat = null;
+        $this->supplier_keterangan = null;
+    }
+
+    public function saveSupplier()
+    {
+        $this->validate([
+            'kode_supplier' => 'required|string|max:50|unique:suppliers,kode_supplier',
+            'nama_supplier' => 'required|string|max:255',
+        ]);
+
+        try {
+            $supplier = Supplier::create([
+                'kode_supplier' => $this->kode_supplier,
+                'nama_supplier' => $this->nama_supplier,
+                'telepon' => $this->telepon ?? null,
+                'email' => $this->email ?? null,
+                'alamat' => $this->alamat ?? null,
+                'keterangan' => $this->supplier_keterangan ?? null,
+            ]);
+
+            // Refresh suppliers list and select the newly created supplier
+            $this->suppliers = Supplier::orderBy('nama_supplier')->get();
+            $this->supplier_id = $supplier->id;
+            $this->closeSupplierModal();
+            session()->flash('message', 'Supplier berhasil disimpan.');
+        } catch (\Exception $e) {
+            \Log::error('Failed to save supplier: '.$e->getMessage());
+            session()->flash('error', 'Gagal menyimpan supplier: '.$e->getMessage());
+        }
+    }
+
+    public function getSubcategoriesByCategory($categoryId)
+    {
+        if (! $categoryId) {
+            return [];
+        }
+
+        return Subcategory::where('category_id', (int) $categoryId)
+            ->orderBy('nama_subkategori')
+            ->get();
+    }
+
+    public function render()
+    {
+        $query = Purchase::with([
+            'supplier',
+            'purchaseItems.product.category',
+            'purchaseItems.product.subcategory',
+            'purchaseItems.unit',
+        ]);
+
+        // DataTables will handle searching and pagination, so we get all data
+        $purchases = $query->orderBy('tanggal_pembelian', 'desc')->get();
+
+        // Only load form data if form is shown
+        if ($this->showCreateForm) {
+            $categories = Category::orderBy('nama_kategori')->get();
+            $subcategories = Subcategory::orderBy('nama_subkategori')->get();
+            $products = Product::orderBy('nama_produk')->get();
+            $units = Unit::orderBy('nama_unit')->get();
+            $stores = Store::orderBy('nama_toko')->get();
+            $warehouses = \App\Models\Warehouse::orderBy('nama_gudang')->get();
+
+            // Ensure suppliers are computed on render so UI reflects current ownerFilter reliably
+            $query = Supplier::orderBy('nama_supplier');
+            if (! empty($this->ownerFilter)) {
+                if (str_contains($this->ownerFilter, ',')) {
+                    $owners = array_map('trim', explode(',', $this->ownerFilter));
+                    $query->where(function ($q2) use ($owners) {
+                        foreach ($owners as $o) {
+                            if ($o !== '') {
+                                $q2->orWhere('owner', 'like', '%'.$o.'%');
+                            }
+                        }
+                    });
+                } else {
+                    $query->where('owner', 'like', '%'.$this->ownerFilter.'%');
+                }
+            }
+            $this->suppliers = $query->get();
+            $this->ownerTokens = ! empty($this->ownerFilter) ? (str_contains($this->ownerFilter, ',') ? array_map('trim', explode(',', $this->ownerFilter)) : [$this->ownerFilter]) : [];
+            // Auto-select if single result and none selected
+            if (empty($this->supplier_id) && $this->suppliers->count() === 1) {
+                $this->supplier_id = $this->suppliers->first()->id;
+                // generate invoice number immediately when supplier auto-selected
+                $this->generateInvoiceNumber($this->supplier_id);
+                // generate invoice number immediately when supplier auto-selected
+                $this->generateInvoiceNumber($this->supplier_id);
+            }
+        } else {
+            $categories = [];
+            $subcategories = [];
+            $products = [];
+            $units = [];
+            $stores = [];
+            $warehouses = [];
+        }
+
+        return view('livewire.admin.purchases', [
+            'purchases' => $purchases,
+            'owners' => Supplier::select('owner')->whereNotNull('owner')->where('owner', '<>', '')->distinct()->orderBy('owner')->pluck('owner'),
+            'categories' => $categories,
+            'subcategories' => $subcategories,
+            'products' => $products,
+            'units' => $units,
+            'stores' => $stores,
+            'warehouses' => $warehouses,
+        ]);
+    }
+
+    // Batch input methods
+    public function addBatchInput()
+    {
+        $this->batchNameList[] = '';
+        $this->batchQtyList[] = 0;
+        $this->batchLocationList[] = 'toko'; // default to toko
+    }
+
+    public function removeBatchInput($index)
+    {
+        unset($this->batchNameList[$index]);
+        unset($this->batchQtyList[$index]);
+        unset($this->batchLocationList[$index]);
+
+        // Re-index arrays
+        $this->batchNameList = array_values($this->batchNameList);
+        $this->batchQtyList = array_values($this->batchQtyList);
+        $this->batchLocationList = array_values($this->batchLocationList);
+    }
+}

@@ -48,7 +48,13 @@ class Customers extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
+        // If the page is loaded with ?create=1, show the create form automatically
+        if (request()->query('create')) {
+            $this->resetForm();
+            $this->showForm = true;
+        }
     }
 
     public function updatingSearch()
@@ -95,7 +101,7 @@ class Customers extends Component
             'telepon' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'keterangan' => 'nullable|string',
-            'kode_pelanggan' => 'required|string|max:50|unique:customers,kode_pelanggan'.($this->editingCustomerId ? (','.$this->editingCustomerId) : ''),
+            'kode_pelanggan' => 'required|string|max:50|unique:customers,kode_pelanggan' . ($this->editingCustomerId ? (',' . $this->editingCustomerId) : ''),
         ];
 
         $this->validate($rules);
@@ -147,9 +153,9 @@ class Customers extends Component
 
     public function render()
     {
-        $customers = Customer::where('nama_pelanggan', 'like', '%'.$this->search.'%')
-            ->orWhere('kode_pelanggan', 'like', '%'.$this->search.'%')
-            ->orWhere('email', 'like', '%'.$this->search.'%')
+        $customers = Customer::where('nama_pelanggan', 'like', '%' . $this->search . '%')
+            ->orWhere('kode_pelanggan', 'like', '%' . $this->search . '%')
+            ->orWhere('email', 'like', '%' . $this->search . '%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

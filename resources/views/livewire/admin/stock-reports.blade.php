@@ -1,6 +1,27 @@
 <div>
   {{-- CSS Inlined - eliminasi 404 errors di production --}}
   <style>
+    /* Override card-warning default yellow background for this page's adjustment card */
+    .card.card-warning {
+      background-color: transparent !important;
+      /* keep outline/border but remove strong yellow fill */
+    }
+
+    .card.card-warning .card-body,
+    .card.card-warning .card-footer,
+    .card.card-warning .stock-table tbody tr,
+    .card.card-warning .stock-table tbody td {
+      background-color: #ffffff !important;
+      color: inherit !important;
+    }
+
+    /* Replace the default bg-warning header with a softer gradient */
+    .card.card-warning .card-header.bg-warning {
+      background: linear-gradient(135deg, #dceefc 0%, #b8eaf6 100%) !important;
+      color: #063a5b !important;
+      border-bottom: 1px solid #9fd9f2 !important;
+    }
+
     /* Table Styling */
     .stock-table thead th {
       position: sticky;
@@ -331,14 +352,15 @@
         color: white !important;
       }
 
-      /* Header styling untuk desktop */
+      /* Header styling untuk desktop (custom color for adjustment history) */
       .card-warning .stock-table thead th {
         padding: 0.6rem 0.5rem !important;
         font-size: 0.9rem !important;
         font-weight: 700 !important;
-        background-color: #ffc107 !important;
-        color: #333 !important;
-        border-bottom: 2px solid #e6b800 !important;
+        /* soft teal header to distinguish adjustment history */
+        background: linear-gradient(135deg, #dceefc 0%, #b8eaf6 100%) !important;
+        color: #063a5b !important;
+        border-bottom: 2px solid #9fd9f2 !important;
       }
 
       .card-warning .stock-table tbody td {
@@ -511,9 +533,9 @@
         line-height: 1.3 !important;
         text-align: center !important;
         white-space: normal !important;
-        background-color: #ffc107 !important;
-        color: #333 !important;
-        border: 1px solid #e6b800 !important;
+        background: linear-gradient(135deg, #dceefc 0%, #b8eaf6 100%) !important;
+        color: #063a5b !important;
+        border: 1px solid #9fd9f2 !important;
       }
 
       /* Produk & Alasan - left align */
@@ -628,6 +650,67 @@
         width: 80px !important;
         padding: 0.375rem 0.25rem !important;
       }
+    }
+
+    /* Fix card header layout */
+    .card-header.p-0 .d-flex {
+      width: 100%;
+    }
+
+    .card-header.p-0 .card-title {
+      flex: 1;
+      margin: 0;
+    }
+
+    .card-header.p-0 .card-tools {
+      flex-shrink: 0;
+    }
+
+    /* Fix modal z-index */
+    .modal {
+      z-index: 1050;
+    }
+
+    .modal-backdrop {
+      z-index: 1040;
+    }
+
+    /* Responsive improvements */
+    @media (max-width: 768px) {
+      .card-tools {
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+      }
+
+      .card-tools .btn {
+        white-space: nowrap;
+        font-size: 0.85rem;
+      }
+
+      .card-tools .input-group {
+        min-width: 200px !important;
+        flex: 1 1 auto !important;
+      }
+
+      .stock-table {
+        font-size: 0.85rem;
+      }
+
+      .stock-table thead th,
+      .stock-table tbody td {
+        padding: 0.5rem 0.25rem;
+      }
+    }
+
+    /* Better table scrolling */
+    .table-scroll-wrapper {
+      position: relative;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .stock-table {
+      min-width: 100%;
     }
   </style>
 
@@ -964,15 +1047,15 @@
       <div class="card card-outline card-primary elevation-2">
         <div class="card-header p-0">
           <div class="d-flex justify-content-between align-items-center p-2">
-            <h3 class="card-title mb-0">
+            <h3 class="card-title mb-0 flex-grow-1">
               <i class="fas fa-chart-bar mr-2"></i>
               Laporan Stok Produk
             </h3>
-            <div class="card-tools d-flex align-items-center">
+            <div class="card-tools d-flex align-items-center flex-shrink-0 flex-wrap gap-2">
               <select
                 wire:model.live="perPage"
                 class="form-control form-control-sm"
-                style="width: 120px; margin-right: 10px"
+                style="width: 120px"
               >
                 <option value="10">10 baris</option>
                 <option value="15">15 baris</option>
@@ -983,7 +1066,7 @@
               <button
                 type="button"
                 wire:click="exportExcel"
-                class="btn btn-xs btn-success mr-2"
+                class="btn btn-xs btn-success"
                 title="Export ke Excel"
               >
                 <i class="fas fa-file-excel mr-1"></i>
@@ -992,12 +1075,12 @@
               <button
                 type="button"
                 wire:click="createAdjustment"
-                class="btn btn-xs btn-success mr-2"
+                class="btn btn-xs btn-success"
               >
                 <i class="fas fa-plus mr-1"></i>
                 <strong>Penyesuaian Stok</strong>
               </button>
-              <div class="input-group input-group-sm" style="width: 250px">
+              <div class="input-group input-group-sm" style="width: 250px; min-width: 200px">
                 <input
                   wire:model.live.debounce.300ms="search"
                   type="text"
@@ -1367,11 +1450,12 @@
       <!-- Riwayat Penyesuaian Stok -->
       <div class="card card-warning card-outline elevation-2 mt-4">
         <div class="card-header bg-warning">
-          <h3 class="card-title">
-            <i class="fas fa-history mr-2"></i>
-            Riwayat Penyesuaian Stok
-          </h3>
-          <div class="card-tools d-flex align-items-center">
+          <div class="d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0 flex-grow-1">
+              <i class="fas fa-history mr-2"></i>
+              Riwayat Penyesuaian Stok
+            </h3>
+            <div class="card-tools d-flex align-items-center flex-shrink-0 flex-wrap gap-2">
             <div class="adjustment-filters d-flex gap-2 align-items-center flex-wrap">
               <div class="input-group input-group-sm" style="width: auto; min-width: 250px">
                 <input

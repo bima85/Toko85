@@ -42,7 +42,8 @@ class Users extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -74,7 +75,7 @@ class Users extends Component
         // dynamic validation rules (email unique, password required on create)
         $rules = [
             'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255'.($this->editingUserId ? (',users,email,'.$this->editingUserId) : ''),
+            'email' => 'required|email|max:255' . ($this->editingUserId ? (',users,email,' . $this->editingUserId) : ''),
             'password' => $this->editingUserId ? 'nullable|string|min:6' : 'required|string|min:6',
             'roles' => 'array',
         ];
@@ -103,14 +104,14 @@ class Users extends Component
                 $username = $this->username;
                 $i = 1;
                 while (User::where('username', $username)->exists()) {
-                    $username = $this->username.$i;
+                    $username = $this->username . $i;
                     $i++;
                 }
             } else {
                 $username = $base;
                 $i = 1;
                 while (User::where('username', $username)->exists()) {
-                    $username = $base.$i;
+                    $username = $base . $i;
                     $i++;
                 }
             }
@@ -159,8 +160,8 @@ class Users extends Component
         $query = User::query();
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('name', 'like', '%'.$this->search.'%')
-                    ->orWhere('email', 'like', '%'.$this->search.'%');
+                $q->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('email', 'like', '%' . $this->search . '%');
             });
         }
 

@@ -36,6 +36,9 @@
       href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css"
     />
     <link rel="stylesheet" href="/css/adminlte.min.css" />
+    <link rel="stylesheet" href="/css/stock-reports.css" />
+    <!-- flatpickr -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 
     <!-- PWA Manifest & Icons -->
     <link rel="manifest" href="{{ asset('manifest.json') }}" />
@@ -45,6 +48,7 @@
       content="Sistem Manajemen Toko - Kelola stok, penjualan, dan pembelian dengan mudah"
     />
     <!-- FAVICON FIX (STABLE) -->
+
     <link rel="icon" href="/images/icon.svg" type="image/x-icon" />
     <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png" />
@@ -52,13 +56,12 @@
 
     @stack('styles')
 
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="/js/jquery.min.js"></script>
 
-    @stack('styles')
     @livewireStyles
 
     <!-- PWA Service Worker Registration -->
-    <script>
+    <!-- <script>
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker
           .register('/service-worker.js')
@@ -69,7 +72,7 @@
             console.error('Service Worker registration failed:', error);
           });
       }
-    </script>
+    </script> -->
   </head>
   <body class="hold-transition sidebar-mini layout-fixed">
     <div class="wrapper">
@@ -101,57 +104,72 @@
       </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap4.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+    <script src="/js/adminlte.min.js"></script>
+
+    <!-- flatpickr -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
     <script>
-      // Global delete confirmation helper
-      window.confirmDelete = function (
-        message = 'Apakah Anda yakin ingin menghapus data ini?',
-        title = 'Konfirmasi Hapus'
-      ) {
-        return Swal.fire({
-          title: title,
-          text: message,
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#d33',
-          cancelButtonColor: '#3085d6',
-          confirmButtonText: 'Ya, Hapus!',
-          cancelButtonText: 'Batal',
-          customClass: {
-            confirmButton: 'btn btn-danger',
-            cancelButton: 'btn btn-secondary',
-          },
-        }).then((result) => {
-          return result.isConfirmed;
-        });
-      };
-
-      // Detect session expired (419 error) and auto-reload
       document.addEventListener('livewire:init', () => {
         Livewire.hook('request', ({ fail }) => {
           fail(({ status, preventDefault }) => {
             if (status === 419) {
-              // Session expired - clear storage and reload (silent)
-
-              // Clear site data
-              if (window.caches) {
-                caches.keys().then((names) => {
-                  names.forEach((name) => caches.delete(name));
-                });
-              }
-
-              // Reload page to get fresh session
               preventDefault();
-              window.location.reload();
+              window.location.href = window.location.pathname;
             }
           });
         });
+
+        // Initialize flatpickr for tanggal_penjualan input and re-init after Livewire updates
+        window.initTanggalPicker = function () {
+          const el = document.getElementById('tanggal_penjualan_input');
+          if (!el) return;
+          if (el._flatpickr) return; // already initialized
+
+          el._flatpickr = flatpickr(el, {
+            dateFormat: 'd/m/Y',
+            allowInput: true,
+            onChange: function (selectedDates, dateStr) {
+              // Trigger input event so Livewire picks up the value
+              el.value = dateStr;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+            },
+          });
+        };
+
+        window.openTanggalPicker = function () {
+          const el = document.getElementById('tanggal_penjualan_input');
+          if (!el) return;
+          // Initialize if not yet
+          if (!el._flatpickr) {
+            window.initTanggalPicker();
+          }
+          if (el._flatpickr) {
+            el._flatpickr.open();
+            el.focus();
+          }
+        };
+
+        window.initTanggalPicker();
+
+        Livewire.hook('message.processed', (message, component) => {
+          window.initTanggalPicker();
+        });
+      });
+    </script>
+    <script>
+      // Attach a delegated click handler to open flatpickr when calendar button clicked
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('#tanggal_penjualan_btn');
+        if (!btn) return;
+        if (window.openTanggalPicker) {
+          window.openTanggalPicker();
+        }
       });
     </script>
 
