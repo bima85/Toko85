@@ -43,7 +43,8 @@ class Subcategories extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -88,7 +89,7 @@ class Subcategories extends Component
             'nama_subkategori' => 'required|string|max:255',
             'description' => 'nullable|string',
             'category_id' => 'required|exists:categories,id',
-            'kode_subkategori' => 'required|string|max:50|unique:subcategories,kode_subkategori'.($this->editingSubcategoryId ? (','.$this->editingSubcategoryId) : ''),
+            'kode_subkategori' => 'required|string|max:50|unique:subcategories,kode_subkategori' . ($this->editingSubcategoryId ? (',' . $this->editingSubcategoryId) : ''),
         ];
 
         $this->validate($rules);
@@ -137,11 +138,11 @@ class Subcategories extends Component
         $query = Subcategory::with('category');
         if ($this->search) {
             $query->where(function ($q) {
-                $q->where('kode_subkategori', 'like', '%'.$this->search.'%')
-                    ->orWhere('nama_subkategori', 'like', '%'.$this->search.'%')
-                    ->orWhere('description', 'like', '%'.$this->search.'%')
+                $q->where('kode_subkategori', 'like', '%' . $this->search . '%')
+                    ->orWhere('nama_subkategori', 'like', '%' . $this->search . '%')
+                    ->orWhere('description', 'like', '%' . $this->search . '%')
                     ->orWhereHas('category', function ($q) {
-                        $q->where('nama_kategori', 'like', '%'.$this->search.'%');
+                        $q->where('nama_kategori', 'like', '%' . $this->search . '%');
                     });
             });
         }

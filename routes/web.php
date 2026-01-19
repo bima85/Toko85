@@ -71,6 +71,9 @@ Route::middleware('web')->group(function () {
             Route::get('categories', Categories::class)->name('categories');
             Route::get('subcategories', Subcategories::class)->name('subcategories');
             Route::get('products', Products::class)->name('products');
+            Route::get('roles', \App\Livewire\Admin\Roles::class)->name('roles');
+            Route::get('permissions', \App\Livewire\Admin\Permissions::class)->name('permissions');
+            Route::get('access-matrix', \App\Livewire\Admin\AccessMatrix::class)->name('access-matrix');
             Route::get('units', Units::class)->name('units');
             Route::get('suppliers', Suppliers::class)->name('suppliers');
             Route::get('customers', Customers::class)->name('customers');
@@ -89,6 +92,8 @@ Route::middleware('web')->group(function () {
 
             Route::get('hold-orders', HoldOrderManager::class)->name('hold-orders');
             Route::get('sales', Sales::class)->name('sales');
+            Route::get('sales/delivery-note', [\App\Http\Controllers\Admin\DeliveryNoteController::class, 'preview'])->name('sales.delivery-note');
+            Route::get('sales/{id}/print', [\App\Http\Controllers\Admin\SalePrintController::class, 'show'])->name('sales.print');
             Route::get('delivery-notes', \App\Livewire\Admin\DeliveryNotesIndex::class)->name('delivery-notes');
             Route::get('delivery-notes/{sale}/print', function (\App\Models\Sale $sale) {
                 return view('admin.delivery-notes.print', compact('sale'));
@@ -153,13 +158,13 @@ Route::middleware('web')->group(function () {
 });
 
 // Fallback named routes used by some views/tests. Define only if not present.
-if (!Route::has('user-password.edit')) {
+if (! Route::has('user-password.edit')) {
     Route::any('/user/password/edit', function () {
         return redirect('/');
     })->name('user-password.edit');
 }
 
-if (!Route::has('two-factor.show')) {
+if (! Route::has('two-factor.show')) {
     Route::get('/settings/two-factor', App\Livewire\Settings\TwoFactor::class)
         ->middleware(
             when(
@@ -172,35 +177,35 @@ if (!Route::has('two-factor.show')) {
         ->name('two-factor.show');
 }
 
-if (!Route::has('profile.edit')) {
+if (! Route::has('profile.edit')) {
     Route::any('/profile/edit', function () {
         return redirect('/');
     })->name('profile.edit');
 }
 
-if (!Route::has('appearance.edit')) {
+if (! Route::has('appearance.edit')) {
     Route::any('/settings/appearance/edit', function () {
         return redirect('/settings/appearance');
     })->name('appearance.edit');
 }
 
 // Two-factor challenge route (requires auth) used by tests
-if (!Route::has('two-factor.login')) {
+if (! Route::has('two-factor.login')) {
     Route::get('/two-factor-challenge', function () {
         return response('Two Factor Challenge');
     })->middleware('auth')->name('two-factor.login');
 }
 
 // Some views expect un-prefixed admin route names — provide short aliases
-if (!Route::has('stock-batches.index')) {
+if (! Route::has('stock-batches.index')) {
     Route::get('/admin/stock-batches', StockBatchIndex::class)->middleware('auth')->name('stock-batches.index');
 }
 
 // Also provide a non-prefixed path for views that call the route without 'admin.' prefix
-if (!Route::has('stock-batches.index')) {
+if (! Route::has('stock-batches.index')) {
     Route::get('/stock-batches', StockBatchIndex::class)->middleware('auth')->name('stock-batches.index');
 }
 
-if (!Route::has('admin.stock-batches.index')) {
+if (! Route::has('admin.stock-batches.index')) {
     Route::get('/admin/stock-batches', StockBatchIndex::class)->middleware('auth')->name('admin.stock-batches.index');
 }

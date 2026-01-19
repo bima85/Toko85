@@ -20,6 +20,7 @@ class StockBatch extends Model
         'location_id',
         'locationable_id',
         'locationable_type',
+        'unit',
         'nama_tumpukan',
         'qty',
         'note',

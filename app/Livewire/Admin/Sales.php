@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
-use Carbon\Carbon;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -25,6 +24,10 @@ use Livewire\WithPagination;
 class Sales extends Component
 {
     use WithPagination;
+
+    protected $listeners = [
+        'requestPrint' => 'printSale',
+    ];
 
     protected $paginationTheme = 'bootstrap';
 
@@ -35,6 +38,7 @@ class Sales extends Component
     public $tanggal_penjualan;
 
     public $customer_id;
+    public $customer_search = '';
 
     public $store_id;
 
@@ -48,10 +52,9 @@ class Sales extends Component
 
     public $editingSaleId = null;
 
-    public $showCreateForm = false;
+    public $lastSavedSaleId = null;
 
-    // When this component is embedded elsewhere we may want to hide the full page header
-    public $hideHeader = false;
+    public $showCreateForm = false;
 
     // Modal to create customer inline
     public $showCreateCustomerModal = false;
@@ -90,7 +93,7 @@ class Sales extends Component
 
     protected $rules = [
         'no_invoice' => 'nullable|string|max:50|unique:sales,no_invoice',
-        'tanggal_penjualan' => 'required|date',
+        'tanggal_penjualan' => 'required|string',
         'customer_id' => 'required|exists:customers,id',
         'store_id' => 'nullable|exists:stores,id',
         'warehouse_id' => 'nullable|exists:warehouses,id',
@@ -110,7 +113,8 @@ class Sales extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -126,8 +130,8 @@ class Sales extends Component
         $this->store_id = $firstStore ? $firstStore->id : null;
         $this->warehouse_id = null; // Tidak pakai gudang by default
 
-        // Set tanggal
-        $this->tanggal_penjualan = date('Y-m-d');
+        // Set tanggal (tampilkan dd/mm/YYYY)
+        $this->tanggal_penjualan = \Carbon\Carbon::now()->format('d/m/Y');
         $this->deliveryDate = date('Y-m-d');
 
         // Invoice will be auto-generated when customer is selected
@@ -153,7 +157,7 @@ class Sales extends Component
         $sale = Sale::with('saleItems')->findOrFail($id);
         $this->editingSaleId = $sale->id;
         $this->no_invoice = $sale->no_invoice;
-        $this->tanggal_penjualan = $sale->tanggal_penjualan->format('Y-m-d');
+        $this->tanggal_penjualan = $sale->tanggal_penjualan->format('d/m/Y');
         $this->customer_id = $sale->customer_id;
         $this->store_id = $sale->store_id;
         $this->warehouse_id = $sale->warehouse_id;
@@ -225,7 +229,6 @@ class Sales extends Component
             'batch_id' => null,
             'batch_name' => null,
             'batch_warning' => null,
-            'location_source' => null, // null = ikuti global, or 'toko'|'gudang'
         ];
     }
 
@@ -252,22 +255,13 @@ class Sales extends Component
             ->where('status', 'aktual') // Only show aktual batches, not hold
             ->orderBy('created_at', 'asc');
 
-        // Determine effective source: per-row override if set, otherwise global
-        $rowSource = $this->saleItems[$index]['location_source'] ?? null;
-        $effectiveSource = $rowSource ?: $this->location_source;
-
-        if ($effectiveSource === 'toko') {
-            // Restrict to store batches; if specific store selected, filter by it
-            $query->where('location_type', 'store');
-            if ($this->store_id) {
-                $query->where('location_id', $this->store_id);
-            }
-        } elseif ($effectiveSource === 'gudang') {
-            // Restrict to warehouse batches; if specific warehouse selected, filter by it
-            $query->where('location_type', 'warehouse');
-            if ($this->warehouse_id) {
-                $query->where('location_id', $this->warehouse_id);
-            }
+        // Filter based on location_source choice
+        if ($this->location_source === 'toko' && $this->store_id) {
+            $query->where('location_type', 'store')
+                ->where('location_id', $this->store_id);
+        } elseif ($this->location_source === 'gudang' && $this->warehouse_id) {
+            $query->where('location_type', 'warehouse')
+                ->where('location_id', $this->warehouse_id);
         }
 
         $batches = $query->get();
@@ -275,49 +269,6 @@ class Sales extends Component
         \Log::info("getAvailableBatches: product=$productId, source={$this->location_source}, store={$this->store_id}, warehouse={$this->warehouse_id}, count={$batches->count()}");
 
         return $batches;
-    }
-
-    /**
-     * Return products filtered by selected category/subcategory for a given row index
-     */
-    public function getProductsForRow($index)
-    {
-        $categoryId = $this->saleItems[$index]['category_id'] ?? null;
-        $subcategoryId = $this->saleItems[$index]['subcategory_id'] ?? null;
-
-        $query = Product::query();
-
-        if ($subcategoryId) {
-            $query->where('subcategory_id', $subcategoryId);
-        } elseif ($categoryId) {
-            // products whose subcategory belongs to this category
-            $query->whereHas('subcategory', function ($q) use ($categoryId) {
-                $q->where('category_id', $categoryId);
-            });
-        }
-
-        // Determine effective source per-row
-        $rowSource = $this->saleItems[$index]['location_source'] ?? null;
-        $effectiveSource = $rowSource ?: $this->location_source;
-
-        // filter by stock location (only show products that have stock in selected location)
-        if ($effectiveSource === 'toko' && $this->store_id) {
-            $query->whereHas('stockBatches', function ($q) {
-                $q->where('location_type', 'store')
-                    ->where('location_id', $this->store_id)
-                    ->where('qty', '>', 0)
-                    ->where('status', 'aktual');
-            });
-        } elseif ($effectiveSource === 'gudang' && $this->warehouse_id) {
-            $query->whereHas('stockBatches', function ($q) {
-                $q->where('location_type', 'warehouse')
-                    ->where('location_id', $this->warehouse_id)
-                    ->where('qty', '>', 0)
-                    ->where('status', 'aktual');
-            });
-        }
-
-        return $query->orderBy('nama_produk')->get();
     }
 
     #[Computed]
@@ -456,29 +407,7 @@ class Sales extends Component
                         \Log::warning("Product not found for code: '$productCode'");
                     }
                 } else {
-                    // Try to match by product name but only within row-filtered products
-                    \Log::info("Could not extract product code from: '$searchValue'. Trying name match within allowed products...");
-
-                    // get products allowed for this row (based on category/subcategory and location)
-                    $candidates = $this->getProductsForRow($index);
-
-                    // exact match first
-                    $product = $candidates->firstWhere('nama_produk', $searchValue);
-
-                    // only attempt partial match for inputs of length >= 3
-                    if (! $product && strlen($searchValue) >= 3) {
-                        $product = $candidates->first(function ($p) use ($searchValue) {
-                            return stripos($p->nama_produk, $searchValue) !== false;
-                        });
-                    }
-
-                    if ($product) {
-                        \Log::info("Product matched by name within row: {$product->nama_produk} (ID: {$product->id})");
-                        $this->saleItems[$index]['product_id'] = $product->id;
-                        $this->populateBatchForItem($index);
-                    } else {
-                        \Log::info("No product match within row for search: '$searchValue' (len=" . strlen($searchValue) . ")");
-                    }
+                    \Log::warning("Could not extract product code from: '$searchValue'");
                 }
             }
         } elseif (strpos($key, '.product_id') !== false) {
@@ -511,16 +440,6 @@ class Sales extends Component
                 $index = (int) $matches[1];
                 $this->checkBatchAvailability($index);
             }
-        } elseif (strpos($key, '.location_source') !== false) {
-            // User changed per-row location override (toko/gudang/ikuti global)
-            preg_match('/(\d+)\.location_source/', $key, $matches);
-            if (isset($matches[1])) {
-                $index = (int) $matches[1];
-                // Refresh batch/product choices for this specific row only
-                $this->populateBatchForItem($index);
-                // If product already selected, also recalc totals / warnings
-                $this->updateTotal($index);
-            }
         }
     }
 
@@ -542,36 +461,21 @@ class Sales extends Component
             return;
         }
 
-        // Get location dari per-row override atau global
-        $rowSource = $this->saleItems[$index]['location_source'] ?? null;
-        $effectiveSource = $rowSource ?: $this->location_source;
-
-        $storeId = null;
-        $warehouseId = null;
-        if ($effectiveSource === 'toko') {
-            $storeId = $this->store_id ?? null;
-        } elseif ($effectiveSource === 'gudang') {
-            $warehouseId = $this->warehouse_id ?? null;
-        }
+        // Get location dari form
+        $storeId = $this->store_id ?? null;
+        $warehouseId = $this->warehouse_id ?? null;
 
         // Query batch yang tersedia (FIFO - oldest first)
         $query = StockBatch::where('product_id', $productId)
             ->where('qty', '>', 0)
             ->orderBy('created_at', 'asc');
 
-        // If a specific location id is set, filter by it. Otherwise restrict by location_type
         if ($storeId) {
             $query->where('location_type', 'store')
                 ->where('location_id', $storeId);
         } elseif ($warehouseId) {
             $query->where('location_type', 'warehouse')
                 ->where('location_id', $warehouseId);
-        } else {
-            if ($effectiveSource === 'toko') {
-                $query->where('location_type', 'store');
-            } elseif ($effectiveSource === 'gudang') {
-                $query->where('location_type', 'warehouse');
-            }
         }
 
         $batch = $query->first();
@@ -591,26 +495,10 @@ class Sales extends Component
             'customer_id' => $this->customer_id,
             'current_no_invoice' => $this->no_invoice,
         ]);
-        // Use selected sale date if provided, otherwise today
-        $dateSource = $this->tanggal_penjualan ?: date('Y-m-d');
-
-        // Normalize date source to avoid ambiguity (d/m/Y vs Y-m-d)
-        try {
-            if (str_contains($dateSource, '/')) {
-                // likely d/m/Y from some inputs
-                $carbonDate = Carbon::createFromFormat('d/m/Y', $dateSource);
-            } else {
-                $carbonDate = Carbon::parse($dateSource);
-            }
-        } catch (\Exception $e) {
-            // Fallback to today if parsing fails
-            $carbonDate = Carbon::today();
-        }
-
-        $today = $carbonDate->format('Ymd');
 
         if (! $this->customer_id) {
             // Generate default invoice without customer code
+            $today = date('Ymd');
             $prefix = 'INV/PJ/' . $today;
 
             $lastSale = Sale::where('no_invoice', 'LIKE', $prefix . '/%')
@@ -640,38 +528,36 @@ class Sales extends Component
             return;
         }
 
-        // Determine customer code: prefer kode_pelanggan, fallback to uppercase name without spaces
-        $customerCode = $customer->kode_pelanggan ?: preg_replace('/\s+/', '', strtoupper($customer->nama_pelanggan ?? ''));
-
         // Format: [CUSTOMER_CODE]/PJ/[YYYYMMDD]/[SEQUENCE]
-        $prefix = $customerCode . '/PJ/' . $today;
+        // Contoh: CUST001/PJ/20251107/001
+        $today = date('Ymd');
+        $prefix = $customer->kode_pelanggan . '/PJ/' . $today;
 
-        // Cari invoice terakhir dengan pattern yang sama (by invoice prefix)
+        // Cari invoice terakhir dengan pattern yang sama (by invoice prefix, not by customer_id)
         $lastInvoice = Sale::where('no_invoice', 'LIKE', $prefix . '/%')
             ->orderByRaw("CAST(SUBSTRING_INDEX(no_invoice, '/', -1) AS UNSIGNED) DESC")
             ->first();
 
         $sequence = 1;
         if ($lastInvoice) {
+            // Extract sequence dari last invoice
             $parts = explode('/', $lastInvoice->no_invoice);
             if (count($parts) >= 4) {
                 $sequence = (int) $parts[3] + 1;
             }
         }
 
-        $this->no_invoice = sprintf('%s/PJ/%s/%03d', $customerCode, $today, $sequence);
+        $this->no_invoice = sprintf(
+            '%s/PJ/%s/%03d',
+            $customer->kode_pelanggan,
+            $today,
+            $sequence
+        );
 
         \Log::info('Generated invoice (with customer):', [
-            'customer_code' => $customerCode,
+            'customer_code' => $customer->kode_pelanggan,
             'no_invoice' => $this->no_invoice,
         ]);
-    }
-
-    public function updatedTanggalPenjualan()
-    {
-        \Log::info('updatedTanggalPenjualan fired', ['tanggal_penjualan' => $this->tanggal_penjualan]);
-        // Regenerate invoice number when user changes the sale date
-        $this->generateInvoiceNumber();
     }
 
     public function generateDeliveryNoteNumber()
@@ -807,6 +693,38 @@ class Sales extends Component
         $this->generateInvoiceNumber();
     }
 
+    public function updatedCustomerSearch($value)
+    {
+        $searchValue = trim($value);
+
+        if (empty($searchValue)) {
+            $this->customer_id = null;
+            return;
+        }
+
+        // Try to match by code in format [CODE] Name
+        if (preg_match('/\[([^\]]+)\]/', $searchValue, $m)) {
+            $code = $m[1];
+            $cust = Customer::where('kode_pelanggan', $code)->first();
+            if ($cust) {
+                $this->customer_id = $cust->id;
+                $this->generateInvoiceNumber();
+                return;
+            }
+        }
+
+        // Try exact name match
+        $cust = Customer::where('nama_pelanggan', $searchValue)->first();
+        if ($cust) {
+            $this->customer_id = $cust->id;
+            $this->generateInvoiceNumber();
+            return;
+        }
+
+        // No exact match: keep search text and leave customer_id null
+        $this->customer_id = null;
+    }
+
     public function updatedStoreId()
     {
         /**
@@ -876,6 +794,97 @@ class Sales extends Component
         }
     }
 
+    /**
+     * Consume as much as possible from a specific location (store or warehouse).
+     * Returns the remaining quantity that could not be fulfilled from that location.
+     */
+    private function consumeFromLocation(int $productId, int $qty, string $locationType, int $locationId, Sale $sale): int
+    {
+        $query = StockBatch::where('product_id', $productId)
+            ->where('qty', '>', 0)
+            ->where('location_type', $locationType)
+            ->where('location_id', $locationId)
+            ->orderBy('created_at', 'asc');
+
+        $batches = $query->get();
+        $remaining = $qty;
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $take = min($remaining, $batch->qty);
+            $batch->update(['qty' => $batch->qty - $take]);
+
+            // Create stock card for this partial reduction
+            $fromLocation = $locationType === 'store'
+                ? (Store::find($locationId)?->nama_toko ?? 'Toko')
+                : (\App\Models\Warehouse::find($locationId)?->nama_gudang ?? 'Gudang');
+
+            $this->createStockCardForSale(
+                $productId,
+                $take,
+                $batch->id,
+                $fromLocation,
+                $sale->customer_id,
+                $sale->id,
+                $sale->no_invoice
+            );
+
+            $remaining -= $take;
+        }
+
+        return $remaining;
+    }
+
+    /**
+     * Consume across warehouse batches (potentially multiple warehouses) until qty satisfied or exhausted.
+     * Returns an array of [warehouse_id => reducedQty] and remaining qty.
+     */
+    private function consumeFromWarehouses(int $productId, int $qty, Sale $sale): array
+    {
+        $remaining = $qty;
+        $reducedByWarehouse = [];
+
+        $batches = StockBatch::where('product_id', $productId)
+            ->where('location_type', 'warehouse')
+            ->where('qty', '>', 0)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        foreach ($batches as $batch) {
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $take = min($remaining, $batch->qty);
+            $batch->update(['qty' => $batch->qty - $take]);
+
+            $warehouseId = $batch->location_id;
+            $reducedByWarehouse[$warehouseId] = ($reducedByWarehouse[$warehouseId] ?? 0) + $take;
+
+            $fromLocation = \App\Models\Warehouse::find($warehouseId)?->nama_gudang ?? 'Gudang';
+
+            $this->createStockCardForSale(
+                $productId,
+                $take,
+                $batch->id,
+                $fromLocation,
+                $sale->customer_id,
+                $sale->id,
+                $sale->no_invoice
+            );
+
+            $remaining -= $take;
+        }
+
+        return [
+            'reduced' => $reducedByWarehouse,
+            'remaining' => $remaining,
+        ];
+    }
+
     private function createStockAdjustmentForSale($productId, $qty, $unitId, $storeId = null, $warehouseId = null, $invoiceNo = null)
     {
         /**
@@ -928,7 +937,7 @@ class Sales extends Component
             'total_stok' => $totalStok,
             'unit_id' => $unitId,
             'reason' => 'Penjualan - Invoice: ' . ($invoiceNo ?? '-'),
-            'adjustment_date' => ($this->tanggal_penjualan) ? \Carbon\Carbon::parse($this->tanggal_penjualan)->toDateString() : now(),
+            'adjustment_date' => now(),
             'user_id' => Auth::id(),
         ]);
     }
@@ -942,8 +951,6 @@ class Sales extends Component
         try {
             $stockCardService = app(StockCardService::class);
 
-            $eventDate = $this->tanggal_penjualan ? Carbon::parse($this->tanggal_penjualan) : Carbon::now();
-
             $stockCardService->createStockCard([
                 'product_id' => $productId,
                 'batch_id' => $batchId,
@@ -954,8 +961,6 @@ class Sales extends Component
                 'reference_type' => 'sale', // Referensi dari Penjualan
                 'reference_id' => $saleId, // ID Penjualan
                 'note' => "Penjualan - Invoice: {$invoiceNo}",
-                'created_at' => $eventDate,
-                'updated_at' => $eventDate,
             ]);
         } catch (\Exception $e) {
             // Log error tapi jangan hentikan proses penjualan
@@ -972,6 +977,26 @@ class Sales extends Component
                 'customer_id' => $this->customer_id,
                 'status' => $this->status,
             ]);
+
+            // Atur rule untuk no_invoice sesuai mode (edit/new) sebelum validasi awal
+            if ($this->editingSaleId) {
+                $this->rules['no_invoice'] = 'required|string|max:50|unique:sales,no_invoice,' . $this->editingSaleId;
+            } else {
+                // For new sale, auto-generate invoice if empty
+                if (empty($this->no_invoice)) {
+                    $this->generateInvoiceNumber();
+                }
+                $this->rules['no_invoice'] = 'required|string|max:50|unique:sales,no_invoice';
+            }
+
+            // VALIDASI AWAL: jika user klik simpan tanpa mengisi field wajib, tampilkan error segera
+            try {
+                $this->validate();
+            } catch (\Illuminate\Validation\ValidationException $ve) {
+                // Biarkan Livewire menampilkan error field; tambahkan flash message singkat
+                session()->flash('error', 'Lengkapi field yang wajib diisi sebelum menyimpan.');
+                return;
+            }
 
             // Step 1: Cek stok availability (hanya untuk penjualan baru, bukan edit)
             if (! $this->editingSaleId && ! $this->deliveryApproved) {
@@ -1024,7 +1049,19 @@ class Sales extends Component
 
             $this->validate();
 
-            DB::transaction(function () {
+            // Parse tanggal_penjualan dari format dd/mm/YYYY atau coba parse otomatis
+            $tanggalForSave = null;
+            try {
+                if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $this->tanggal_penjualan)) {
+                    $tanggalForSave = \Carbon\Carbon::createFromFormat('d/m/Y', $this->tanggal_penjualan)->toDateString();
+                } else {
+                    $tanggalForSave = \Carbon\Carbon::parse($this->tanggal_penjualan)->toDateString();
+                }
+            } catch (\Exception $e) {
+                throw new \Exception('Tanggal penjualan tidak valid. Gunakan format dd/mm/YYYY (contoh: 18/01/2026).');
+            }
+
+            DB::transaction(function () use ($tanggalForSave) {
                 // Calculate total amount dari sale items (menggunakan total yang sudah dihitung per item)
                 // Total per item sudah dihitung dengan formula: Qty × Unit Conversion × Harga Jual
                 $totalAmount = collect($this->saleItems)->sum(function ($item) {
@@ -1039,7 +1076,7 @@ class Sales extends Component
                     $sale = Sale::findOrFail($this->editingSaleId);
                     $sale->update([
                         'no_invoice' => $this->no_invoice,
-                        'tanggal_penjualan' => $this->tanggal_penjualan,
+                        'tanggal_penjualan' => $tanggalForSave,
                         'customer_id' => $this->customer_id,
                         'store_id' => $this->store_id,
                         'warehouse_id' => $this->warehouse_id,
@@ -1047,6 +1084,9 @@ class Sales extends Component
                         'status' => $this->status,
                         'keterangan' => $this->keterangan,
                     ]);
+
+                    // Keep reference to last saved sale id for printing
+                    $this->lastSavedSaleId = $sale->id;
 
                     // Delete old items and create new ones
                     $sale->saleItems()->delete();
@@ -1057,7 +1097,7 @@ class Sales extends Component
                         'delivery_note_number' => $this->deliveryNoteNumber,
                         'delivery_date' => $this->deliveryDate,
                         'delivery_notes' => $this->deliveryNotes,
-                        'tanggal_penjualan' => $this->tanggal_penjualan,
+                        'tanggal_penjualan' => $tanggalForSave,
                         'customer_id' => $this->customer_id,
                         'store_id' => $this->store_id,
                         'warehouse_id' => $this->warehouse_id,
@@ -1066,6 +1106,9 @@ class Sales extends Component
                         'keterangan' => $this->keterangan,
                         'user_id' => Auth::id(),
                     ]);
+
+                    // Keep reference to last saved sale id for printing
+                    $this->lastSavedSaleId = $sale->id;
                 }
 
                 // Create sale items and stock adjustments
@@ -1089,68 +1132,78 @@ class Sales extends Component
                         continue; // Skip normal stock reduction
                     }
 
-                    // PENTING: Prioritas TOKO dulu, jika tidak ada baru GUDANG
-                    // Hanya satu yang aktif untuk menghindari pengurangan stok ganda
+                    // Prioritize STORE first; if store stock insufficient, consume remaining from WAREHOUSE(s)
+                    $remaining = (int) $item['qty'];
+
                     if ($sale->store_id) {
-                        // Reduce dari TOKO
-                        $this->reduceStockFromBatch(
+                        // Try to consume from the selected store
+                        $before = $remaining;
+                        $remaining = $this->consumeFromLocation(
                             $item['product_id'],
-                            $item['qty'],
-                            $sale->store_id,  // storeId
-                            null              // warehouseId = null
+                            $remaining,
+                            'store',
+                            $sale->store_id,
+                            $sale
                         );
 
-                        // Create stock adjustment untuk TOKO
-                        $this->createStockAdjustmentForSale(
-                            $item['product_id'],
-                            $item['qty'],
-                            $item['unit_id'],
-                            $sale->store_id,  // storeId
-                            null,             // warehouseId = null
-                            $sale->no_invoice
-                        );
+                        $reducedFromStore = $before - $remaining;
+                        if ($reducedFromStore > 0) {
+                            // Create stock adjustment for store (only for the amount consumed here)
+                            $this->createStockAdjustmentForSale(
+                                $item['product_id'],
+                                $reducedFromStore,
+                                $item['unit_id'],
+                                $sale->store_id,
+                                null,
+                                $sale->no_invoice
+                            );
+                        }
+                    }
 
-                        // Create stock card (kartu stok) untuk audit trail
-                        $store = Store::find($sale->store_id);
-                        $this->createStockCardForSale(
-                            $item['product_id'],
-                            $item['qty'],
-                            $item['batch_id'] ?? null,
-                            $store->nama_toko ?? 'Toko',
-                            $sale->customer_id,
-                            $sale->id,
-                            $sale->no_invoice
-                        );
-                    } elseif ($sale->warehouse_id) {
-                        // Reduce dari GUDANG (hanya jika toko tidak ada)
-                        $this->reduceStockFromBatch(
-                            $item['product_id'],
-                            $item['qty'],
-                            null,                 // storeId = null
-                            $sale->warehouse_id   // warehouseId
-                        );
+                    // If still remaining, try warehouse(s)
+                    if ($remaining > 0) {
+                        if ($sale->warehouse_id) {
+                            $beforeWh = $remaining;
+                            $remaining = $this->consumeFromLocation(
+                                $item['product_id'],
+                                $remaining,
+                                'warehouse',
+                                $sale->warehouse_id,
+                                $sale
+                            );
 
-                        // Create stock adjustment untuk GUDANG
-                        $this->createStockAdjustmentForSale(
-                            $item['product_id'],
-                            $item['qty'],
-                            $item['unit_id'],
-                            null,                 // storeId = null
-                            $sale->warehouse_id,  // warehouseId
-                            $sale->no_invoice
-                        );
+                            $reducedFromWh = $beforeWh - $remaining;
+                            if ($reducedFromWh > 0) {
+                                $this->createStockAdjustmentForSale(
+                                    $item['product_id'],
+                                    $reducedFromWh,
+                                    $item['unit_id'],
+                                    null,
+                                    $sale->warehouse_id,
+                                    $sale->no_invoice
+                                );
+                            }
+                        } else {
+                            // No specific warehouse selected: consume across all warehouse batches
+                            $res = $this->consumeFromWarehouses($item['product_id'], $remaining, $sale);
+                            $remaining = $res['remaining'];
 
-                        // Create stock card (kartu stok) untuk audit trail
-                        $warehouse = \App\Models\Warehouse::find($sale->warehouse_id);
-                        $this->createStockCardForSale(
-                            $item['product_id'],
-                            $item['qty'],
-                            $item['batch_id'] ?? null,
-                            $warehouse->nama_gudang ?? 'Gudang',
-                            $sale->customer_id,
-                            $sale->id,
-                            $sale->no_invoice
-                        );
+                            // Create adjustments per warehouse
+                            foreach ($res['reduced'] as $whId => $qtyReduced) {
+                                $this->createStockAdjustmentForSale(
+                                    $item['product_id'],
+                                    $qtyReduced,
+                                    $item['unit_id'],
+                                    null,
+                                    $whId,
+                                    $sale->no_invoice
+                                );
+                            }
+                        }
+                    }
+
+                    if ($remaining > 0) {
+                        throw new \Exception('Stok tidak mencukupi untuk produk ID ' . $item['product_id'] . '. Kurang ' . $remaining . ' unit.');
                     }
                 }
 
@@ -1161,7 +1214,7 @@ class Sales extends Component
                         'transaction_type' => 'penjualan',
                         'reference_type' => 'sale',
                         'reference_id' => $sale->id,
-                        'transaction_date' => $this->tanggal_penjualan, // Use actual sale date
+                        'transaction_date' => $tanggalForSave, // Use actual sale date
                         'amount' => $totalAmount, // Use calculated total from above
                         'currency' => 'IDR',
                         'description' => 'Penjualan - ' . $sale->no_invoice . ($sale->customer_id ? ' ke ' . optional($sale->customer)->nama_customer : ''),
@@ -1182,6 +1235,35 @@ class Sales extends Component
             Log::error('Stack trace: ' . $e->getTraceAsString());
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Trigger opening of print page for the currently editing sale.
+     */
+    public function printSale()
+    {
+        $saleId = null;
+
+        if ($this->editingSaleId) {
+            $saleId = $this->editingSaleId;
+        } elseif ($this->lastSavedSaleId) {
+            $saleId = $this->lastSavedSaleId;
+        } else {
+            // Try to save current form, which will populate lastSavedSaleId
+            $this->save();
+            if ($this->lastSavedSaleId) {
+                $saleId = $this->lastSavedSaleId;
+            }
+        }
+
+        if (! $saleId) {
+            session()->flash('error', 'Simpan penjualan terlebih dahulu sebelum mencetak.');
+
+            return;
+        }
+
+        // Set lastSavedSaleId so hidden input gets updated with print URL
+        $this->lastSavedSaleId = $saleId;
     }
 
     public function cancel()
@@ -1263,6 +1345,14 @@ class Sales extends Component
             'stores' => $stores,
             'warehouses' => $warehouses,
         ]);
+    }
+
+    /**
+     * Open the create customer modal
+     */
+    public function openCreateCustomerModal()
+    {
+        $this->showCreateCustomerModal = true;
     }
 
     /**

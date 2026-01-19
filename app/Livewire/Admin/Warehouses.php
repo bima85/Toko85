@@ -48,7 +48,8 @@ class Warehouses extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -95,7 +96,7 @@ class Warehouses extends Component
             'telepon' => 'nullable|string|max:20',
             'pic' => 'nullable|string|max:255',
             'keterangan' => 'nullable|string',
-            'kode_gudang' => 'required|string|max:50|unique:warehouses,kode_gudang'.($this->editingWarehouseId ? (','.$this->editingWarehouseId) : ''),
+            'kode_gudang' => 'required|string|max:50|unique:warehouses,kode_gudang' . ($this->editingWarehouseId ? (',' . $this->editingWarehouseId) : ''),
         ];
 
         $this->validate($rules);
@@ -147,9 +148,9 @@ class Warehouses extends Component
 
     public function render()
     {
-        $warehouses = Warehouse::where('nama_gudang', 'like', '%'.$this->search.'%')
-            ->orWhere('kode_gudang', 'like', '%'.$this->search.'%')
-            ->orWhere('pic', 'like', '%'.$this->search.'%')
+        $warehouses = Warehouse::where('nama_gudang', 'like', '%' . $this->search . '%')
+            ->orWhere('kode_gudang', 'like', '%' . $this->search . '%')
+            ->orWhere('pic', 'like', '%' . $this->search . '%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

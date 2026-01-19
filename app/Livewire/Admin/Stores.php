@@ -51,7 +51,8 @@ class Stores extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // Allow both admin and superadmin
+        abort_unless($user && method_exists($user, 'hasRole') && $user->hasAnyRole(['admin', 'superadmin']), 403);
     }
 
     public function updatingSearch()
@@ -100,7 +101,7 @@ class Stores extends Component
             'pic' => 'nullable|string|max:255',
             'tipe_toko' => 'required|in:retail,wholesale,online,outlet',
             'keterangan' => 'nullable|string',
-            'kode_toko' => 'required|string|max:50|unique:stores,kode_toko'.($this->editingStoreId ? (','.$this->editingStoreId) : ''),
+            'kode_toko' => 'required|string|max:50|unique:stores,kode_toko' . ($this->editingStoreId ? (',' . $this->editingStoreId) : ''),
         ];
 
         $this->validate($rules);
@@ -155,9 +156,9 @@ class Stores extends Component
 
     public function render()
     {
-        $stores = Store::where('nama_toko', 'like', '%'.$this->search.'%')
-            ->orWhere('kode_toko', 'like', '%'.$this->search.'%')
-            ->orWhere('pic', 'like', '%'.$this->search.'%')
+        $stores = Store::where('nama_toko', 'like', '%' . $this->search . '%')
+            ->orWhere('kode_toko', 'like', '%' . $this->search . '%')
+            ->orWhere('pic', 'like', '%' . $this->search . '%')
             ->orderBy('id', 'desc')
             ->paginate(10);
 

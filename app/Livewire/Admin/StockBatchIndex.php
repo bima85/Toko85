@@ -214,8 +214,8 @@ class StockBatchIndex extends Component
                     $product = Product::where('kode_produk', $productCode)->first();
                 } else {
                     // Search by name or code directly
-                    $product = Product::where('nama_produk', 'LIKE', '%'.$value.'%')
-                        ->orWhere('kode_produk', 'LIKE', '%'.$value.'%')
+                    $product = Product::where('nama_produk', 'LIKE', '%' . $value . '%')
+                        ->orWhere('kode_produk', 'LIKE', '%' . $value . '%')
                         ->first();
                 }
 
@@ -227,7 +227,7 @@ class StockBatchIndex extends Component
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Error in updatedCreateProductSearch: '.$e->getMessage());
+            Log::error('Error in updatedCreateProductSearch: ' . $e->getMessage());
         }
     }
 
@@ -245,7 +245,7 @@ class StockBatchIndex extends Component
                 $this->createSatuan = $product->satuan ?? '';
             }
         } catch (\Exception $e) {
-            Log::error('Error in selectProduct: '.$e->getMessage());
+            Log::error('Error in selectProduct: ' . $e->getMessage());
         }
     }
 
@@ -441,8 +441,8 @@ class StockBatchIndex extends Component
         if (! empty($this->holdProductSearch)) {
             $search = trim($this->holdProductSearch);
             $query->where(function ($q) use ($search) {
-                $q->where('nama_produk', 'LIKE', '%'.$search.'%')
-                    ->orWhere('kode_produk', 'LIKE', '%'.$search.'%');
+                $q->where('nama_produk', 'LIKE', '%' . $search . '%')
+                    ->orWhere('kode_produk', 'LIKE', '%' . $search . '%');
             });
         }
 
@@ -488,8 +488,8 @@ class StockBatchIndex extends Component
         // Filter berdasarkan search (nama produk)
         if ($this->search) {
             $query->whereHas('product', function ($q) {
-                $q->where('nama_produk', 'like', '%'.$this->search.'%')
-                    ->orWhere('kode_produk', 'like', '%'.$this->search.'%');
+                $q->where('nama_produk', 'like', '%' . $this->search . '%')
+                    ->orWhere('kode_produk', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -535,8 +535,8 @@ class StockBatchIndex extends Component
         // Terapkan filter yang sama seperti query utama
         if ($this->search) {
             $productNumberQuery->where(function ($q) {
-                $q->where('products.nama_produk', 'like', '%'.$this->search.'%')
-                    ->orWhere('products.kode_produk', 'like', '%'.$this->search.'%');
+                $q->where('products.nama_produk', 'like', '%' . $this->search . '%')
+                    ->orWhere('products.kode_produk', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -713,7 +713,7 @@ class StockBatchIndex extends Component
             $this->showEditModal = false;
             $this->resetEditForm();
         } catch (\Exception $e) {
-            session()->flash('error', 'Error: '.$e->getMessage());
+            session()->flash('error', 'Error: ' . $e->getMessage());
         }
     }
 
@@ -758,6 +758,8 @@ class StockBatchIndex extends Component
     {
         $this->showCreateForm = true;
         $this->resetCreateForm();
+        // Set default date in dd/mm/YYYY format for the create form
+        $this->createDate = \Carbon\Carbon::now()->format('d/m/Y');
     }
 
     public function closeCreateForm()
@@ -781,6 +783,29 @@ class StockBatchIndex extends Component
                 'createNamaTumpukanList' => $this->createNamaTumpukanList,
             ]);
 
+            // If user typed product text but didn't select, try to resolve it to a product id
+            if (empty($this->createProductId) && ! empty($this->createProductSearch)) {
+                try {
+                    if (preg_match('/^\[([^\]]+)\]/', $this->createProductSearch, $m)) {
+                        $code = $m[1];
+                        $p = Product::where('kode_produk', $code)->first();
+                    } else {
+                        $p = Product::where('nama_produk', 'LIKE', '%' . $this->createProductSearch . '%')
+                            ->orWhere('kode_produk', 'LIKE', '%' . $this->createProductSearch . '%')
+                            ->first();
+                    }
+
+                    if ($p) {
+                        $this->createProductId = $p->id;
+                        $this->createCategoryId = $p->category_id;
+                        $this->createSubcategoryId = $p->subcategory_id;
+                        $this->createSatuan = $p->satuan ?? '';
+                    }
+                } catch (\Exception $e) {
+                    // ignore resolution errors, validation will catch missing product
+                }
+            }
+
             $this->validate([
                 'createCategoryId' => 'required|numeric|exists:categories,id',
                 'createSubcategoryId' => 'required|numeric|exists:subcategories,id',
@@ -790,7 +815,7 @@ class StockBatchIndex extends Component
                 'createNamaTumpukanList.*' => 'nullable|string|max:255',
                 'createQtyList.*' => 'nullable|numeric|min:0.01',
                 'createSatuan' => 'nullable|string|max:50',
-                'createDate' => 'nullable|date',
+                'createDate' => 'nullable|string',
             ], [
                 'createCategoryId.required' => 'Kategori harus dipilih',
                 'createCategoryId.exists' => 'Kategori tidak ditemukan',
@@ -806,7 +831,7 @@ class StockBatchIndex extends Component
                 'createQtyList.*.numeric' => 'Kuantitas harus berupa angka',
                 'createQtyList.*.min' => 'Kuantitas minimal 0.01',
                 'createSatuan.max' => 'Satuan maksimal 50 karakter',
-                'createDate.date' => 'Tanggal harus format yang valid',
+                //'createDate.date' => 'Tanggal harus format yang valid',
             ]);
 
             // Auto-generate nama tumpukan jika checkbox checked dan field kosong
@@ -847,9 +872,14 @@ class StockBatchIndex extends Component
             $batchDate = null;
             if (! empty($this->createDate)) {
                 try {
-                    $batchDate = \Carbon\Carbon::parse($this->createDate);
+                    // Accept dd/mm/YYYY from UI or any parsable format
+                    if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $this->createDate)) {
+                        $batchDate = \Carbon\Carbon::createFromFormat('d/m/Y', $this->createDate)->startOfDay();
+                    } else {
+                        $batchDate = \Carbon\Carbon::parse($this->createDate)->startOfDay();
+                    }
                 } catch (\Exception $e) {
-                    $batchDate = null;
+                    throw new \Exception('Tanggal tidak valid. Gunakan format dd/mm/YYYY (contoh: 18/01/2025) atau YYYY-mm-dd.');
                 }
             }
 
@@ -864,6 +894,7 @@ class StockBatchIndex extends Component
                     $qty,
                     $this->createLocationId,
                     $this->createNote ?: null,
+                    $this->createSatuan ?: null,
                     $batchDate
                 );
 
@@ -889,7 +920,7 @@ class StockBatchIndex extends Component
             // Dispatch browser event untuk reload DataTable Total Stok Per Produk di frontend
             $this->dispatch('reloadTotalStokTable');
         } catch (\Exception $e) {
-            session()->flash('error', 'Error: '.$e->getMessage());
+            session()->flash('error', 'Error: ' . $e->getMessage());
         } finally {
             // Always reset flag
             $this->isCreatingBatch = false;
@@ -973,7 +1004,8 @@ class StockBatchIndex extends Component
             });
 
             // Catat di StockCard untuk history
-            StockCard::create([
+            $cardService = app(\App\Services\StockCardService::class);
+            $cardService->createStockCard([
                 'product_id' => $this->holdProductId,
                 'batch_id' => $batch->id,
                 'type' => 'hold',
@@ -983,6 +1015,8 @@ class StockBatchIndex extends Component
                 'reference_type' => 'manual_hold',
                 'reference_id' => $batch->id,
                 'note' => "Tumpukan hold dibuat: {$this->holdReason}",
+                'created_at' => $batch->created_at,
+                'updated_at' => $batch->created_at,
             ]);
 
             Log::info('Hold stock batch created successfully', [
@@ -1004,7 +1038,7 @@ class StockBatchIndex extends Component
             // Dispatch event ke frontend
             $this->dispatch('hold-batch-created');
         } catch (\Exception $e) {
-            session()->flash('error', 'Error: '.$e->getMessage());
+            session()->flash('error', 'Error: ' . $e->getMessage());
         } finally {
             // Always reset flag
             $this->isCreatingHoldBatch = false;
@@ -1013,8 +1047,10 @@ class StockBatchIndex extends Component
 
     public function addNamaTumpukanInput()
     {
-        $this->createNamaTumpukanList[] = '';
         $this->createQtyList[] = 0;
+        // Append a placeholder name; then rebuild sequential names T1..Tn
+        $this->createNamaTumpukanList[] = '';
+        $this->rebuildCreateNamaTumpukanNames();
     }
 
     public function removeNamaTumpukanInput($index)
@@ -1023,6 +1059,8 @@ class StockBatchIndex extends Component
         unset($this->createQtyList[$index]);
         $this->createNamaTumpukanList = array_values($this->createNamaTumpukanList); // Re-index array
         $this->createQtyList = array_values($this->createQtyList); // Re-index array
+        // Rebuild names to remain sequential after removal
+        $this->rebuildCreateNamaTumpukanNames();
     }
 
     public function updatedCreateNamaTumpukanType($value)
@@ -1031,10 +1069,19 @@ class StockBatchIndex extends Component
         if ($value && empty($this->createNamaTumpukanList)) {
             $this->createNamaTumpukanList = [''];
             $this->createQtyList = [0];
+            $this->rebuildCreateNamaTumpukanNames();
         } elseif (! $value) {
             // Reset jika di-uncheck
             $this->createNamaTumpukanList = [];
             $this->createQtyList = [];
+        }
+    }
+
+    private function rebuildCreateNamaTumpukanNames()
+    {
+        $count = count($this->createNamaTumpukanList);
+        for ($i = 0; $i < $count; $i++) {
+            $this->createNamaTumpukanList[$i] = 'T' . ($i + 1);
         }
     }
 
@@ -1194,7 +1241,7 @@ class StockBatchIndex extends Component
     public function toggleSelectBatch($batchId)
     {
         if (in_array($batchId, $this->selectedBatches)) {
-            $this->selectedBatches = array_filter($this->selectedBatches, fn ($id) => $id != $batchId);
+            $this->selectedBatches = array_filter($this->selectedBatches, fn($id) => $id != $batchId);
         } else {
             $this->selectedBatches[] = $batchId;
         }
@@ -1222,8 +1269,8 @@ class StockBatchIndex extends Component
         // Filter berdasarkan search (nama produk)
         if ($this->search) {
             $query->whereHas('product', function ($q) {
-                $q->where('nama_produk', 'like', '%'.$this->search.'%')
-                    ->orWhere('kode_produk', 'like', '%'.$this->search.'%');
+                $q->where('nama_produk', 'like', '%' . $this->search . '%')
+                    ->orWhere('kode_produk', 'like', '%' . $this->search . '%');
             });
         }
 
@@ -1284,8 +1331,8 @@ class StockBatchIndex extends Component
                 session()->flash('message', 'Tidak ada batch yang dihapus');
             }
         } catch (\Exception $e) {
-            Log::error('Error deleting batches: '.$e->getMessage());
-            session()->flash('error', 'Gagal menghapus batch: '.$e->getMessage());
+            Log::error('Error deleting batches: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menghapus batch: ' . $e->getMessage());
         }
     }
 
@@ -1301,8 +1348,8 @@ class StockBatchIndex extends Component
         $query = StockBatch::with('product')
             ->when($this->search, function ($query) {
                 $query->whereHas('product', function ($q) {
-                    $q->where('nama_produk', 'like', '%'.$this->search.'%')
-                        ->orWhere('kode_produk', 'like', '%'.$this->search.'%');
+                    $q->where('nama_produk', 'like', '%' . $this->search . '%')
+                        ->orWhere('kode_produk', 'like', '%' . $this->search . '%');
                 });
             })
             ->when($this->location, function ($query) {
@@ -1385,8 +1432,8 @@ class StockBatchIndex extends Component
                 'subcategory_id' => $product->subcategory_id,
             ]);
         } catch (\Exception $e) {
-            Log::error('Error adding quick product: '.$e->getMessage());
-            session()->flash('error', 'Gagal menambahkan produk: '.$e->getMessage());
+            Log::error('Error adding quick product: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menambahkan produk: ' . $e->getMessage());
         }
     }
 
@@ -1424,7 +1471,7 @@ class StockBatchIndex extends Component
         $basePattern = 'Tumpukan';
         $counter = 1;
 
-        $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern.'%')
+        $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern . '%')
             ->latest('id')
             ->first();
 
@@ -1438,6 +1485,6 @@ class StockBatchIndex extends Component
             }
         }
 
-        return $basePattern.' '.$counter;
+        return $basePattern . ' ' . $counter;
     }
 }

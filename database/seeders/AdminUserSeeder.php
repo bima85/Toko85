@@ -29,9 +29,10 @@ class AdminUserSeeder extends Seeder
             $user->save();
         }
 
-        // Ensure role exists then assign
+
+        // Assign superadmin role if exists
         if (method_exists($user, 'assignRole')) {
-            $user->assignRole('admin');
+            $user->assignRole('superadmin');
         }
 
         $this->command->info("Admin user seeded: {$email} (password: password)");

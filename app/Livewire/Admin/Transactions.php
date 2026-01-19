@@ -2,27 +2,21 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\PurchaseItem;
 use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Models\StockAdjustment;
 use App\Models\StockBatch;
 use App\Models\StockCard;
 use App\Models\Store;
-use App\Models\Subcategory;
 use App\Models\Supplier;
 use App\Models\Unit;
 use App\Services\StockBatchService;
 use App\Services\StockCardService;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Livewire\Attributes\Computed;
+use Livewire\Component;
 use Livewire\WithPagination;
 
 class Transactions extends Component
@@ -31,57 +25,88 @@ class Transactions extends Component
 
     protected $paginationTheme = 'bootstrap';
 
-    public $tab = 'sale'; // or 'purchase'
+    public $tab = 'purchase'; // or 'purchase'
 
     public $products;
+
     public array $productSuggestions = [];
 
     // Purchase form properties (matching Purchases component)
     public $no_invoice;
+
     public $tanggal_pembelian;
+
     public $supplier_id;
+
     public $store_id;
+
     public $warehouse_id;
+
     public $status = 'completed';
+
     public $keterangan;
+
     public $ownerFilter = null;
+
     public $suppliers;
+
     public $owners;
+
     public $stores;
+
     public $warehouses;
+
     public $categories;
+
     public $subcategories;
+
     public $units;
 
     // Purchase items with full structure
     public $purchaseItems = [];
+
     public $batch_enabled = false;
 
     // Modal states
     public $showOwnerModal = false;
+
     public $new_owner_name = '';
+
     public $showSupplierModal = false;
+
     public $kode_supplier;
+
     public $nama_supplier;
+
     public $telepon;
+
     public $email;
+
     public $alamat;
+
     public $supplier_keterangan;
 
     // Legacy properties (keeping for backward compatibility)
     public $purchase_location_type = 'store';
+
     public $purchase_location_id = null;
+
     public $purchase_tumpukan_name = '';
 
     public $saleItems = [];
+
     public $sale_location_type = 'store';
+
     public $sale_location_id = null;
+
     // Realtime activity filters
     public $recent_search = '';
+
     public $recent_location = ''; // format: store:{id} or warehouse:{id} or empty
 
     public function mount()
     {
+        Log::info('Transactions::mount called', ['user_id' => auth()->id(), 'role' => auth()->user()?->getRoleNames()->toArray()]);
         $this->products = Product::orderBy('nama_produk')->limit(200)->get();
         $this->suppliers = Supplier::orderBy('nama_supplier')->get();
         $this->owners = Supplier::pluck('nama_supplier')->unique()->sort()->values();
@@ -173,7 +198,8 @@ class Transactions extends Component
                         $it['batch_name'] ?: ('PUR #' . $purchase->id . ' - ' . $purchaseItem->id),
                         $it['qty'],
                         $this->store_id ?: $this->warehouse_id,
-                        'Pembelian via Transactions page'
+                        'Pembelian via Transactions page',
+                        Product::find($it['product_id'])?->satuan
                     );
                 } else {
                     // Create stock adjustment for non-batch purchases
@@ -187,6 +213,7 @@ class Transactions extends Component
                         'note' => 'Pembelian via Transactions page - ' . $purchase->no_invoice,
                         'reference_type' => 'purchase',
                         'reference_id' => $purchase->id,
+                        'adjustment_date' => $this->tanggal_pembelian,
                     ]);
 
                     $cardService->createCard($adjustment);
@@ -198,6 +225,7 @@ class Transactions extends Component
         $this->resetPurchaseForm();
 
         session()->flash('message', 'Pembelian berhasil disimpan');
+
         return redirect()->route('admin.transactions.manage');
     }
 
@@ -236,7 +264,9 @@ class Transactions extends Component
             'saleItems.*.harga_jual' => 'nullable|numeric|min:0',
         ]);
 
-        DB::transaction(function () {
+        $cardService = app(StockCardService::class);
+
+        DB::transaction(function () use ($cardService) {
             $sale = Sale::create([
                 'no_invoice' => 'SALE-' . now()->format('YmdHis'),
                 'tanggal_penjualan' => now(),
@@ -258,11 +288,13 @@ class Transactions extends Component
                 $need = $it['qty'];
                 $batches = StockBatch::where('product_id', $it['product_id'])->where('qty', '>', 0)->orderBy('id', 'asc')->lockForUpdate()->get();
                 foreach ($batches as $batch) {
-                    if ($need <= 0) break;
+                    if ($need <= 0) {
+                        break;
+                    }
                     $take = min($batch->qty, $need);
                     $batch->decrement('qty', $take);
 
-                    StockCard::create([
+                    $cardService->createStockCard([
                         'product_id' => $it['product_id'],
                         'batch_id' => $batch->id,
                         'type' => 'out',
@@ -271,6 +303,8 @@ class Transactions extends Component
                         'reference_type' => 'sale',
                         'reference_id' => $sale->id,
                         'note' => 'Penjualan via Transactions page',
+                        'created_at' => $sale->tanggal_penjualan,
+                        'updated_at' => $sale->tanggal_penjualan,
                     ]);
 
                     $need -= $take;
@@ -283,6 +317,7 @@ class Transactions extends Component
         });
 
         session()->flash('message', 'Penjualan berhasil disimpan');
+
         return redirect()->route('admin.transactions.manage');
     }
 
@@ -499,6 +534,7 @@ class Transactions extends Component
             // clear selection if not found
             $this->purchaseItems[$index]['product_id'] = null;
             $this->purchaseItems = array_merge([], $this->purchaseItems);
+
             return;
         }
 
@@ -520,6 +556,7 @@ class Transactions extends Component
         $q = trim($q);
         if ($q === '') {
             unset($this->productSuggestions[$index]);
+
             return;
         }
 
@@ -601,8 +638,9 @@ class Transactions extends Component
 
     public function render()
     {
+        Log::info('Transactions::render called');
         // Recent raw activity (limited) - eager load batch for location display
-        $recent = StockCard::latestFirst()->with(['product', 'batch'])->limit(25)->get();
+        $recent = StockCard::latestFirst()->with(['product.category', 'product.subcategory', 'batch'])->limit(25)->get();
 
         // Grouped batches per product for display in realtime section
         // only eager-load product; do not eager-load polymorphic `location` (DB stores non-class values)

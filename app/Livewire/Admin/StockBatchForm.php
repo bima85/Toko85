@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\StockBatch;
 use App\Models\Subcategory;
+use App\Models\Unit;
 use App\Services\StockBatchService;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -23,6 +24,8 @@ class StockBatchForm extends Component
     public string $locationType = 'store';
 
     public string $namaTumpukan = '';
+
+    public string $unit = '';
 
     public float $qty = 0;
 
@@ -63,6 +66,17 @@ class StockBatchForm extends Component
         }
     }
 
+    public function updatedProductId($value)
+    {
+        // When product selection changes, default unit from product.satuan
+        if ($value) {
+            $product = Product::find($value);
+            $this->unit = $product?->satuan ?? '';
+        } else {
+            $this->unit = '';
+        }
+    }
+
     public function updatedSubcategoryId($value)
     {
         if ($value === '__add__') {
@@ -96,6 +110,8 @@ class StockBatchForm extends Component
 
         $locations = ['store' => 'Toko', 'warehouse' => 'Gudang'];
 
+        $units = Unit::orderBy('nama_unit')->get();
+
         $categories = Category::all();
         if ($this->categoryId) {
             $subcategories = Subcategory::where('category_id', $this->categoryId)->get();
@@ -107,6 +123,7 @@ class StockBatchForm extends Component
             'products' => $products,
             'batches' => $batches,
             'locations' => $locations,
+            'units' => $units,
             'categories' => $categories,
             'subcategories' => $subcategories,
             'existingNames' => $existingNames,
@@ -130,6 +147,7 @@ class StockBatchForm extends Component
             'locationType' => 'required|in:store,warehouse',
             'namaTumpukan' => 'nullable|string|max:255',
             'qty' => 'required|numeric|min:0.01',
+            'unit' => 'nullable|string|max:50',
             'categoryId' => 'nullable|exists:categories,id',
             'subcategoryId' => 'nullable|exists:subcategories,id',
         ]);
@@ -144,7 +162,9 @@ class StockBatchForm extends Component
                 $this->locationType,
                 $namaTumpukan,
                 $this->qty,
-                note: $this->note ?: null
+                null,
+                $this->note ?: null,
+                $this->unit ?: null
             );
 
             session()->flash('success', 'Stok berhasil ditambahkan!');
@@ -256,7 +276,7 @@ class StockBatchForm extends Component
         $basePattern = 'Tumpukan';
         $counter = 1;
 
-        $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern.'%')
+        $lastBatch = StockBatch::where('nama_tumpukan', 'like', $basePattern . '%')
             ->latest('id')
             ->first();
 
@@ -270,11 +290,11 @@ class StockBatchForm extends Component
             }
         }
 
-        return $basePattern.' '.$counter;
+        return $basePattern . ' ' . $counter;
     }
 
     private function resetForm()
     {
-        $this->reset(['productId', 'batchId', 'locationType', 'namaTumpukan', 'qty', 'note', 'toLocationType', 'toNamaTumpukan', 'categoryId', 'subcategoryId', 'newCategoryCode', 'newSubcategoryCode']);
+        $this->reset(['productId', 'batchId', 'locationType', 'namaTumpukan', 'unit', 'qty', 'note', 'toLocationType', 'toNamaTumpukan', 'categoryId', 'subcategoryId', 'newCategoryCode', 'newSubcategoryCode']);
     }
 }
