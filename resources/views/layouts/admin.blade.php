@@ -50,6 +50,7 @@
     <link rel="icon" type="image/png" sizes="192x192" href="/images/icon-192.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/images/icon-192.png" />
 
+    {{-- Ensure blade stacks are present so components can push styles --}}
     @stack('styles')
 
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
@@ -100,6 +101,9 @@
         <strong>&copy; {{ date('Y') }} Your Company.</strong>
       </footer>
     </div>
+
+    <!-- allow components to push scripts -->
+    @stack('scripts')
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/overlayscrollbars@1.13.1/js/jquery.overlayScrollbars.min.js"></script>

@@ -14,10 +14,12 @@ class PurchaseItem extends Model
         'product_id',
         'qty',
         'qty_gudang',
+        'destination_type',
         'unit_id',
         'harga_beli',
         'total',
         'batches',
+        'status',
     ];
 
     protected $casts = [

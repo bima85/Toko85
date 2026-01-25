@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
@@ -22,10 +23,10 @@ class PurchaseItemController extends Controller
         return DataTables::of($query)
             ->addColumn('action', function ($row) {
                 return '
-                    <button class="btn btn-info btn-xs edit-item" data-id="'.$row->id.'">
+                    <button class="btn btn-info btn-xs edit-item" data-id="' . $row->id . '">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-danger btn-xs delete-item" data-id="'.$row->id.'">
+                    <button class="btn btn-danger btn-xs delete-item" data-id="' . $row->id . '">
                         <i class="fas fa-trash"></i>
                     </button>
                 ';
@@ -48,7 +49,7 @@ class PurchaseItemController extends Controller
                 $unit_conversion = $row->unit?->conversion_value ?? 1;
                 $total = ($qty * $unit_conversion) * $harga;
 
-                return 'Rp '.number_format($total, 0, ',', '.');
+                return 'Rp ' . number_format($total, 0, ',', '.');
             })
             ->editColumn('qty', function ($row) {
                 return $row->qty ?? 0;
@@ -57,9 +58,17 @@ class PurchaseItemController extends Controller
                 return $row->qty_gudang ?? 0;
             })
             ->editColumn('harga_beli', function ($row) {
-                return 'Rp '.number_format($row->harga_beli ?? 0, 0, ',', '.');
+                return 'Rp ' . number_format($row->harga_beli ?? 0, 0, ',', '.');
             })
             ->rawColumns(['action'])
             ->make(true);
+    }
+
+    /**
+     * Print purchase receipt
+     */
+    public function print(Purchase $id)
+    {
+        return view('purchases.print', ['purchase' => $id->load(['supplier', 'purchaseItems.product', 'purchaseItems.unit', 'store', 'warehouse'])]);
     }
 }

@@ -1,5 +1,5 @@
 // Service Worker untuk PWA - Offline Support & Caching
-const CACHE_NAME = 'shop85-v1';
+const CACHE_NAME = 'shop85-v2';
 const ASSETS_TO_CACHE = [
   '/css/adminlte.min.css',
   '/js/jquery.min.js',
@@ -41,7 +41,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim(); // Claim all clients immediately
 });
 
-// Fetch Event - Cache First, Then Network (for assets), Network First (for API)
+// Fetch Event - Network-first for admin & API, Cache-first for assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -51,23 +51,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API requests: Network first, fallback to cache
+  // Network-first for admin pages to avoid stale cached 403s
+  if (url.pathname.startsWith('/admin') || url.pathname.startsWith('/transactions')) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // API and Livewire: Network-first
   if (url.pathname.includes('/api/') || url.pathname.includes('/livewire/')) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          // Cache successful responses
-          if (response.ok) {
-            const cache = caches.open(CACHE_NAME);
-            cache.then((c) => c.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => {
-          // Return cached response if network fails
-          return caches.match(request).then((cached) => cached || offlineResponse());
-        })
-    );
+    event.respondWith(networkFirst(request));
     return;
   }
 
@@ -82,14 +74,44 @@ self.addEventListener('fetch', (event) => {
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
-          const cache = caches.open(CACHE_NAME);
-          cache.then((c) => c.put(request, response.clone()));
-          return response;
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, response.clone()).catch((err) => {
+              console.log('[Service Worker] Cache put failed', err);
+            });
+            return response;
+          });
         })
         .catch(() => offlineResponse());
     })
   );
 });
+
+// Network-first helper
+async function networkFirst(request) {
+  try {
+    const response = await fetch(request);
+    if (!response) throw new Error('No response');
+
+    // Don't cache 403 responses
+    if (response.status === 403) {
+      return response;
+    }
+
+    if (response.ok) {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      } catch (e) {
+        console.log('[Service Worker] Failed caching response', e);
+      }
+    }
+
+    return response;
+  } catch (err) {
+    const cached = await caches.match(request);
+    return cached || offlineResponse();
+  }
+}
 
 // Offline fallback response
 function offlineResponse() {

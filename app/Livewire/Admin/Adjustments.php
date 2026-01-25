@@ -11,6 +11,7 @@ use App\Models\Unit;
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -469,7 +470,7 @@ class Adjustments extends Component
 
     private function refreshStokAwalForAllItems()
     {
-        \Log::info('refreshStokAwalForAllItems called');
+        Log::info('refreshStokAwalForAllItems called');
         foreach ($this->adjustment_items as $index => $item) {
             if (! empty($item['product_id'])) {
                 $this->updateStokAwalForItem($index, $item['product_id']);
@@ -609,7 +610,7 @@ class Adjustments extends Component
             }
         }
 
-        return view('livewire.admin.adjustments', [
+        return view('livewire.admin.stock.adjustments', [
             'filteredSubcategories' => $filteredSubcategories,
             'filteredProducts' => $filteredProducts,
             'totalStokToko' => $this->getTotalStokToko(),

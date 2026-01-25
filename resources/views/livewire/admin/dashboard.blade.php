@@ -1,4 +1,8 @@
 <div wire:poll.keep-alive.60s>
+  @php
+    $currentUser = auth()->user();
+    $isAdmin = $currentUser && method_exists($currentUser, 'hasAnyRole') && $currentUser->hasAnyRole(['admin','superadmin']);
+  @endphp
   <!-- Page Header -->
   <div class="content-header">
     <div class="container-fluid">
@@ -20,6 +24,59 @@
 
   <!-- Main content -->
   <section class="content">
+    @if (! $isAdmin)
+      <div class="container-fluid">
+        <div class="row mb-3">
+          <div class="col-lg-6 col-12">
+            <div class="small-box bg-warning">
+              <div class="inner">
+                <h3>{{ $totalProducts }}</h3>
+                <p>Total Produk</p>
+              </div>
+              <div class="icon"><i class="fas fa-box"></i></div>
+              <a href="{{ route('admin.products') }}" class="small-box-footer">Lihat detail <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+          </div>
+
+          <div class="col-lg-6 col-12">
+            <div class="small-box bg-info">
+              <div class="inner">
+                <h3>{{ number_format($totalStock, 0, ',', '.') }}</h3>
+                <p>Total Stok</p>
+              </div>
+              <div class="icon"><i class="fas fa-warehouse"></i></div>
+              <a href="{{ route('admin.stock-reports') }}" class="small-box-footer">Lihat laporan stok <i class="fas fa-arrow-circle-right"></i></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-8">
+            <div class="card">
+              <div class="card-header">
+                <h5 class="card-title mb-0">Aktivitas Terbaru</h5>
+              </div>
+              <div class="card-body p-2" style="max-height:320px; overflow:auto">
+                <ul class="list-group list-group-flush">
+                  @forelse($recentActivities as $act)
+                    <li class="list-group-item">
+                      <div class="small">
+                        <strong>{{ $act->product?->nama_produk ?? 'Produk' }}</strong>
+                        &nbsp;•&nbsp; {{ $act->qty }} &nbsp;•&nbsp; {{ $act->type }}
+                        @if($act->reference_type) &nbsp;•&nbsp; {{ ucfirst($act->reference_type) }} @endif
+                        <div class="text-muted">{{ $act->created_at->diffForHumans() }}</div>
+                      </div>
+                    </li>
+                  @empty
+                    <li class="list-group-item small text-muted">Belum ada aktivitas.</li>
+                  @endforelse
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    @else
     <div class="container-fluid">
       <!-- KPI Cards Row 1 -->
       <div class="row">
@@ -359,6 +416,7 @@
           </div>
         </div>
       </div>
+    @endif
     </div>
   </section>
 

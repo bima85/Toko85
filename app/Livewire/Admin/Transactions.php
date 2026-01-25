@@ -2,29 +2,26 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\PurchaseItem;
 use App\Models\Sale;
-use App\Models\SaleItem;
 use App\Models\StockAdjustment;
 use App\Models\StockBatch;
 use App\Models\StockCard;
 use App\Models\Store;
-use App\Models\Subcategory;
 use App\Models\Supplier;
 use App\Models\Unit;
 use App\Services\StockBatchService;
 use App\Services\StockCardService;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Transactions extends Component
 {
     use WithPagination;
@@ -34,51 +31,101 @@ class Transactions extends Component
     public $tab = 'sale'; // or 'purchase'
 
     public $products;
+
     public array $productSuggestions = [];
 
     // Purchase form properties (matching Purchases component)
     public $no_invoice;
+
     public $tanggal_pembelian;
+
     public $supplier_id;
+
     public $store_id;
+
     public $warehouse_id;
+
     public $status = 'completed';
+
     public $keterangan;
+
     public $ownerFilter = null;
+
     public $suppliers;
+
     public $owners;
+
     public $stores;
+
     public $warehouses;
+
     public $categories;
+
     public $subcategories;
+
     public $units;
 
     // Purchase items with full structure
     public $purchaseItems = [];
-    public $batch_enabled = false;
 
-    // Modal states
+    public $batch_enabled = false; // Global batch toggle
+
+    // Batch input dinamis
+    public $showCreateBatchSection = false;
+
+    public $batchNameList = [];
+
+    public $batchQtyList = [];
+
+    public $batchLocationList = [];
+
     public $showOwnerModal = false;
+
     public $new_owner_name = '';
+
     public $showSupplierModal = false;
+
     public $kode_supplier;
+
     public $nama_supplier;
+
     public $telepon;
+
     public $email;
+
     public $alamat;
+
     public $supplier_keterangan;
 
     // Legacy properties (keeping for backward compatibility)
     public $purchase_location_type = 'store';
+
     public $purchase_location_id = null;
+
     public $purchase_tumpukan_name = '';
 
     public $saleItems = [];
+
     public $sale_location_type = 'store';
+
     public $sale_location_id = null;
+
     // Realtime activity filters
     public $recent_search = '';
+
     public $recent_location = ''; // format: store:{id} or warehouse:{id} or empty
+
+    protected $rules = [
+        'tanggal_pembelian' => 'required|date',
+        'supplier_id' => 'required|exists:suppliers,id',
+        'store_id' => 'required|exists:stores,id',
+        'keterangan' => 'nullable|string|max:500',
+        'purchaseItems' => 'required|array|min:1',
+        'purchaseItems.*.category_id' => 'required|exists:categories,id',
+        'purchaseItems.*.product_id' => 'required|exists:products,id',
+        'purchaseItems.*.qty' => 'required|integer|min:1',
+        'purchaseItems.*.harga_beli' => 'required|numeric|min:0',
+    ];
 
     public function mount()
     {
@@ -92,7 +139,7 @@ class Transactions extends Component
         $this->units = Unit::orderBy('nama_unit')->get();
 
         // Generate invoice number
-        $this->no_invoice = 'PUR-' . now()->format('YmdHis');
+        $this->no_invoice = 'PUR-'.now()->format('YmdHis');
         $this->tanggal_pembelian = now()->format('Y-m-d');
 
         // Initialize purchase items with full structure
@@ -103,6 +150,7 @@ class Transactions extends Component
             'qty' => 1,
             'unit_id' => null,
             'harga_beli' => 0,
+            'use_batch' => false,
             'batch_name' => '',
             'batch_qty' => 0,
             'batch_location' => '',
@@ -112,6 +160,38 @@ class Transactions extends Component
         ]];
 
         $this->saleItems = [['product_id' => null, 'qty' => 1, 'harga_jual' => 0]];
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
+    }
+
+    private function normalizePurchaseItems()
+    {
+        foreach ($this->purchaseItems as $index => $item) {
+            if (! isset($item['use_batch'])) {
+                $this->purchaseItems[$index]['use_batch'] = false;
+            }
+            if (! isset($item['batches'])) {
+                $this->purchaseItems[$index]['batches'] = [];
+            }
+            if (! isset($item['batch_name'])) {
+                $this->purchaseItems[$index]['batch_name'] = '';
+            }
+            if (! isset($item['batch_qty'])) {
+                $this->purchaseItems[$index]['batch_qty'] = 0;
+            }
+            if (! isset($item['batch_location'])) {
+                $this->purchaseItems[$index]['batch_location'] = '';
+            }
+        }
+    }
+
+    public function updatedTab($value)
+    {
+        if ($value === 'purchase') {
+            // Initialize purchase form when switching to purchase tab
+            $this->resetPurchaseForm();
+        }
     }
 
     public function addSaleItem()
@@ -170,7 +250,7 @@ class Transactions extends Component
                     $batchService->addStock(
                         $it['product_id'],
                         $this->store_id ? 'store' : 'warehouse',
-                        $it['batch_name'] ?: ('PUR #' . $purchase->id . ' - ' . $purchaseItem->id),
+                        $it['batch_name'] ?: ('PUR #'.$purchase->id.' - '.$purchaseItem->id),
                         $it['qty'],
                         $this->store_id ?: $this->warehouse_id,
                         'Pembelian via Transactions page'
@@ -184,12 +264,28 @@ class Transactions extends Component
                         'cost' => $it['harga_beli'],
                         'store_id' => $this->store_id,
                         'warehouse_id' => $this->warehouse_id,
-                        'note' => 'Pembelian via Transactions page - ' . $purchase->no_invoice,
+                        'note' => 'Pembelian via Transactions page - '.$purchase->no_invoice,
                         'reference_type' => 'purchase',
                         'reference_id' => $purchase->id,
                     ]);
 
-                    $cardService->createCard($adjustment);
+                    // Create stock card for audit trail
+                    $supplier = $this->suppliers->find($this->supplier_id);
+                    $toLocation = $this->store_id
+                        ? $this->stores->find($this->store_id)?->nama_toko ?? 'Toko'
+                        : $this->warehouses->find($this->warehouse_id)?->nama_gudang ?? 'Gudang';
+
+                    $cardService->createStockCard([
+                        'product_id' => $it['product_id'],
+                        'batch_id' => null,
+                        'type' => 'in',
+                        'qty' => $it['qty'],
+                        'from_location' => $supplier?->nama_supplier ?? 'Supplier',
+                        'to_location' => $toLocation,
+                        'reference_type' => 'purchase',
+                        'reference_id' => $purchase->id,
+                        'note' => 'Pembelian via Transactions page - '.$purchase->no_invoice,
+                    ]);
                 }
             }
         });
@@ -198,12 +294,14 @@ class Transactions extends Component
         $this->resetPurchaseForm();
 
         session()->flash('message', 'Pembelian berhasil disimpan');
-        return redirect()->route('admin.transactions.manage');
+
+        // Stay on the same page instead of redirecting
+        $this->dispatch('purchase-saved');
     }
 
     private function resetPurchaseForm()
     {
-        $this->no_invoice = 'PUR-' . now()->format('YmdHis');
+        $this->no_invoice = 'PUR-'.now()->format('YmdHis');
         $this->tanggal_pembelian = now()->format('Y-m-d');
         $this->supplier_id = null;
         $this->store_id = null;
@@ -218,6 +316,7 @@ class Transactions extends Component
             'qty' => 1,
             'unit_id' => null,
             'harga_beli' => 0,
+            'use_batch' => false,
             'batch_name' => '',
             'batch_qty' => 0,
             'batch_location' => '',
@@ -226,6 +325,9 @@ class Transactions extends Component
             ],
         ]];
         $this->batch_enabled = false;
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
     }
 
     public function submitSale()
@@ -238,7 +340,7 @@ class Transactions extends Component
 
         DB::transaction(function () {
             $sale = Sale::create([
-                'no_invoice' => 'SALE-' . now()->format('YmdHis'),
+                'no_invoice' => 'SALE-'.now()->format('YmdHis'),
                 'tanggal_penjualan' => now(),
                 'customer_id' => null,
                 'store_id' => $this->sale_location_type === 'store' ? $this->sale_location_id : null,
@@ -258,7 +360,9 @@ class Transactions extends Component
                 $need = $it['qty'];
                 $batches = StockBatch::where('product_id', $it['product_id'])->where('qty', '>', 0)->orderBy('id', 'asc')->lockForUpdate()->get();
                 foreach ($batches as $batch) {
-                    if ($need <= 0) break;
+                    if ($need <= 0) {
+                        break;
+                    }
                     $take = min($batch->qty, $need);
                     $batch->decrement('qty', $take);
 
@@ -277,12 +381,13 @@ class Transactions extends Component
                 }
 
                 if ($need > 0) {
-                    throw new \Exception('Stok tidak mencukupi untuk produk ID ' . $it['product_id']);
+                    throw new \Exception('Stok tidak mencukupi untuk produk ID '.$it['product_id']);
                 }
             }
         });
 
         session()->flash('message', 'Penjualan berhasil disimpan');
+
         return redirect()->route('admin.transactions.manage');
     }
 
@@ -314,7 +419,7 @@ class Transactions extends Component
         ]);
 
         $supplier = Supplier::create([
-            'kode_supplier' => 'SUP-' . now()->format('YmdHis'),
+            'kode_supplier' => 'SUP-'.now()->format('YmdHis'),
             'nama_supplier' => $this->new_owner_name,
         ]);
 
@@ -391,6 +496,7 @@ class Transactions extends Component
             'qty' => 1,
             'unit_id' => null,
             'harga_beli' => 0,
+            'use_batch' => false,
             'batch_name' => '',
             'batch_qty' => 0,
             'batch_location' => '',
@@ -398,11 +504,101 @@ class Transactions extends Component
                 ['name' => '', 'qty' => 0],
             ],
         ];
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
     }
 
     public function removePurchaseItem($i)
     {
         array_splice($this->purchaseItems, $i, 1);
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
+    }
+
+    public function toggleBatch($index)
+    {
+        $this->purchaseItems[$index]['use_batch'] = ! $this->purchaseItems[$index]['use_batch'];
+
+        if (! $this->purchaseItems[$index]['use_batch']) {
+            $this->purchaseItems[$index]['batches'] = [];
+        }
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
+    }
+
+    public function addBatch($index)
+    {
+        $this->purchaseItems[$index]['batches'][] = [
+            'batch_name' => '',
+            'batch_qty' => 0,
+            'batch_location' => '',
+        ];
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
+    }
+
+    public function removeBatch($index, $batchIndex)
+    {
+        unset($this->purchaseItems[$index]['batches'][$batchIndex]);
+        $this->purchaseItems[$index]['batches'] = array_values($this->purchaseItems[$index]['batches']);
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
+    }
+
+    public function toggleCreateBatchSection()
+    {
+        $this->showCreateBatchSection = ! $this->showCreateBatchSection;
+    }
+
+    public function createBatch()
+    {
+        if (empty($this->batchNameList) || empty($this->batchQtyList)) {
+            return;
+        }
+
+        foreach ($this->purchaseItems as $index => $item) {
+            if ($item['use_batch']) {
+                $this->purchaseItems[$index]['batches'] = [];
+
+                foreach ($this->batchNameList as $batchIndex => $batchName) {
+                    if (! empty($batchName) && isset($this->batchQtyList[$batchIndex])) {
+                        $this->purchaseItems[$index]['batches'][] = [
+                            'batch_name' => $batchName,
+                            'batch_qty' => $this->batchQtyList[$batchIndex],
+                            'batch_location' => $this->batchLocationList[$batchIndex] ?? '',
+                        ];
+                    }
+                }
+            }
+        }
+
+        $this->showCreateBatchSection = false;
+        $this->batchNameList = [];
+        $this->batchQtyList = [];
+        $this->batchLocationList = [];
+    }
+
+    public function addBatchCreatorRow()
+    {
+        $this->batchNameList[] = '';
+        $this->batchQtyList[] = 0;
+        $this->batchLocationList[] = '';
+    }
+
+    public function removeBatchCreatorRow($index)
+    {
+        unset($this->batchNameList[$index]);
+        unset($this->batchQtyList[$index]);
+        unset($this->batchLocationList[$index]);
+
+        $this->batchNameList = array_values($this->batchNameList);
+        $this->batchQtyList = array_values($this->batchQtyList);
+        $this->batchLocationList = array_values($this->batchLocationList);
     }
 
     public function updatedPurchaseItems($value, $key)
@@ -428,6 +624,9 @@ class Transactions extends Component
                 $this->purchaseItems[$index]['subcategory_id'] = $product->subcategory_id;
             }
         }
+
+        // Ensure all purchase items have required batch keys
+        $this->normalizePurchaseItems();
     }
 
     public function addBatchRow($itemIndex)
@@ -499,6 +698,7 @@ class Transactions extends Component
             // clear selection if not found
             $this->purchaseItems[$index]['product_id'] = null;
             $this->purchaseItems = array_merge([], $this->purchaseItems);
+
             return;
         }
 
@@ -520,6 +720,7 @@ class Transactions extends Component
         $q = trim($q);
         if ($q === '') {
             unset($this->productSuggestions[$index]);
+
             return;
         }
 
@@ -599,6 +800,19 @@ class Transactions extends Component
         $this->recent_location = $value;
     }
 
+    #[Computed]
+    public function purchaseTotal()
+    {
+        $total = 0;
+        foreach ($this->purchaseItems as $item) {
+            $qty = $item['qty'] ?? 0;
+            $harga = $item['harga_beli'] ?? 0;
+            $total += $qty * $harga;
+        }
+
+        return $total;
+    }
+
     public function render()
     {
         // Recent raw activity (limited) - eager load batch for location display
@@ -639,7 +853,7 @@ class Transactions extends Component
                 }
 
                 if (! $locationName) {
-                    $locationName = ($b->location_type ? ucfirst($b->location_type) : 'Lokasi') . ' ' . ($b->location_id ?? '');
+                    $locationName = ($b->location_type ? ucfirst($b->location_type) : 'Lokasi').' '.($b->location_id ?? '');
                 }
 
                 return [
@@ -652,9 +866,9 @@ class Transactions extends Component
             })->values();
         });
 
-        return view('livewire.admin.transactions', [
+        return view('livewire.admin.transactions.transactions', [
             'recent' => $recent,
             'groupedBatches' => $groupedBatches,
-        ])->layout('layouts.admin');
+        ]);
     }
 }

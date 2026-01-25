@@ -4,9 +4,11 @@ namespace App\Livewire\Admin;
 
 use App\Models\Category;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Categories extends Component
 {
     use WithPagination;
@@ -39,7 +41,10 @@ class Categories extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('categories.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -136,9 +141,9 @@ class Categories extends Component
 
         $categories = $query->orderBy('id', 'desc')->paginate(10);
 
-        return view('livewire.admin.categories', [
+        return view('livewire.admin.products.categories', [
             'categories' => $categories,
-        ])->layout('layouts.admin');
+        ]);
         /** @phpstan-ignore-next-line */
     }
 }

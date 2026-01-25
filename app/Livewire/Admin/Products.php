@@ -6,9 +6,11 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Subcategory;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Products extends Component
 {
     use WithPagination;
@@ -49,7 +51,10 @@ class Products extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('products.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -201,11 +206,11 @@ class Products extends Component
 
         $categories = Category::orderBy('nama_kategori')->get();
 
-        return view('livewire.admin.products', [
+        return view('livewire.admin.products.products', [
             'products' => $products,
             'categories' => $categories,
             'subcategories' => $this->subcategories,
-        ])->layout('layouts.admin');
+        ]);
         /** @phpstan-ignore-next-line */
     }
 }

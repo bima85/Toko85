@@ -9,8 +9,10 @@ use App\Livewire\Admin\Categories;
 use App\Livewire\Admin\Customers;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\HoldOrderManager;
+use App\Livewire\Admin\PermissionMatrix;
 use App\Livewire\Admin\Products;
 use App\Livewire\Admin\Purchases;
+use App\Livewire\Admin\Roles;
 use App\Livewire\Admin\Sales;
 use App\Livewire\Admin\StockBatchIndex;
 use App\Livewire\Admin\StockReports;
@@ -31,6 +33,20 @@ use App\Livewire\StockCard\StockCardIndex;
 use App\Livewire\StockCard\StockCardShow;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
+
+// TEMP DEBUG ROUTE (public) - HAPUS SETELAH FINISH
+Route::get('/_debug/purchases-html', function () {
+    // Share errors bag to avoid Blade notices
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+    // Login as dev user id 3 so mount() authorization passes
+    \Illuminate\Support\Facades\Auth::loginUsingId(3);
+
+    $component = app(\App\Livewire\Admin\Purchases::class);
+    $component->mount();
+
+    return response($component->render()->render(), 200)->header('Content-Type', 'text/html');
+});
 
 // SEMUA ROUTE LIVEWIRE HARUS MENGGUNAKAN MIDDLEWARE 'web'
 Route::middleware('web')->group(function () {
@@ -59,6 +75,38 @@ Route::middleware('web')->group(function () {
     // Route yang membutuhkan autentikasi
     Route::middleware('auth')->group(function () {
 
+        // Debug route to inspect current user and roles (temporary)
+        Route::get('admin/_debug/whoami', function () {
+            $user = auth()->user();
+            if (! $user) {
+                return response()->json(['user' => null], 200);
+            }
+
+            return response()->json([
+                'id' => $user->id,
+                'email' => $user->email,
+                'roles' => method_exists($user, 'getRoleNames') ? $user->getRoleNames()->toArray() : [],
+            ], 200);
+        })->name('admin._debug.whoami');
+
+        // TEMP: Debug route to dump rendered Livewire HTML for Purchases component
+        Route::get('admin/_debug/purchases-html', function () {
+            $user = auth()->user();
+            if (! $user) {
+                abort(403);
+            }
+
+            // Ensure view errors bag exists to avoid Blade notices
+            view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+            $component = app(\App\Livewire\Admin\Purchases::class);
+            // Call mount to initialize internal state and enforce authorization check
+            $component->mount();
+
+            // Render and return raw HTML
+            return response($component->render()->render())->header('Content-Type', 'text/html');
+        })->name('admin._debug.purchases-html');
+
         // Dashboard umum
         Route::get('/dashboard', Dashboard::class)->name('dashboard');
 
@@ -76,8 +124,11 @@ Route::middleware('web')->group(function () {
             Route::get('customers', Customers::class)->name('customers');
             Route::get('warehouses', Warehouses::class)->name('warehouses');
             Route::get('stores', Stores::class)->name('stores');
+            Route::get('roles', Roles::class)->name('roles');
+            Route::get('permissions', PermissionMatrix::class)->name('permissions');
             Route::get('purchases', Purchases::class)->name('purchases');
             Route::get('purchases/{id}/items', [PurchaseItemController::class, 'data'])->name('purchases.items');
+            Route::get('purchases/{id}/print', [PurchaseItemController::class, 'print'])->name('purchases.print');
 
             Route::get('stock-reports', StockReports::class)->name('stock-reports');
             Route::get('stock-reports/partial', [\App\Http\Controllers\Admin\StockReportController::class, 'partial'])->name('stock-reports.partial');
@@ -153,13 +204,13 @@ Route::middleware('web')->group(function () {
 });
 
 // Fallback named routes used by some views/tests. Define only if not present.
-if (!Route::has('user-password.edit')) {
+if (! Route::has('user-password.edit')) {
     Route::any('/user/password/edit', function () {
         return redirect('/');
     })->name('user-password.edit');
 }
 
-if (!Route::has('two-factor.show')) {
+if (! Route::has('two-factor.show')) {
     Route::get('/settings/two-factor', App\Livewire\Settings\TwoFactor::class)
         ->middleware(
             when(
@@ -172,35 +223,35 @@ if (!Route::has('two-factor.show')) {
         ->name('two-factor.show');
 }
 
-if (!Route::has('profile.edit')) {
+if (! Route::has('profile.edit')) {
     Route::any('/profile/edit', function () {
         return redirect('/');
     })->name('profile.edit');
 }
 
-if (!Route::has('appearance.edit')) {
+if (! Route::has('appearance.edit')) {
     Route::any('/settings/appearance/edit', function () {
         return redirect('/settings/appearance');
     })->name('appearance.edit');
 }
 
 // Two-factor challenge route (requires auth) used by tests
-if (!Route::has('two-factor.login')) {
+if (! Route::has('two-factor.login')) {
     Route::get('/two-factor-challenge', function () {
         return response('Two Factor Challenge');
     })->middleware('auth')->name('two-factor.login');
 }
 
 // Some views expect un-prefixed admin route names — provide short aliases
-if (!Route::has('stock-batches.index')) {
+if (! Route::has('stock-batches.index')) {
     Route::get('/admin/stock-batches', StockBatchIndex::class)->middleware('auth')->name('stock-batches.index');
 }
 
 // Also provide a non-prefixed path for views that call the route without 'admin.' prefix
-if (!Route::has('stock-batches.index')) {
+if (! Route::has('stock-batches.index')) {
     Route::get('/stock-batches', StockBatchIndex::class)->middleware('auth')->name('stock-batches.index');
 }
 
-if (!Route::has('admin.stock-batches.index')) {
+if (! Route::has('admin.stock-batches.index')) {
     Route::get('/admin/stock-batches', StockBatchIndex::class)->middleware('auth')->name('admin.stock-batches.index');
 }

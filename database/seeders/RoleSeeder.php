@@ -14,17 +14,50 @@ class RoleSeeder extends Seeder
     public function run(): void
     {
         // Create basic roles
-        Role::firstOrCreate(['name' => 'admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
         Role::firstOrCreate(['name' => 'user']);
+        Role::firstOrCreate(['name' => 'superadmin']);
 
-        // Example permissions (extend as needed)
-        Permission::firstOrCreate(['name' => 'manage users']);
-        Permission::firstOrCreate(['name' => 'manage settings']);
+        // Define resources and actions for granular permissions
+        $resources = [
+            'users',
+            'products',
+            'categories',
+            'subcategories',
+            'units',
+            'suppliers',
+            'customers',
+            'warehouses',
+            'stores',
+            'purchases',
+            'sales',
+            'transactions',
+            'stock-batches',
+            'stock-cards',
+            'stock-reports',
+            'profit-margin',
+            'roles',
+            'permissions',
+        ];
 
-        // Assign permissions to admin role
-        $admin = Role::where('name', 'admin')->first();
-        if ($admin) {
-            $admin->givePermissionTo(['manage users', 'manage settings']);
+        $actions = ['view', 'create', 'update', 'delete'];
+
+        $allPermissions = [];
+        foreach ($resources as $res) {
+            foreach ($actions as $act) {
+                $perm = "{$res}.{$act}";
+                Permission::firstOrCreate(['name' => $perm]);
+                $allPermissions[] = $perm;
+            }
+        }
+
+        // Additional utility permissions
+        Permission::firstOrCreate(['name' => 'transactions.manage']);
+        $allPermissions[] = 'transactions.manage';
+
+        // Assign all permissions to admin role by default
+        if ($adminRole) {
+            $adminRole->givePermissionTo($allPermissions);
         }
     }
 }

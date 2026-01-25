@@ -1,0 +1,76 @@
+Panduan Penggunaan: Halaman Permission Matrix (Admin)
+
+Ringkasan
+- Lokasi: /admin/permissions
+- Fungsi: Melihat dan mengelola permissions yang terkait ke roles (role-permission matrix).
+- Peran umum: admin, superadmin (memiliki akses penuh); pengguna lain hanya jika diberi izin.
+
+1. Akses
+- Login sebagai user yang memiliki izin `permissions.view` atau yang memiliki role `admin` / `superadmin`.
+- Contoh akun admin default (jika Anda menjalankan seeder yang saya jalankan):
+  Email: admin@example.test
+  Password: password
+
+2. Tampilan Umum
+- Halaman menampilkan blok per "grup" permission. Grup ditentukan dari prefix sebelum titik pada nama permission.
+  Contoh: `sales.create` dan `sales.update` masuk ke grup `sales`.
+- Di bagian atas tiap grup ada judul grup dan jumlah permission di dalam grup.
+- Terdapat kotak pencarian (search) di atas untuk memfilter permissions.
+
+3. Cara menggunakan kotak pencarian
+- Ketik teks partial seperti `sales` atau `create` untuk menampilkan permission yang mengandung teks tersebut.
+- Pencarian bersifat "contains" (mencari substring), sehingga tidak perlu lengkap.
+
+4. Toggle Group (Pengaturan massal)
+- Di header tabel setiap grup, Anda akan menemukan tombol "Toggle group" pada kolom tiap role.
+- Klik tombol tersebut untuk:
+  - Jika role tersebut sudah memiliki semua permission di grup → maka semua permission grup tersebut akan dicabut (revoke).
+  - Jika belum memiliki semua → maka akan diberikan semua permission grup tersebut (give).
+
+5. Toggle Individual (Permission per-role)
+- Untuk mengatur satu permission untuk satu role, klik checkbox pada baris permission tersebut dan kolom role yang diinginkan.
+- Checkbox akan memanggil action Livewire untuk memberi atau mencabut permission langsung.
+
+6. Membuat permission baru
+- Jika Anda memiliki izin `permissions.create` atau role admin/superadmin, Anda akan melihat form input di atas.
+- Masukkan nama permission baru (contoh: `reports.export`) lalu klik Add.
+- Nama permission sebaiknya mengikuti pola `resource.action` (mis. `purchases.create`).
+
+7. Menghapus permission
+- Jika Anda memiliki izin `permissions.delete` atau role admin/superadmin, tombol Delete akan muncul di sebelah nama permission.
+- Hati-hati: menghapus permission akan menghilangkan relasi permission dari semua role yang menggunakannya.
+
+8. Verifikasi di database
+- Untuk memeriksa perubahan via SQL:
+  - Lihat tabel `permissions` untuk daftar permission.
+  - Lihat tabel `role_has_permissions` untuk relasi antara role_id dan permission_id.
+
+Contoh query singkat (MySQL):
+  SELECT id, name FROM permissions WHERE name LIKE '%sales%';
+  SELECT * FROM role_has_permissions WHERE role_id = 1;
+
+9. Perintah Artisan berguna
+- Menjalankan seeder yang membuat role & permission dan admin user (jika perlu):
+  php artisan db:seed --class=RoleSeeder
+  php artisan db:seed --class=AdminUserSeeder
+
+- Mengecek keberadaan user admin via tinker:
+  php artisan tinker
+  >>> App\\Models\\User::where('email','admin@example.test')->first();
+
+10. Tips & Troubleshooting
+- Jika Anda tidak melihat tombol atau checkbox: pastikan user yang login punya izin yang tepat (`permissions.view`, `permissions.create`, `permissions.delete`) atau role `admin`/`superadmin`.
+- Jika action tidak bereaksi atau muncul error di UI: buka browser console (F12) dan network tab untuk melihat respons Livewire; cek juga laravel log (`storage/logs/laravel.log`).
+- Jika Anda khawatir perubahan massal: gunakan Toggle Group untuk role staging/test terlebih dahulu.
+
+11. Keamanan dan praktik terbaik
+- Beri izin granular (mis. `sales.create`, `sales.update`, `sales.delete`) hanya kepada user/role yang benar-benar perlu.
+- Jangan berikan `transactions.manage` secara sembarangan — permission ini dapat memberikan akses luas ke pembuatan/update transaksi.
+- Selalu cadangkan database sebelum melakukan perubahan massal di produksi.
+
+12. Permintaan tambahan yang bisa saya bantu
+- Menambahkan visual warna (hijau/merah) pada checkbox untuk lebih jelas.
+- Ekspor/import matrix ke CSV.
+- Batasi per-group paging jika grup sangat besar.
+
+Jika Anda mau saya tambahkan fitur UI (mis. highlight berwarna, export CSV), beri tahu mana yang Anda inginkan dan saya kerjakan selanjutnya.

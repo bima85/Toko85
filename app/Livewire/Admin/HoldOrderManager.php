@@ -6,6 +6,7 @@ use App\Models\Sale;
 use App\Models\StockBatch;
 use App\Models\StockCard;
 use App\Services\HoldStockService;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -192,6 +193,15 @@ class HoldOrderManager extends Component
      */
     public function completeHold()
     {
+        // Authorization: allow if user has stock-batches.update OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            Auth::check() && (
+                (method_exists(Auth::user(), 'hasPermissionTo') && Auth::user()->hasPermissionTo('stock-batches.update')) ||
+                (method_exists(Auth::user(), 'hasPermissionTo') && Auth::user()->hasPermissionTo('transactions.manage')) ||
+                (method_exists(Auth::user(), 'hasAnyRole') && Auth::user()->hasAnyRole(['admin', 'superadmin']))
+            ),
+            403
+        );
         try {
             if ($this->holdType === 'batch') {
                 $this->selectedOrder->update(['status' => 'aktual']);
@@ -223,6 +233,15 @@ class HoldOrderManager extends Component
      */
     public function cancelHold()
     {
+        // Authorization: allow if user has stock-batches.delete OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            Auth::check() && (
+                (method_exists(Auth::user(), 'hasPermissionTo') && Auth::user()->hasPermissionTo('stock-batches.delete')) ||
+                (method_exists(Auth::user(), 'hasPermissionTo') && Auth::user()->hasPermissionTo('transactions.manage')) ||
+                (method_exists(Auth::user(), 'hasAnyRole') && Auth::user()->hasAnyRole(['admin', 'superadmin']))
+            ),
+            403
+        );
 
         try {
             if ($this->holdType === 'batch') {
@@ -292,7 +311,7 @@ class HoldOrderManager extends Component
             'cancelled' => $this->getCancelledOrders(),
         };
 
-        return view('livewire.admin.hold-order-manager', [
+        return view('livewire.admin.sales.hold-order-manager', [
             'orders' => $orders,
             'summary' => $this->getHoldSummary(),
         ]);

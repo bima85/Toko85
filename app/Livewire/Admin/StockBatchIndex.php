@@ -604,7 +604,7 @@ class StockBatchIndex extends Component
             ->filter()
             ->toArray();
 
-        return view('livewire.admin.stock-batch-index', [
+        return view('livewire.admin.stock.stock-batch-index', [
             'batches' => $batches,
             'productNumbers' => $productNumbers,
             'products' => $products,
@@ -631,6 +631,16 @@ class StockBatchIndex extends Component
     #[On('delete-batch')]
     public function deleteBatch($batchId)
     {
+        // Authorization: allow if user has stock-batches.delete OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            (auth()->user() && (
+                auth()->user()->hasPermissionTo('stock-batches.delete') ||
+                auth()->user()->hasPermissionTo('transactions.manage') ||
+                auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            )),
+            403
+        );
+
         try {
             $batch = StockBatch::findOrFail($batchId);
 
@@ -679,6 +689,16 @@ class StockBatchIndex extends Component
 
     public function updateBatch()
     {
+        // Authorization: allow if user has stock-batches.update OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            (auth()->user() && (
+                auth()->user()->hasPermissionTo('stock-batches.update') ||
+                auth()->user()->hasPermissionTo('transactions.manage') ||
+                auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            )),
+            403
+        );
+
         $this->validate([
             'editNamaTumpukan' => 'required|string|max:255',
             'editQty' => 'required|numeric|min:0',
@@ -768,6 +788,16 @@ class StockBatchIndex extends Component
 
     public function createStockBatch()
     {
+        // Authorization: allow if user has stock-batches.create OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            (auth()->user() && (
+                auth()->user()->hasPermissionTo('stock-batches.create') ||
+                auth()->user()->hasPermissionTo('transactions.manage') ||
+                auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            )),
+            403
+        );
+
         // Prevent double submission
         if ($this->isCreatingBatch) {
             return;
@@ -898,6 +928,16 @@ class StockBatchIndex extends Component
 
     public function createHoldBatch()
     {
+        // Authorization: allow if user has stock-batches.create OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            (auth()->user() && (
+                auth()->user()->hasPermissionTo('stock-batches.create') ||
+                auth()->user()->hasPermissionTo('transactions.manage') ||
+                auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            )),
+            403
+        );
+
         // Prevent double submission
         if ($this->isCreatingHoldBatch) {
             return;
@@ -1258,6 +1298,16 @@ class StockBatchIndex extends Component
 
     public function deleteSelected()
     {
+        // Authorization: allow if user has stock-batches.delete OR transactions.manage OR is admin/superadmin
+        abort_unless(
+            (auth()->user() && (
+                auth()->user()->hasPermissionTo('stock-batches.delete') ||
+                auth()->user()->hasPermissionTo('transactions.manage') ||
+                auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            )),
+            403
+        );
+
         if (empty($this->selectedBatches)) {
             session()->flash('message', 'Pilih minimal satu batch untuk dihapus');
 
@@ -1337,6 +1387,15 @@ class StockBatchIndex extends Component
 
     public function quickAddProduct()
     {
+        // Authorization: allow if user has users.create OR products.create OR is admin/superadmin
+        abort_unless(
+            (auth()->user() && (
+                auth()->user()->hasPermissionTo('products.create') ||
+                auth()->user()->hasAnyRole(['admin', 'superadmin'])
+            )),
+            403
+        );
+
         $this->validate([
             'quickProductName' => 'required|string|max:255',
             'quickProductCode' => 'required|string|max:100|unique:products,kode_produk',

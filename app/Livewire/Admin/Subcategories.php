@@ -5,9 +5,11 @@ namespace App\Livewire\Admin;
 use App\Models\Category;
 use App\Models\Subcategory;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Subcategories extends Component
 {
     use WithPagination;
@@ -43,7 +45,10 @@ class Subcategories extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('subcategories.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -150,10 +155,10 @@ class Subcategories extends Component
 
         $categories = Category::orderBy('nama_kategori')->get();
 
-        return view('livewire.admin.subcategories', [
+        return view('livewire.admin.products.subcategories', [
             'subcategories' => $subcategories,
             'categories' => $categories,
-        ])->layout('layouts.admin');
+        ]);
         /** @phpstan-ignore-next-line */
     }
 }

@@ -4,9 +4,11 @@ namespace App\Livewire\Admin;
 
 use App\Models\Warehouse;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Warehouses extends Component
 {
     use WithPagination;
@@ -48,7 +50,10 @@ class Warehouses extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('warehouses.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -153,8 +158,8 @@ class Warehouses extends Component
             ->orderBy('id', 'desc')
             ->paginate(10);
 
-        return view('livewire.admin.warehouses', [
+        return view('livewire.admin.stores.warehouses', [
             'warehouses' => $warehouses,
-        ])->layout('layouts.admin');
+        ]);
     }
 }

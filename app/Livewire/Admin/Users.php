@@ -5,9 +5,11 @@ namespace App\Livewire\Admin;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Users extends Component
 {
     use WithPagination;
@@ -42,7 +44,11 @@ class Users extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        // allow if user has view permission or admin/superadmin role
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('users.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -81,7 +87,10 @@ class Users extends Component
 
         $this->validate($rules);
 
+        // permission checks
+        $current = Auth::user();
         if ($this->editingUserId) {
+            abort_unless($current && (method_exists($current, 'hasPermissionTo') && $current->hasPermissionTo('users.update')) || (method_exists($current, 'hasAnyRole') && $current->hasAnyRole(['admin', 'superadmin'])), 403);
             $u = User::findOrFail($this->editingUserId);
             $u->name = $this->name;
             // allow updating username if provided
@@ -96,6 +105,7 @@ class Users extends Component
             $u->syncRoles($this->roles ?: []);
             session()->flash('message', 'User updated.');
         } else {
+            abort_unless($current && (method_exists($current, 'hasPermissionTo') && $current->hasPermissionTo('users.create')) || (method_exists($current, 'hasAnyRole') && $current->hasAnyRole(['admin', 'superadmin'])), 403);
             // generate a username from name or email local part, ensure uniqueness
             $base = $this->name ? Str::slug($this->name, '') : explode('@', $this->email)[0];
             // if admin provided a username in the form, use that (ensure uniqueness)
@@ -133,6 +143,8 @@ class Users extends Component
 
     public function delete($id)
     {
+        $current = Auth::user();
+        abort_unless($current && (method_exists($current, 'hasPermissionTo') && $current->hasPermissionTo('users.delete')) || (method_exists($current, 'hasAnyRole') && $current->hasAnyRole(['admin', 'superadmin'])), 403);
         $u = User::findOrFail($id);
         // Prevent deleting yourself
         if (Auth::id() === $u->id) {
@@ -168,9 +180,9 @@ class Users extends Component
 
         $allRoles = \Spatie\Permission\Models\Role::pluck('name');
 
-        return view('livewire.admin.users', [
+        return view('livewire.admin.users.users', [
             'users' => $users,
             'allRoles' => $allRoles,
-        ])->layout('layouts.admin');
+        ]);
     }
 }

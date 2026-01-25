@@ -13,11 +13,14 @@ class ProfitMargin extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('profit-margin.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function render()
     {
-        return view('livewire.admin.profit-margin');
+        return view('livewire.admin.products.profit-margin');
     }
 }

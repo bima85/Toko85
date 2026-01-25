@@ -4,9 +4,11 @@ namespace App\Livewire\Admin;
 
 use App\Models\Customer;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Customers extends Component
 {
     use WithPagination;
@@ -48,7 +50,10 @@ class Customers extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('customers.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -153,8 +158,8 @@ class Customers extends Component
             ->orderBy('id', 'desc')
             ->paginate(10);
 
-        return view('livewire.admin.customers', [
+        return view('livewire.admin.users.customers', [
             'customers' => $customers,
-        ])->layout('layouts.admin');
+        ]);
     }
 }

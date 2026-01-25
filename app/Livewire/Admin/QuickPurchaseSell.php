@@ -2,16 +2,22 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
 
+#[Layout('layouts.admin')]
 class QuickPurchaseSell extends Component
 {
     public $items = [];
+
     public $stores = [];
+
     public $warehouses = [];
+
     public $location_type = 'store';
+
     public $location_id = null;
 
     protected $rules = [
@@ -48,14 +54,14 @@ class QuickPurchaseSell extends Component
 
         $purchaseMeta = [
             'supplier_id' => null,
-            'no_invoice' => 'IMP-' . now()->format('YmdHis'),
+            'no_invoice' => 'IMP-'.now()->format('YmdHis'),
             'tanggal_pembelian' => now(),
             'user_id' => Auth::id(),
         ];
 
         $saleMeta = [
             'customer_id' => null,
-            'no_invoice' => 'IS-' . now()->format('YmdHis'),
+            'no_invoice' => 'IS-'.now()->format('YmdHis'),
             'tanggal_penjualan' => now(),
             'user_id' => Auth::id(),
             'store_id' => $this->location_type === 'store' ? $this->location_id : null,
@@ -90,11 +96,12 @@ class QuickPurchaseSell extends Component
                 'items' => $saleItems,
             ]);
 
-            session()->flash('message', 'Immediate Purchase & Sale processed. Purchase ID: ' . $result['purchase']->id . ', Sale ID: ' . $result['sale']->id);
+            session()->flash('message', 'Immediate Purchase & Sale processed. Purchase ID: '.$result['purchase']->id.', Sale ID: '.$result['sale']->id);
+
             return redirect()->route('admin.purchases');
         } catch (\Exception $e) {
-            Log::error('ImmediatePurchaseSale failed: ' . $e->getMessage());
-            $this->addError('items', 'Gagal memproses transaksi: ' . $e->getMessage());
+            Log::error('ImmediatePurchaseSale failed: '.$e->getMessage());
+            $this->addError('items', 'Gagal memproses transaksi: '.$e->getMessage());
         }
     }
 
@@ -102,8 +109,8 @@ class QuickPurchaseSell extends Component
     {
         $products = \App\Models\Product::orderBy('nama_produk')->limit(200)->get();
 
-        return view('livewire.admin.quick-purchase-sell', [
+        return view('livewire.admin.purchases.quick-purchase-sell', [
             'products' => $products,
-        ])->layout('layouts.admin');
+        ]);
     }
 }

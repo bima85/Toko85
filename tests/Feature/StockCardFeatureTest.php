@@ -15,6 +15,14 @@ class StockCardFeatureTest extends TestCase
     {
         parent::setUp();
         $this->user = User::factory()->create();
+        // Give necessary permissions to the user
+        $this->user->givePermissionTo([
+            'stock-cards.view',
+            'stock-cards.create',
+            'stock-cards.update',
+            'stock-cards.delete',
+            'transactions.manage',
+        ]);
     }
 
     /**
@@ -164,13 +172,13 @@ class StockCardFeatureTest extends TestCase
      */
     public function test_search_functionality_works()
     {
-        $product = Product::factory()->create(['name' => 'Test Product']);
+        $product = Product::factory()->create(['nama_produk' => 'Test Product']);
         $stockCard = StockCard::factory()->create(['product_id' => $product->id]);
 
         $this->actingAs($this->user)
             ->livewire('stock-card.stock-card-index')
             ->set('search', 'Test Product')
-            ->assertSee($product->name);
+            ->assertSee('Test Product');
     }
 
     /**

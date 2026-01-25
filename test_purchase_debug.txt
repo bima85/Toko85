@@ -1,0 +1,11 @@
+Test pembelian - check what happens when saving.
+
+Expected behavior:
+1. When user selects destination_type='toko' and enters qty, stock should go to store
+2. When user selects destination_type='gudang' and enters qty_gudang, stock should go to warehouse
+
+Test steps:
+1. Create new purchase
+2. Fill in supplier, tanggal
+3. Add item with qty only (destination_type='toko')
+4. Save and check if StockBatch + StockAdjustment created

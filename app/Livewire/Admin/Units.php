@@ -4,9 +4,11 @@ namespace App\Livewire\Admin;
 
 use App\Models\Unit;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
 
+#[Layout('layouts.admin')]
 class Units extends Component
 {
     use WithPagination;
@@ -54,7 +56,10 @@ class Units extends Component
     {
         /** @var \App\Models\User|null $user */
         $user = Auth::user();
-        abort_unless($user && method_exists($user, 'hasRole') && $user->hasRole('admin'), 403);
+        abort_unless($user && (
+            (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('units.view'))
+            || (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'superadmin']))
+        ), 403);
     }
 
     public function updatingSearch()
@@ -183,9 +188,9 @@ class Units extends Component
             ->orderBy('nama_unit')
             ->get();
 
-        return view('livewire.admin.units', [
+        return view('livewire.admin.products.units', [
             'units' => $units,
             'availableUnits' => $availableUnits,
-        ])->layout('layouts.admin');
+        ]);
     }
 }

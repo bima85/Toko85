@@ -6,6 +6,8 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseItem;
+use App\Models\StockBatch;
+use App\Models\StockCard;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -59,6 +61,11 @@ class Dashboard extends Component
             ->limit(5)
             ->get();
 
+        // Recent activity for lightweight user dashboard
+        $recentActivities = StockCard::latest()->with(['product', 'batch'])->limit(10)->get();
+        // Total stock available (sum of batch quantities)
+        $totalStock = (int) StockBatch::sum('qty');
+
         return view('livewire.admin.dashboard', [
             'totalPurchases' => $totalPurchases,
             'totalRevenue' => $totalRevenue,
@@ -68,6 +75,8 @@ class Dashboard extends Component
             'recentPurchases' => $recentPurchases,
             'lowStockProducts' => $lowStockProducts,
             'topProducts' => $topProducts,
+            'recentActivities' => $recentActivities,
+            'totalStock' => $totalStock,
         ])->layout('layouts.admin');
     }
 }

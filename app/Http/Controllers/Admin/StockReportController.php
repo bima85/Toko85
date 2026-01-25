@@ -112,7 +112,7 @@ class StockReportController extends Controller
             })->values();
         }
 
-        $html = view('livewire.admin._stock_table', ['rows' => $rows])->render();
+        $html = view('livewire.admin.stock._stock_table', ['rows' => $rows])->render();
 
         return response()->json(['html' => $html, 'time' => now()->format('Y-m-d H:i:s')]);
     }
