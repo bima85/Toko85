@@ -224,9 +224,8 @@
                   <tr wire:key="item-{{ $index }}">
                     <td class="text-center" data-label="#">{{ $index + 1 }}</td>
                     <td data-label="Kategori">
-                      <select wire:model="purchaseItems.{{ $index }}.category_id" 
-                        wire:change="updateCategoryFilter({{ $index }})"
-                        class="form-control form-control-sm">
+                      <select wire:model="purchaseItems.{{ $index }}.category_id"
+                        wire:change="updateCategoryFilter({{ $index }})" class="form-control form-control-sm">
                         <option value="">--</option>
                         @foreach ($categories as $category)
                         <option value="{{ $category->id }}">
@@ -242,6 +241,7 @@
                     </td>
                     <td data-label="Subkategori">
                       <select wire:model="purchaseItems.{{ $index }}.subcategory_id"
+                        wire:change="$refresh"
                         class="form-control form-control-sm">
                         <option value="">--</option>
                         @php
@@ -262,33 +262,26 @@
                       </select>
                     </td>
                     <td data-label="Produk">
-                      <input type="text" wire:model.live="purchaseItems.{{ $index }}.product_search"
-                        wire:change="updateProductFromSearch({{ $index }})" list="products_{{ $index }}"
-                        onchange="handleProductSearchChange(event, {{ $index }})" class="form-control form-control-sm"
-                        placeholder="Cari produk..." autocomplete="off" />
-                      <datalist id="products_{{ $index }}">
-                        @php
-                        $subcategoryId = $item['subcategory_id'];
-                        $filteredProducts = $subcategoryId ? $this->getProductsBySubcategory($subcategoryId) : $products;
-                        @endphp
-
+                      @php
+                      $subcategoryId = $item['subcategory_id'];
+                      $filteredProducts = $subcategoryId ? $this->getProductsBySubcategory($subcategoryId) : $products;
+                      @endphp
+                      
+                      <select wire:model="purchaseItems.{{ $index }}.product_id"
+                        wire:change="updateProductFromSearch({{ $index }})"
+                        class="form-control form-control-sm">
+                        <option value="">-- Pilih Produk --</option>
                         @foreach ($filteredProducts as $prod)
-                        <option value="{{ $prod->nama_produk }}" data-id="{{ $prod->id }}">
+                        <option value="{{ $prod->id }}">
                           {{ $prod->nama_produk }}
                         </option>
                         @endforeach
-
+                        
                         <option value="__add_product__"
                           style="background-color: #28a745; color: white; font-weight: bold">
-                          Tambah Produk Baru
+                          + Tambah Produk Baru
                         </option>
-                      </datalist>
-                      @if ($item['product_id'] === '')
-                      <small class="text-muted d-block mt-1">
-                        Ketik nama produk untuk mencari
-                      </small>
-                      @endif
-                    </td>
+                      </select>
                     <!-- ===== KOLOM BATCH ===== -->
                     @if($this->batch_enabled)
                     <td data-label="Batch">

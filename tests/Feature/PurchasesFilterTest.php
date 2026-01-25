@@ -89,12 +89,12 @@ class PurchasesFilterTest extends TestCase
             'kode_subkategori' => 'DG',
         ]);
 
-        Product::factory()->create([
+        $product1 = Product::factory()->create([
             'nama_produk' => 'Roti Putih',
             'category_id' => $category->id,
             'subcategory_id' => $subcategory1->id,
         ]);
-        Product::factory()->create([
+        $product2 = Product::factory()->create([
             'nama_produk' => 'Daging Sapi',
             'category_id' => $category->id,
             'subcategory_id' => $subcategory2->id,
@@ -102,14 +102,16 @@ class PurchasesFilterTest extends TestCase
 
         // Test
         $this->actingAs($user);
-        $component = Livewire::test(\App\Livewire\Admin\Purchases::class)
-            ->call('create')
-            ->call('addItem')
-            ->set('purchaseItems.0.category_id', $category->id)
-            ->set('purchaseItems.0.subcategory_id', $subcategory1->id);
+        $component = new \App\Livewire\Admin\Purchases();
+        
+        // Verify method returns correct products
+        $products1 = $component->getProductsBySubcategory($subcategory1->id);
+        $products2 = $component->getProductsBySubcategory($subcategory2->id);
 
-        // Verify that getProductsBySubcategory returns correct products
-        $component->assertSet('purchaseItems.0.subcategory_id', $subcategory1->id);
+        $this->assertCount(1, $products1);
+        $this->assertCount(1, $products2);
+        $this->assertEquals($product1->id, $products1->first()->id);
+        $this->assertEquals($product2->id, $products2->first()->id);
     }
 
     public function test_category_change_resets_subcategory(): void

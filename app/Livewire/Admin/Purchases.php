@@ -366,9 +366,10 @@ class Purchases extends Component
         // Safety check: only for THIS supplier (not global)
         // This handles edge case where same supplier tries to create duplicate on same millisecond
         $attempt = 0;
-        while (Purchase::where('supplier_id', $supplierId)
-            ->where('no_invoice', $this->no_invoice)
-            ->exists() && $attempt < 10
+        while (
+            Purchase::where('supplier_id', $supplierId)
+                ->where('no_invoice', $this->no_invoice)
+                ->exists() && $attempt < 10
         ) {
             $num++;
             $this->no_invoice = 'PB/'.$date.'-'.str_pad($num, 3, '0', STR_PAD_LEFT);
@@ -1559,16 +1560,25 @@ class Purchases extends Component
             return;
         }
 
-        $searchValue = $this->purchaseItems[$index]['product_search'] ?? '';
+        $productId = $this->purchaseItems[$index]['product_id'] ?? null;
 
-        if ($searchValue) {
-            // Search product by name
-            $product = Product::where('nama_produk', $searchValue)->first();
+        // Handle special action: add new product
+        if ($productId === '__add_product__') {
+            // Open modal to add new product
+            $this->openProductModal($index);
+
+            return;
+        }
+
+        if ($productId) {
+            // Find product by ID and populate item details
+            $product = Product::find($productId);
             if ($product) {
                 $this->purchaseItems[$index]['product_id'] = $product->id;
                 $this->purchaseItems[$index]['category_id'] = $product->category_id;
                 $this->purchaseItems[$index]['subcategory_id'] = $product->subcategory_id;
                 $this->purchaseItems[$index]['unit_id'] = $product->unit_id;
+                $this->purchaseItems[$index]['product_search'] = $product->nama_produk;
                 $this->computeAllTotals();
                 $this->purchaseItems = array_merge([], $this->purchaseItems);
             }
