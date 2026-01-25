@@ -224,7 +224,8 @@
                   <tr wire:key="item-{{ $index }}">
                     <td class="text-center" data-label="#">{{ $index + 1 }}</td>
                     <td data-label="Kategori">
-                      <select wire:model="purchaseItems.{{ $index }}.category_id" wire:change="$refresh"
+                      <select wire:model="purchaseItems.{{ $index }}.category_id" 
+                        wire:change="updateCategoryFilter({{ $index }})"
                         class="form-control form-control-sm">
                         <option value="">--</option>
                         @foreach ($categories as $category)
@@ -266,7 +267,12 @@
                         onchange="handleProductSearchChange(event, {{ $index }})" class="form-control form-control-sm"
                         placeholder="Cari produk..." autocomplete="off" />
                       <datalist id="products_{{ $index }}">
-                        @foreach ($products as $prod)
+                        @php
+                        $subcategoryId = $item['subcategory_id'];
+                        $filteredProducts = $subcategoryId ? $this->getProductsBySubcategory($subcategoryId) : $products;
+                        @endphp
+
+                        @foreach ($filteredProducts as $prod)
                         <option value="{{ $prod->nama_produk }}" data-id="{{ $prod->id }}">
                           {{ $prod->nama_produk }}
                         </option>
